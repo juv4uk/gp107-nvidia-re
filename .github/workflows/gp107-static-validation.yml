@@ -1,0 +1,64 @@
+name: GP107 static Pascal validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gp107-static-validation.yml"
+      - "Makefile"
+      - "pascal/**"
+      - "scripts/test-pascal-probe.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gp107-static-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-compile:
+    name: Static gate and FPC 3.2.2 compile (no hardware access)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned Free Pascal toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y fp-compiler-3.2.2 make binutils
+          test "$(fpc -iV)" = "3.2.2"
+          fpc -iV
+          uname -srm
+
+      - name: Check shell syntax
+        run: bash -n scripts/test-pascal-probe.sh
+
+      - name: Run host-independent fail-closed source guard
+        run: make test-valid-cards-static
+
+      - name: Compile Pascal probes without executing them
+        run: make -C pascal clean all
+
+      - name: Check patch whitespace
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git diff --check "origin/${BASE_REF}...HEAD"
+
+      - name: Report hardware boundary
+        run: |
+          {
+            echo "## GP107 static validation"
+            echo ""
+            echo "- FPC: `$(fpc -iV)`"
+            echo "- Static source guard: passed"
+            echo "- Pascal compilation: passed; no probe executable was run"
+            echo "- GPU/RM/MMIO/firmware/reboot: NOT_RUN"
+            echo "- Multi-NVIDIA runtime negative: NOT_RUN"
+          } >> "$GITHUB_STEP_SUMMARY"
