@@ -39,7 +39,15 @@ PCI ID перевіряється за [envytools PCI ID database](https://githu
 
 ## 2.1. OpenCL через Mesa Rusticl: окремий експериментальний шлях
 
-Окрім Vulkan/NVK, для compute існує інший відкритий шлях: **Nouveau Gallium → Mesa Rusticl → OpenCL**. Rusticl є реалізацією OpenCL поверх Gallium, а не CUDA runtime або сумісним шаром CUDA. Його документація перелічує `nouveau` серед драйверів із «decent support», але попереджає про можливі conformance issues/bugs. Пристрої не рекламуються автоматично: потрібен явний opt-in через `RUSTICL_ENABLE`.
+Окрім Vulkan/NVK, для compute існує інший відкритий шлях: **Nouveau Gallium → Mesa Rusticl → OpenCL**. Rusticl є реалізацією OpenCL поверх Gallium, а не CUDA runtime або сумісним шаром CUDA. Документація `RUSTICL_ENABLE` перелічує `nouveau` серед драйверів із «decent support», але попереджає про можливі conformance issues/bugs. Пристрої не рекламуються автоматично: потрібен явний opt-in через `RUSTICL_ENABLE`.
+
+Важлива build-time/runtime різниця в pinned Mesa `meson.options` (snapshot
+`660c14e2e7d85f1bb5d4b4b86bec77befe802dab`): `nouveau` входить до списку
+доступних `gallium-drivers`, але **не** входить до
+`gallium-rusticl-enable-drivers`. Остання опція — allowlist драйверів,
+для яких Rusticl вмикається **за замовчуванням**; це не тотожне забороні
+явного opt-in. Тому для GP107 не очікувати default OpenCL device enumeration,
+але перевірити явний `RUSTICL_ENABLE=nouveau` на відповідній збірці Mesa.
 
 Перший безпечний runtime probe на окремому Nouveau boot:
 ```sh
@@ -50,6 +58,7 @@ RUSTICL_ENABLE=nouveau clinfo
 Джерела:
 - [Mesa Rusticl — OpenCL on top of Gallium and enablement requirement](https://docs.mesa3d.org/rusticl.html)
 - [Mesa environment variables — `RUSTICL_ENABLE` and supported drivers](https://docs.mesa3d.org/envvars.html#rusticl-environment-variables)
+- [Pinned Mesa `meson.options`: Nouveau Gallium buildable, but absent from Rusticl default-enable allowlist](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/660c14e2e7d85f1bb5d4b4b86bec77befe802dab/meson.options)
 
 ## 2.2. Актуальна Mesa baseline та межа Vulkan Video
 
