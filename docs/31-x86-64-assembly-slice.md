@@ -18,7 +18,8 @@ ret
 
 - один 32-бітний load і `lfence` після нього;
 - жодних констант регістрів, BOOT0-адрес, vendor-послідовностей чи write;
-- виклик і всі ворота лишаються в C: opt-in прапорець і відмова при bound driver;
+- ASM load викликається лише з приватного C mapper після проходження opt-in,
+  identity, driver-binding, BAR-space, BAR-size, offset і відкритого resource0 size gates;
 - збірка `gp107ctl-asm` використовує `-DGP107_USE_ASM=1`, звичайний `gp107ctl`
   лишається C-версією для порівняння.
 
@@ -66,9 +67,7 @@ sysfs як `0x01000000`, але самий aperture-read не виконував
 
 ## 5. Питання без відповіді й найменший крок
 
-Який BAR0-offset безпечно читати після unbind? Асемблер тут не допомагає:
-потрібен або явний owner-дозвіл на фізичний read, або новий statically proven
-факт із shipped-артефакта. Найменший крок — той самий
-`gp107ctl(-asm) mmio-read --offset=0x... --allow-mmio` на реальному пристрої з
-artifact-логом і SHA-256, але **тільки після окремого owner-рішення** про
-unbind/boot.
+Який BAR0-offset безпечно читати? Асемблер тут не допомагає: потрібен
+source-level факт або окремий owner approval на фізичний read. Програмний
+`--allow-mmio` не є цим дозволом. Фізичний тест лишається
+**NOT AUTHORIZED / NOT RUN**.
