@@ -159,6 +159,7 @@ static int read_driver_link(const char *devdir,
                                "IDENTITY-FAIL step=driver-binding-open code=%d errno=%d",
                                GP107_ERR_DRIVER_BINDING, saved);
     }
+    errno = 0;
     if (fstat(dirfd, &st) != 0 || !S_ISDIR(st.st_mode)) {
         saved = (errno != 0) ? errno : ENOTDIR;
         (void)close(dirfd);
