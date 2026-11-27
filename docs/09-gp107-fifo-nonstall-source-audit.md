@@ -72,15 +72,17 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    KREL=$(uname -r)
    printf 'KERNEL=%s\n' "$KREL"
    if [ -r "/boot/config-$KREL" ]; then
-     CONFIG="/boot/config-$KREL"
+     CONFIG_LINE=$(grep '^CONFIG_NOUVEAU_DEBUG=' "/boot/config-$KREL" || true)
    elif [ -r /proc/config.gz ]; then
-     zcat /proc/config.gz | grep -E '^CONFIG_NOUVEAU_DEBUG(=|_)' || true
-     CONFIG='(captured from /proc/config.gz above)'
+     CONFIG_LINE=$(zcat /proc/config.gz | grep '^CONFIG_NOUVEAU_DEBUG=' || true)
    else
      echo 'KERNEL_CONFIG_UNAVAILABLE'; exit 2
    fi
-   [ "$CONFIG" = '(captured from /proc/config.gz above)' ] ||
-     grep -E '^CONFIG_NOUVEAU_DEBUG(=|_)' "$CONFIG"
+   [ -n "$CONFIG_LINE" ] || { echo 'CONFIG_NOUVEAU_DEBUG_UNSET'; exit 2; }
+   DEBUG_LEVEL=${CONFIG_LINE#*=}
+   case "$DEBUG_LEVEL" in ''|*[!0-9]*) echo 'CONFIG_NOUVEAU_DEBUG_INVALID'; exit 2 ;; esac
+   [ "$DEBUG_LEVEL" -ge 5 ] || { echo "CONFIG_NOUVEAU_DEBUG_TOO_LOW=$DEBUG_LEVEL"; exit 2; }
+   printf 'CONFIG_NOUVEAU_DEBUG=%s\n' "$DEBUG_LEVEL"
    modinfo -p nouveau | grep '^debug:' || { echo 'NOUVEAU_DEBUG_PARAMETER_UNAVAILABLE'; exit 2; }
    BDFS=$(lspci -Dnn -d 10de:1c82 | awk '{print $1}')
    COUNT=$(printf '%s\n' "$BDFS" | sed '/^$/d' | wc -l)
@@ -91,11 +93,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    printf 'GP107_BDF=%s vendor=%s device=%s\n' "$BDF" "$(cat "$SYSFS/vendor")" "$(cat "$SYSFS/device")"
    lspci -Dnnk -s "$BDF"
    ```
-
-   Перевірити, що `CONFIG_NOUVEAU_DEBUG` у фактичному config дорівнює щонайменше `5` (TRACE). Якщо конфігурацію зчитано із `/proc/config.gz`, збережіть повний вихід у evidence bundle. Не виводити PASS, якщо параметр або config недоступні.
-
-   Очікуваний BDF тут лише приклад із нашого однокарткового witness;
-   для іншого хоста BDF треба взяти з `lspci`, не підставляти.
+   Preflight сам fail-closed перевіряє compile-time ceiling `CONFIG_NOUVEAU_DEBUG >= 5`, параметр `debug` і рівно один PCI `10de:1c82`. Якщо знайдено нуль або більше однієї такої карти — зупинитися та не вгадувати BDF.
 
 2. У **одноразовому** test boot передати параметр модулю через тимчасовий boot entry:
 
@@ -131,15 +129,15 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
    Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи; `CLIENT`-рядки не очікуються, бо в NVKM layout немає CLIENT subdevice.
 
-   Шукати в `gp107-top-fifo.log`:
+   Шукати decoded записи у `relevant-lines.log`, але всі висновки звіряти з повним `kernel.log`:
 
    ```text
-   top: ... engine  0 runlist  0 ...   # GR на runlist 0 — умова не активна
-   top: ... engine  0 runlist  1 ...   # GR на nonzero — умова активна, але event subscription ще треба довести
-   fifo: 00000001: ...                  # RUNL_DEBUG для runlist 1
+   nouveau ...: top: ... engine  0 runlist N ...  # лише TOP inventory
+   nouveau ...: fifo: ...                       # RUNL_DEBUG / FIFO context
+   nouveau ...: fifo: event: ntfy add ...       # можливий event-level рядок лише з FIFO=trace
    ```
 
-   Кожен рядок зберегти разом із kernel version, BDF, `modinfo` і часом boot.
+   TOP row — інвентаризація engine/runlist, а не доказ прив'язки конкретного user channel чи non-stall subscription. Не трактувати `N=0` або `N!=0` як channel verdict без окремої кореляції. Зберегти повний `kernel.log`, kernel config, BDF, `modinfo` та час boot.
 
 4. Порядок кваліфікації witness:
 
