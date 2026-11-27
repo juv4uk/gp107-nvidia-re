@@ -43,9 +43,9 @@ int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
 int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz);
-int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
-                      uint32_t offset, uint32_t *value,
-                      char *err, size_t errsz);
+int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
+                      uint32_t offset, int allow,
+                      uint32_t *value, char *err, size_t errsz);
 ```
 
 Виклик `gp107ctl` друкує людиночитану S-подібну проєкцію фактів, поки не
@@ -60,13 +60,14 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
 | 3 | Друга картка того самого vendor/device відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=card-count code=13 count=2` |
 | 4 | Відсутній `config` відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
 | 5 | Чужий BDF відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
-| 6 | MMIO без прапорця відхиляється до будь-якого mapping | **runtime-proven (fixture)** | `MMIO-FAIL step=opt-in-required code=15` |
-| 7 | MMIO з bound драйвером відхиляється | **runtime-proven (fixture)** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
+| 6 | Публічний MMIO C API сам вимагає opt-in до будь-якого mapping | **runtime-proven (fixture)** | прямий виклик API без opt-in повертає `MMIO-FAIL step=opt-in-required code=15` |
+| 7 | Публічний MMIO C API сам відхиляє bound driver | **runtime-proven (fixture)** | прямий виклик API з opt-in і bound driver повертає `MMIO-FAIL step=driver-bound code=16` |
 | 8 | Read-only 32-бітне читання з `resource0` | **runtime-proven (синтетичний файл), hardware NOT_RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом файлу |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
-| 12 | Причина будь-якої відмови ядра / ексклюзивне володіння BAR | **UNPROVEN** | код друкує errno як число, не інтерпретує причину |
+| 12 | Некоректний/недоступний `driver` link не трактується як unbound | **runtime-proven (fixture)** | лише `ENOENT` означає відсутній binding; інші помилки дають `IDENTITY-FAIL step=driver-binding-read code=20` |
+| 13 | Причина будь-якої відмови ядра / ексклюзивне володіння BAR | **UNPROVEN** | код друкує errno як число, не інтерпретує причину |
 
 Висновок про продуктивність чи «працюючий драйвер» з цього зрізу **не
 випливає**: тут немає жодного GPU-завдання.
@@ -86,14 +87,14 @@ make test-valid-cards-static   # старий базовий гейт не по�
    BOOT0-константа, атестація й authoritative pin;
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. три стани capability-ledger (`denied`/`deferred`/`granted`) і мутація
+5. public API gates (opt-in і driver binding перевіряються всередині `gp107_mmio_read32`), три стани capability-ledger (`denied`/`deferred`/`granted`) і мутація
    I/O-прапорця BAR0;
-6. два MMIO-негативи й один read-only позитив на синтетичному `resource0`;
+6. негативи неправильного driver link, прямого обходу CLI API, меж resource0/offset і один read-only позитив на синтетичному `resource0`;
 7. best-effort реальний sysfs inventory (пропуск явно позначається, якщо
    пристрою немає).
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=8 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.
