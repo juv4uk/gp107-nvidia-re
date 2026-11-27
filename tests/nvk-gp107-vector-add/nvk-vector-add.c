@@ -224,6 +224,8 @@ int main(int argc, char **argv)
     const char *bdf_text = NULL;
     const char *spirv_path = "vector_add.spv";
     uint32_t element_count = 257u;
+    bool allow_channel_init = false;
+    bool allow_gpu_submit = false;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--bdf") == 0 && i + 1 < argc)
             bdf_text = argv[++i];
@@ -238,12 +240,33 @@ int main(int argc, char **argv)
                 return 2;
             }
             element_count = (uint32_t)parsed;
+        } else if (strcmp(argv[i], "--allow-temp-gr-channel-init") == 0) {
+            allow_channel_init = true;
+        } else if (strcmp(argv[i], "--allow-gpu-submit") == 0) {
+            allow_gpu_submit = true;
         } else {
             fprintf(stderr,
-                    "usage: %s --bdf DDDD:BB:DD.F [--elements 257|1048576] [--spv file.spv]\n",
+                    "usage: %s --bdf DDDD:BB:DD.F --allow-temp-gr-channel-init "
+                    "--allow-gpu-submit [--elements 257|1048576] [--spv file.spv]\n",
                     argv[0]);
             return 2;
         }
+    }
+
+    /*
+     * Fail before vkCreateInstance / vkEnumeratePhysicalDevices. NVK 26.3.1
+     * physical-device discovery is not passive: it may initialize VM/NVIF
+     * state and allocate/free a temporary GR channel. Creating a Vulkan
+     * device/queue goes further and can submit initial engine state.
+     */
+    if (!allow_channel_init || !allow_gpu_submit) {
+        fprintf(stderr,
+                "ENUMERATION_NOT_AUTHORIZED: both --allow-temp-gr-channel-init "
+                "and --allow-gpu-submit are required before any Vulkan "
+                "instance/device enumeration or workload\n");
+        fprintf(stderr,
+                "No Vulkan instance or physical device was created or enumerated\n");
+        return 4;
     }
 
     PciBdf expected_bdf;
