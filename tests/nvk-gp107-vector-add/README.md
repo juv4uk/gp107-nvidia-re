@@ -117,6 +117,17 @@ for N in 257 1048576; do
 done
 ```
 
+## Enumeration is not strictly read-only
+
+On the pinned Mesa snapshot (`mirror/mesa` commit `e24dc5bd1e7fe6101bdc866fb16a15a8fcae1aae`), NVK physical-device discovery calls `nvkmd_nouveau_pdev_create()` → `nouveau_ws_device_new()`. The latter creates a temporary `nouveau_ws_context_create(device, ~0, ...)` to query engine classes, then destroys it.
+
+That temporary context allocates a GR-runlist channel. Kernel channel initialization creates the Pascal `NON_STALL_INTR` event object through `nvif_event_ctor()` and `nvkm_uchan_uevent()`, but `nvkm_event_ntfy_add()` leaves it `allowed=0`; this does **not** enter the non-stall `nvkm_event_get/put` reference-count path. The enumeration context does not submit a GPFIFO command buffer on this path, but it is **not zero-side-effect**: it allocates/frees a DRM channel, BO/VM/engine objects, and enables the separate KILLED notification.
+
+Therefore `vulkaninfo --summary` with NVK selected is an `ENUMERATION_WITH_TEMP_GR_CHANNEL_INIT`, not a strictly read-only query. Do not run even this diagnostic until the target Mesa source/package has been checked and the owner has approved a controlled native Nouveau boot.
+
+Do not use `vkCreateDevice`/compute queue creation as a no-submit substitute: current `nvk_queue_create()` calls `nvk_queue_init_context_state()` and `nvk_queue_push()` after allocating the context, so it submits initial engine state. Do not create a Vulkan queue, wait on a fence, or dispatch a shader for the first channel witness.
+
+Even if the enumeration callback is observed, record it only as `NONSTALL_EVENT_OBJECT_CREATED` with `allowed=0`. It does not prove `NONSTALL_EVENT_ENABLE` or an access to `nvkm_event_get/put`; those are separate states and must not be deliberately triggered at this stage.
 ## Failure classification
 
 - `GP107_NOT_FOUND` / `GP107_AMBIGUOUS`: selection failure; no compute
