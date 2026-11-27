@@ -1,0 +1,14 @@
+# dependency audit (UTC 2026-11-27T05:25:29Z)
+ABSENT  /usr/include/vulkan/vulkan.h
+ABSENT  /usr/lib/x86_64-linux-gnu/pkgconfig/vulkan.pc
+PRESENT /usr/lib/x86_64-linux-gnu/libvulkan.so.1
+TOOL    cc                   /usr/bin/cc
+TOOL    clang                /usr/bin/clang
+TOOL    fpc                  /usr/bin/fpc
+TOOL    vulkaninfo           /usr/bin/vulkaninfo
+MISSING glslangValidator
+MISSING glslc
+MISSING spirv-as
+MISSING spirv-val
+TOOL    strace               /usr/bin/strace
+TOOL    python3              /usr/bin/python3

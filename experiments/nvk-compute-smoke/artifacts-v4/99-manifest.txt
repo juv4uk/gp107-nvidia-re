@@ -1,0 +1,14 @@
+# NVK compute smoke artifacts
+icd=/usr/share/vulkan/icd.d/nouveau_icd.json
+bdf=0000:01:00.0
+harness_rc=0
+capture_utc=2026-11-27T05:25:09Z
+
+5342622bb739c105cbec33440a68e4287b48d3e40919cf8e11d5619509ea9071  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/01-kernel-before.txt
+8af2065ab78b41c3eb9c37423c0f7927e593bd07800509f644c031b860b09272  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/02-ioctl.txt
+e06bdf4335d7084ed373f65343678f578f4d140bf83875d10bda0522b0c6320d  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/03-run.log
+5493c10b90875cc3b55b63e7d8167c3c08df309789da57b59a4dcdd1e6f797c9  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/04-drm-ioctl.txt
+5342622bb739c105cbec33440a68e4287b48d3e40919cf8e11d5619509ea9071  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/05-kernel-after.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/06-kernel-delta.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/07-kernel-delta-filtered.txt
+b1bc22a5567ca8f3f6937f3090b5ac645284bee1d745784681d0450fcbe177ae  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/08-dispatch-ioctl.txt

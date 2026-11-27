@@ -1,0 +1,7 @@
+# NVK compute smoke negative control
+icd=/usr/share/vulkan/icd.d/nouveau_icd.json
+bdf=0000:01:00.0
+noop_rc=2
+capture_utc=2026-11-27T05:25:09Z
+
+c6f3c7ebdbe2e3e1bcb9d0cbf87ae1af037db6f2024b71f5961e52c6b34ff114  /home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-negative/01-noop.log
