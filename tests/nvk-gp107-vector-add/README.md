@@ -142,11 +142,15 @@ Even if the enumeration callback is observed, record it only as `NONSTALL_EVENT_
 - Run both `--elements 257` (tail/bounds coverage) and
   `--elements 1048576` (larger buffer/dispatch coverage); retain their
   logs separately.
-- If normal enumeration does not expose GP107, a separate diagnostic
-  enumeration-only check may use
-  `NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 DRI_PRIME="pci-$BDF!" vulkaninfo --summary`.
-  Do not run this compute harness under that override: the override result is
-  `EXPERIMENTAL_ENUMERATION_ONLY`, not supported/working acceptance.
+- Do **not** use `vulkaninfo --summary`, `vkEnumeratePhysicalDevices`,
+  or the `NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1` override as a passive
+  preflight before owner approval. On Mesa 26.3.1-1, physical-device
+  enumeration can allocate and free a temporary GR channel and create a
+  `NON_STALL_INTR` event object (`allowed=0`); see
+  [Enumeration is not strictly read-only](#enumeration-is-not-strictly-read-only).
+  Any future enumeration-only run must be a separately approved,
+  rollback-capable native Nouveau experiment with exact kernel/Mesa package
+  provenance and capture. It is not part of this build-only acceptance.
 - pipeline, submit, fence, invalidate, or checksum failures are separate
   failure stages and must retain their raw error output.
 - `NVK_GP107_VECTOR_ADD_PASS` means this one simple shader completed on the
