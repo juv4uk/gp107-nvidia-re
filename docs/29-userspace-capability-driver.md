@@ -21,9 +21,16 @@
   обрізаний link завершуються fail-closed як unknown.
 - Перед mapping перевіряються розмір BAR0 з inventory та розмір відкритого
   `resource0` через `fstat`.
-- Приватний mapper закріплює PCI device directory через `dirfd`, повторно
-  перевіряє `driver` через `readlinkat`, а `resource0` відкриває через
-  `openat(O_NOFOLLOW)` і перевіряє тим самим fd через `fstat`.
+- Приватний mapper закріплює PCI device directory через `dirfd` і **через
+  цей самий fd** перевіряє `uevent PCI_SLOT_NAME`, `PCI_ID`,
+  `PCI_SUBSYS_ID`, sysfs `vendor/device/revision/subsystem_*` та PCI
+  `config` через `openat(O_NOFOLLOW)`. Це закриває підміну BDF symlink
+  між pathname-based inventory та відкриттям mapper directory.
+- Після pinned identity перевіряється `driver` через `readlinkat`, а
+  `resource0` відкривається через `openat(O_NOFOLLOW)` і перевіряється
+  тим самим fd через `fstat`.
+- Synthetic test підміняє BDF symlink між inventory та mapper open на інший
+  PCI BDF/device і вимагає відмови до відкриття `resource0`.
 - Binding перевіряється ще раз безпосередньо перед `mmap`. Це best-effort
   snapshot, а не атомарний lock: kernel може змінити binding після останньої
   перевірки. Це не надає дозволу на фізичне MMIO.
