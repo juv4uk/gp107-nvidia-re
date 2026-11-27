@@ -7,15 +7,12 @@
 #include "gp107_identity.h"
 
 /*
- * Optional read-only aperture seam. Owner-authorized in the session that
- * created this slice, but deliberately inert unless the caller passes an
- * explicit opt-in flag AND no kernel driver is bound to the device.
+ * Physical MMIO is NOT AUTHORIZED / NOT RUN. This module is a fail-closed
+ * API boundary only: --allow-mmio is not owner authorization, and no public
+ * function in this module opens or maps PCI resource0.
  *
- * No write mapping, no RM requests, no FIFO, no doorbell, no firmware,
- * no BOOT0 constant and no register name is encoded here.
+ * The API is intentionally kept so direct callers receive a stable denial.
  */
-
-#define GP107_MMIO_WINDOW 4096u
 
 int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 
