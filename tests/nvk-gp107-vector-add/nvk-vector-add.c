@@ -10,7 +10,6 @@
 
 #define TARGET_VENDOR_ID 0x10deu
 #define TARGET_DEVICE_ID 0x1c82u
-#define ELEMENT_COUNT 4096u
 #define LOCAL_SIZE_X 64u
 
 #define REQUIRE(cond, code, ...) do { \
@@ -224,13 +223,25 @@ int main(int argc, char **argv)
 {
     const char *bdf_text = NULL;
     const char *spirv_path = "vector_add.spv";
+    uint32_t element_count = 257u;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--bdf") == 0 && i + 1 < argc)
             bdf_text = argv[++i];
         else if (strcmp(argv[i], "--spv") == 0 && i + 1 < argc)
             spirv_path = argv[++i];
-        else {
-            fprintf(stderr, "usage: %s --bdf DDDD:BB:DD.F [--spv file.spv]\n", argv[0]);
+        else if (strcmp(argv[i], "--elements") == 0 && i + 1 < argc) {
+            char *end = NULL;
+            unsigned long parsed = strtoul(argv[++i], &end, 10);
+            if (!end || end == argv[i] || *end != '\0' ||
+                (parsed != 257ul && parsed != 1048576ul)) {
+                fprintf(stderr, "element_count_INVALID (use 257 or 1048576)\n");
+                return 2;
+            }
+            element_count = (uint32_t)parsed;
+        } else {
+            fprintf(stderr,
+                    "usage: %s --bdf DDDD:BB:DD.F [--elements 257|1048576] [--spv file.spv]\n",
+                    argv[0]);
             return 2;
         }
     }
@@ -382,7 +393,7 @@ int main(int argc, char **argv)
     VkPhysicalDeviceMemoryProperties memory_properties;
     vkGetPhysicalDeviceMemoryProperties(physical, &memory_properties);
 
-    const VkDeviceSize buffer_size = (VkDeviceSize)ELEMENT_COUNT * sizeof(uint32_t);
+    const VkDeviceSize buffer_size = (VkDeviceSize)element_count * sizeof(uint32_t);
     HostBuffer input_a, input_b, output_c;
     VkResult result = create_host_buffer(device, &memory_properties, buffer_size, &input_a);
     REQUIRE(result == VK_SUCCESS, 2, "INPUT_A_BUFFER_FAILED VkResult=%d", (int)result);
@@ -394,7 +405,7 @@ int main(int argc, char **argv)
     uint32_t *a = input_a.mapped;
     uint32_t *b = input_b.mapped;
     uint32_t *c = output_c.mapped;
-    for (uint32_t i = 0; i < ELEMENT_COUNT; ++i) {
+    for (uint32_t i = 0; i < element_count; ++i) {
         a[i] = i * 17u + 1u;
         b[i] = i * 13u + 7u;
         c[i] = 0xdeadbeefu;
@@ -532,8 +543,8 @@ int main(int argc, char **argv)
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                             pipeline_layout, 0, 1, &descriptor_set, 0, NULL);
     vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
-                       0, sizeof(uint32_t), &(uint32_t){ELEMENT_COUNT});
-    vkCmdDispatch(command_buffer, (ELEMENT_COUNT + LOCAL_SIZE_X - 1u) / LOCAL_SIZE_X,
+                       0, sizeof(uint32_t), &element_count);
+    vkCmdDispatch(command_buffer, (element_count + LOCAL_SIZE_X - 1u) / LOCAL_SIZE_X,
                   1, 1);
 
     VkBufferMemoryBarrier output_barrier = {
@@ -563,7 +574,7 @@ int main(int argc, char **argv)
         .pCommandBuffers = &command_buffer
     };
     printf("NVK_COMPUTE_SUBMIT groups=%u elements=%u\n",
-           (ELEMENT_COUNT + LOCAL_SIZE_X - 1u) / LOCAL_SIZE_X, ELEMENT_COUNT);
+           (element_count + LOCAL_SIZE_X - 1u) / LOCAL_SIZE_X, element_count);
     VK_TRY(vkQueueSubmit(queue, 1, &submit_info, fence), "vkQueueSubmit");
     VK_TRY(vkWaitForFences(device, 1, &fence, VK_TRUE, 30000000000ull),
            "vkWaitForFences(timeout=30s)");
@@ -571,7 +582,7 @@ int main(int argc, char **argv)
 
     uint64_t expected_sum = 0;
     uint64_t observed_sum = 0;
-    for (uint32_t i = 0; i < ELEMENT_COUNT; ++i) {
+    for (uint32_t i = 0; i < element_count; ++i) {
         uint32_t expected = (i * 17u + 1u) + (i * 13u + 7u);
         expected_sum += expected;
         observed_sum += c[i];
@@ -587,7 +598,7 @@ int main(int argc, char **argv)
             expected_sum, observed_sum);
 
     printf("CPU_CHECKSUM_OK value=%" PRIu64 " elements=%u\n",
-           observed_sum, ELEMENT_COUNT);
+           observed_sum, element_count);
     printf("NVK_GP107_VECTOR_ADD_PASS\n");
 
     vkDestroyFence(device, fence, NULL);
