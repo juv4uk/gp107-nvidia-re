@@ -257,10 +257,10 @@ int main(int argc, char **argv)
     }
 
     /*
-     * Fail before vkCreateInstance / vkEnumeratePhysicalDevices. NVK 26.3.1
-     * physical-device discovery is not passive: it may initialize VM/NVIF
-     * state and allocate/free a temporary GR channel. Creating a Vulkan
-     * device/queue goes further and can submit initial engine state.
+     * Fail before vkCreateInstance / vkEnumeratePhysicalDevices unless the
+     * caller explicitly acknowledges temporary GR-channel allocation.
+     * Compute mode additionally requires a separate GPU-submit acknowledgement.
+     * Enumeration-only mode returns before VkDevice/queue creation.
      */
     if (!allow_channel_init ||
         (!enumeration_only && !allow_gpu_submit) ||
