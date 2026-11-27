@@ -52,6 +52,7 @@
 | [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | PCI config-header і capability ledger; software gate ≠ owner approval, RM/BOOT0 UNPROVEN |
 | [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | Власний x86-64 read-only asm-примітив з еквівалентністю до C; не release, hardware MMIO NOT_RUN |
 | [`tests/nvk-gp107-vector-add/README.md`](tests/nvk-gp107-vector-add/README.md) | NVK GP107 vector-add harness: compile-only CI, fail-closed gates; фізичний GPU тест NOT_RUN |
+| [`32-freepascal-primary-slice.md`](docs/32-freepascal-primary-slice.md) | Free Pascal 3.2.2 як основна реалізація; C/asm лишаються еталонами, hardware MMIO NOT_RUN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:

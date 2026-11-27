@@ -46,10 +46,11 @@ jobs:
       - name: Compile Pascal probes without executing them
         run: make -C pascal clean all
 
-      - name: Compile C11 capability identity and run fail-closed gate
+      - name: Compile Pascal capability driver and C11 identity, run fail-closed gate
         run: |
           set -euo pipefail
           make -C lib clean all
+          make -C pascal gp107ctl-pascal
           bash scripts/test-capability-driver.sh
 
       - name: Check patch whitespace
@@ -68,6 +69,7 @@ jobs:
             echo "- Static source guard: passed"
             echo "- Pascal compilation: passed; no probe executable was run"
             echo "- C11 capability identity: compiled with -Werror; fail-closed gate passed"
+            echo "- Pascal capability driver: FPC 3.2.2, byte-identical to C on fixtures"
             echo "- x86-64 assembly slice: C/asm equivalence checked; no hardware MMIO"
             echo "- GPU/RM/MMIO/firmware/reboot: NOT_RUN (MMIO seam read-only and opt-in)"
             echo "- Multi-NVIDIA runtime negative: NOT_RUN"
