@@ -23,16 +23,17 @@ When it exits with code 0, the run has:
 It reports the physical device API version returned by the driver and
 supports two required sizes: 257 elements (to exercise the final partial
 workgroup) and 1,048,576 elements (a larger dispatch/buffer case). The
-expected Vulkan API version is intentionally **not hard-coded**. The public
-NVK docs headline describes Vulkan 1.4 conformance for supported GPUs, while
-the current `mirror/mesa` source snapshot (main commit
-`e24dc5bd1e7fe6101bdc866fb16a15a8fcae1aae`, file blob
-`b4c255c5e86a2e016b64c794f0c73581486f75be`) still makes
-`nvk_get_vk_version()` return 1.3 for `cls_eng3d < TURING_A`, including
-Pascal/GP107: `hostImageCopy` is Turing+ only. The same source enables
-`VK_EXT_pci_bus_info` on discrete GPUs, which supports the BDF assertion
-used here. We therefore print the physical device's actual `apiVersion`
-and do not override it or substitute the broad docs headline.
+expected Vulkan API version is intentionally **not hard-coded**. We checked
+the versioned Debian Mesa `26.3.1-1` source snapshot (in Debian experimental):
+`nvk_get_vk_version()` in
+[`nvk_physical_device.c`](https://sources.debian.org/src/mesa/26.3.1-1/src/nouveau/vulkan/nvk_physical_device.c)
+returns 1.3 when `cls_eng3d < TURING_A`, including Pascal/GP107, because
+`hostImageCopy` is Turing+ only. It also exposes
+`VK_EXT_pci_bus_info` on discrete GPUs. The generic Mesa 26.3.1 release
+headline is Vulkan 1.4, but the release notes explicitly say that the
+reported per-device `apiVersion` depends on the particular driver. We
+therefore print the actual device value and never substitute the release
+headline for a hardware witness.
 
 ## Build
 
@@ -119,13 +120,15 @@ done
 
 ## Enumeration is not strictly read-only
 
-On the pinned Mesa snapshot (`mirror/mesa` commit `e24dc5bd1e7fe6101bdc866fb16a15a8fcae1aae`), NVK physical-device discovery calls `nvkmd_nouveau_pdev_create()` → `nouveau_ws_device_new()`. The latter creates a temporary `nouveau_ws_context_create(device, ~0, ...)` to query engine classes, then destroys it.
+We checked the exact versioned Debian Mesa `26.3.1-1` source snapshot (Debian experimental), not the older May `mirror/mesa` snapshot:
+- [`nvkmd_nouveau_pdev.c`](https://sources.debian.org/src/mesa/26.3.1-1/src/nouveau/vulkan/nvkmd/nouveau/nvkmd_nouveau_pdev.c) calls `nouveau_ws_device_new()` during NVK physical-device discovery.
+- [`nouveau_device.c`](https://sources.debian.org/src/mesa/26.3.1-1/src/nouveau/winsys/nouveau_device.c) creates a temporary `nouveau_ws_context_create(device, NOUVEAU_WS_ALL_3D_ENGINES, ...)` to query engine classes and destroys it after copying the class IDs.
+- [`nouveau_context.c`](https://sources.debian.org/src/mesa/26.3.1-1/src/nouveau/winsys/nouveau_context.c) implements that 3D context through `DRM_NOUVEAU_CHANNEL_ALLOC` with `NOUVEAU_FIFO_ENGINE_GR`, then creates its subchannel objects; context destruction frees subchannels and the channel.
+- Kernel channel initialization creates the Pascal `NON_STALL_INTR` event object through `nvif_event_ctor()` and `nvkm_uchan_uevent()`, but `nvkm_event_ntfy_add()` leaves it `allowed=0`; this does **not** enter the non-stall `nvkm_event_get/put` reference-count path.
 
-That temporary context allocates a GR-runlist channel. Kernel channel initialization creates the Pascal `NON_STALL_INTR` event object through `nvif_event_ctor()` and `nvkm_uchan_uevent()`, but `nvkm_event_ntfy_add()` leaves it `allowed=0`; this does **not** enter the non-stall `nvkm_event_get/put` reference-count path. The enumeration context does not submit a GPFIFO command buffer on this path, but it is **not zero-side-effect**: it allocates/frees a DRM channel, BO/VM/engine objects, and enables the separate KILLED notification.
+Thus NVK enumeration can allocate and free a temporary GR channel and associated objects, without a GPFIFO workload submission on this exact discovery path. This is **not zero-side-effect** and is not a strictly read-only query. Treat `vulkaninfo --summary` with NVK selected as `ENUMERATION_WITH_TEMP_GR_CHANNEL_INIT`; do not run it until the target Mesa source/package has been checked and the owner has approved a controlled native Nouveau boot.
 
-Therefore `vulkaninfo --summary` with NVK selected is an `ENUMERATION_WITH_TEMP_GR_CHANNEL_INIT`, not a strictly read-only query. Do not run even this diagnostic until the target Mesa source/package has been checked and the owner has approved a controlled native Nouveau boot.
-
-Do not use `vkCreateDevice`/compute queue creation as a no-submit substitute: current `nvk_queue_create()` calls `nvk_queue_init_context_state()` and `nvk_queue_push()` after allocating the context, so it submits initial engine state. Do not create a Vulkan queue, wait on a fence, or dispatch a shader for the first channel witness.
+Do not use `vkCreateDevice`/compute queue creation as a no-submit substitute. In this exact 26.3.1 source, [`nvk_queue_create()`](https://sources.debian.org/src/mesa/26.3.1-1/src/nouveau/vulkan/nvk_queue.c) calls `nvk_queue_init_context_state()`, which builds draw/dispatch state and ends in `nvk_queue_push()`; `nvk_device.c` calls `nvk_queue_create()` for each requested device queue. This submits initial engine state. Do not create a Vulkan queue, wait on a fence, or dispatch a shader for the first channel witness.
 
 Even if the enumeration callback is observed, record it only as `NONSTALL_EVENT_OBJECT_CREATED` with `allowed=0`. It does not prove `NONSTALL_EVENT_ENABLE` or an access to `nvkm_event_get/put`; those are separate states and must not be deliberately triggered at this stage.
 ## Failure classification
