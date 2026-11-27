@@ -203,6 +203,18 @@ begin
     fail_step := 'NV_ESC_CARD_INFO';
     Exit;
   end;
+  { Without a proven PCI BDF <-> RM gpu_id mapping, a second valid NVIDIA
+    card makes the single RM id ambiguous. Never promote it to a witness. }
+  if valid_cards <> 1 then
+  begin
+    WriteLn(StdErr,
+            'RM-ARCH-FAIL step=NV_ESC_CARD_INFO ambiguous valid_cards=',
+            IntToStr(valid_cards), ' matches=', IntToStr(matches));
+    failed := True;
+    fail_step := 'NV_ESC_CARD_INFO';
+    Exit;
+  end;
+
 
 
   WriteLn('NV_ESC_CARD_INFO target   : ',

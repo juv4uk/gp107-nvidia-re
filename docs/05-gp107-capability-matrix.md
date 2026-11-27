@@ -47,7 +47,7 @@ clean-room зондами справді виконано на цій машин
 | 24 | Display / GOP / framebuffer у Lisp-машині | **UNPROVEN, поза межею** | hosted DRM і compute-канал не ототожнюються |
 | 25 | Bare-metal/UEFI пряме читання BOOT0 | **UNPROVEN** | належить окремому seam; тут активний `nvidia.ko` |
 | 26 | Перенесення `PciConfig`/`Mmio`/`RmControl` у `wsm-os-lisp` | **UNPROVEN, не авторизовано** | ABI-pin v8 і v9 не змінювалися; потрібне owner-рішення |
-| 27 | `valid_cards == 1` перед RM-алокацією | **source guard CI PASS; mutation-negative executed; multi-GPU runtime negative NOT_RUN** | Guard у `03_rm_arch_info.pas`; `make test-valid-cards-static` і source-mutation negative пройшли в [GitHub Actions run #46078411917](https://github.com/juv4uk/gp107-nvidia-re/actions/runs/46078411917); це не виконує Pascal-гілку на multi-GPU fixture, кореляція `PCI BDF ↔ RM gpu_id` лишається UNPROVEN |
+| 27 | `valid_cards == 1` перед RM-алокацією | **source guard CI PASS; mutation-negative executed; multi-GPU runtime negative NOT_RUN** | Guard у `03_rm_arch_info.pas`; `make test-valid-cards-static` і source-mutation negative пройшли на попередньому exact head [GitHub Actions run #46078411917](https://github.com/juv4uk/gp107-nvidia-re/actions/runs/46078411917); combined static+FPC 3.2.2 compile пройшов на exact head [run #46078622241](https://github.com/juv4uk/gp107-nvidia-re/actions/runs/46078622241); ці тести не є multi-GPU runtime fixture, кореляція `PCI BDF ↔ RM gpu_id` лишається UNPROVEN |
 
 ## Що реально дає репозиторій
 
