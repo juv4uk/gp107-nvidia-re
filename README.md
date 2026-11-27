@@ -43,6 +43,7 @@
 | [`21-proprietary-performance-matrix.md`](docs/21-proprietary-performance-matrix.md) | 108 proprietary NVIDIA HOST_VISIBLE/HOST_COHERENT points для workgroup × submit batching; не VRAM bandwidth і не NVK A/B |
 | [`22-device-local-transfer-and-compute-phases.md`](docs/22-device-local-transfer-and-compute-phases.md) | DEVICE_LOCAL staging/compute/readback; попередні результати NOT ACCEPTED, виправлений код очікує build, validation та physical rerun |
 | [`23-rea-p1-function-level-memory-channel-maps.md`](docs/23-rea-p1-function-level-memory-channel-maps.md) | Цільовий R580 UVM→RM RE: function-level memory/VA та channel/submit maps з Evidence ID; memory class, BAR1/VA, notifier/fence lifecycle лишаються UNPROVEN |
+| [`24-rea-p1-rm-dispatch-window.md`](docs/24-rea-p1-rm-dispatch-window.md) | Вузький static RM-dispatch audit: таблиця stride 0xe8 та приватні memory-related wrappers; class/method semantics, UVM caller chain і channel↔runlist лишаються UNPROVEN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
