@@ -382,10 +382,11 @@ main(int argc, char **argv)
         goto cleanup;
     }
 
-    printf("GP107-VK-COMPUTE-DEVICE bdf=%s vendor=0x%04x device=0x%04x name=\"%s\" driver=\"%s\" info=\"%s\" api=%u.%u.%u\n",
+    printf("GP107-VK-COMPUTE-DEVICE bdf=%s vendor=0x%04x device=0x%04x name=\"%s\" driver=\"%s\" driverId=%u info=\"%s\" api=%u.%u.%u\n",
            expected_bdf, physical_properties.vendorID,
            physical_properties.deviceID, physical_properties.deviceName,
-           driver_properties.driverName, driver_properties.driverInfo,
+           driver_properties.driverName, (unsigned int)driver_properties.driverID,
+           driver_properties.driverInfo,
            VK_VERSION_MAJOR(physical_properties.apiVersion),
            VK_VERSION_MINOR(physical_properties.apiVersion),
            VK_VERSION_PATCH(physical_properties.apiVersion));
@@ -754,7 +755,7 @@ main(int argc, char **argv)
         VkBufferMemoryBarrier host_to_compute = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
             .srcAccessMask = VK_ACCESS_HOST_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .buffer = buffer,
