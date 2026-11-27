@@ -1,4 +1,4 @@
-.PHONY: all test gate-root test-root clean
+.PHONY: all test test-valid-cards-static gate-root test-root clean
 
 all:
 	$(MAKE) -C probes
@@ -6,6 +6,10 @@ all:
 
 test:
 	bash scripts/test-pascal-probe.sh
+
+# Host-independent source guard: no FPC, GPU discovery or RM ioctl.
+test-valid-cards-static:
+	PASCAL_PROBE_STATIC_ONLY=1 bash scripts/test-pascal-probe.sh
 
 # Опційний root-свідок. Не входить до `test`: базовий гейт лишається
 # детермінованим і не потребує sudo. За потреби: SUDO_FLAGS=-S.
