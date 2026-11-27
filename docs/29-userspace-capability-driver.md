@@ -59,13 +59,13 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
 | # | Факт | Статус | Свідок / межа |
 |---:|---|---|---|
 | 1 | Розкладки `gp107_pci_identity=32`, `gp107_driver_binding=68`, `gp107_inventory=140` байт | **statically proven** | `_Static_assert` у `lib/gp107_identity.h`; вивід `LAYOUT-OK identity=32 binding=68 inventory=140` (розширено у docs/30) |
-| 2 | На RE host виявлено картку `10de:1c82 @ 0000:01:00.0`, `bar0-base=0xee000000`, driver `nvidia` | **runtime-proven лише для того host inventory** | `gp107ctl inventory` на host `/sys`; це не H170 certification і не доказ для offline-плати власника |
-| 3 | Друга картка того самого vendor/device відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=card-count code=13 count=2` |
-| 4 | Відсутній `config` відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
-| 5 | Чужий BDF відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
-| 6 | MMIO без прапорця відхиляється до будь-якого mapping | **runtime-proven (fixture)** | `MMIO-FAIL step=opt-in-required code=15` |
-| 7 | MMIO з bound драйвером відхиляється | **runtime-proven (fixture)** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
-| 8 | Read-only 32-бітне читання з `resource0` | **software runtime на synthetic fixture; physical MMIO NOT AUTHORIZED / NOT RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом звичайного файлу |
+| 2 | На RE host виявлено картку `10de:1c82 @ 0000:01:00.0`, `bar0-base=0xee000000`, driver `nvidia` | **sysfs-observation на RE host** | `gp107ctl inventory` на host `/sys`; це не H170 certification і не доказ для offline-плати власника |
+| 3 | Друга картка того самого vendor/device відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=card-count code=13 count=2` |
+| 4 | Відсутній `config` відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
+| 5 | Чужий BDF відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
+| 6 | MMIO без прапорця відхиляється до будь-якого mapping | **synthetic-fixture** | `MMIO-FAIL step=opt-in-required code=15` |
+| 7 | MMIO з bound драйвером відхиляється | **synthetic-fixture** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
+| 8 | Read-only 32-бітне читання з `resource0` | **synthetic-fixture PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом звичайного файлу |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
