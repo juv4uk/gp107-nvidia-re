@@ -12,25 +12,18 @@
 перехід у `wsm_open_driver=1`, зміну boot parameters або інший GPU boot.
 Прапорець `--allow-mmio` — програмна умова API, а не owner approval.
 
-- MMIO-сеам є окремим експериментальним модулем.
-- Єдина публічна C-функція сама перевіряє opt-in, точну PCI identity,
-  driver binding, розмір BAR0 і межі offset; low-level mapper приватний.
-- Відкритий PCI-device directory закріплюється file descriptor, а `readlinkat()`
-  перевіряє саме його `driver` entry: лише `ENOENT` для цього entry означає
-  unbound. Зникнення батьківського шляху, інші помилки, некоректний або
-  обрізаний link завершуються fail-closed як unknown.
-- Перед mapping перевіряються розмір BAR0 з inventory та розмір відкритого
-  `resource0` через `fstat`.
-- Приватний mapper закріплює PCI device directory через `dirfd`, повторно
-  перевіряє `driver` через `readlinkat`, а `resource0` відкриває через
-  `openat(O_NOFOLLOW)` і перевіряє тим самим fd через `fstat`.
-- Binding перевіряється ще раз безпосередньо перед `mmap`. Це best-effort
-  snapshot, а не атомарний lock: kernel може змінити binding після останньої
-  перевірки. Це не надає дозволу на фізичне MMIO.
-- C та x86-64 assembly paths проходять через ту саму gated API. ASM load
-  primitive не експортується у public header.
-- Фізичні `resource0` mapping/read, driver unbind і Nouveau boot тут не
-  виконувалися й не авторизовані. Позитивний MMIO-тест — лише synthetic file.
+- MMIO API перевіряє opt-in, exact PCI identity, driver binding, BAR0 type
+  та розмір, а також alignment і межі caller-supplied offset.
+- Після цих перевірок C і Pascal повертають
+  `MMIO-FAIL step=read-safe-offset-unproven code=21`. Жодна production API
+  не відкриває `resource0`, не викликає `mmap`/`FpMMap` і не читає регістр.
+- Capability ledger залишає unbound + opt-in у стані `deferred` з причиною
+  `read-safe-offset-unproven`; `--allow-mmio` ніколи не дає `granted`.
+- C, Pascal і x86-64 assembly leaf лишаються дослідницькими reference slices.
+  ASM перевіряється лише статично через `objdump`; він не отримує BAR pointer
+  від public API і не викликається MMIO path.
+- Фізичний MMIO, driver unbind і Nouveau boot не виконувалися й лишаються
+  NOT AUTHORIZED / NOT RUN.
 
 Фізичне MMIO залишається **NOT AUTHORIZED / NOT RUN** до окремого явного
 рішення власника. Наявність `mmio-read`, `--allow-mmio` чи ASM primitive
@@ -41,11 +34,11 @@
 | Файл | Призначення |
 |---|---|
 | `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
-| `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
+| `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `deferred`/`denied` (додано у docs/30) |
 | `lib/gp107_mmio.h/.c` | Єдина gated read-only API з внутрішніми opt-in, identity, binding і BAR-size checks; фізичний доступ не авторизований |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
-| `scripts/test-capability-driver.sh` | synthetic identity/binding/API negatives, BAR0-space/size/fstat, explicit/aligned/bounded offsets, C/ASM equivalence та code firewall |
+| `scripts/test-capability-driver.sh` | synthetic identity/binding/API negatives, BAR0-space/size metadata, explicit/aligned/bounded offsets, safe-offset deferral, static asm inspection та mapping code firewall |
 | `docs/29-userspace-capability-driver.md` | цей звіт |
 
 Публічний контракт:
@@ -73,7 +66,7 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
 | 5 | Чужий BDF відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
 | 6 | MMIO без прапорця відхиляється до будь-якого mapping | **synthetic-fixture** | `MMIO-FAIL step=opt-in-required code=15` |
 | 7 | MMIO з bound драйвером відхиляється | **synthetic-fixture** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
-| 8 | Read-only 32-бітне читання з `resource0` | **synthetic-fixture PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом звичайного файлу |
+| 8 | BAR0 read із valid-looking offset | **deferred / synthetic-fixture** | `read-safe-offset-unproven`; жодного resource0 open або mapping |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
@@ -99,13 +92,13 @@ make test-valid-cards-static   # старий базовий гейт не по�
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
 5. capability-ledger states та BAR I/O-flag mutation;
 6. driver-binding negative: PCI-device directory закріплюється file descriptor, а `readlinkat()` перевіряє саме його `driver` entry; лише `ENOENT` для цього entry означає unbound;
-7. direct C API tests: opt-in і bound-driver gates не обходяться CLI;
+7. direct C API tests: opt-in, bound-driver та safe-offset deferral не обходяться CLI;
 8. CLI explicit-offset requirement;
-9. BAR0 I/O-space denial, short/mismatched `resource0`, 4 KiB bounds та 32-bit alignment;
-10. C/ASM equivalence на synthetic `resource0` та best-effort host inventory без H170 claims.
+9. BAR0 I/O-space denial, BAR size metadata, 4 KiB bounds та 32-bit alignment;
+10. static-only disassembly check isolated ASM leaf і best-effort host inventory без H170 claims.
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 pascal=equiv hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed mmio=deferred safe-offset=unproven pascal=C-parity hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.
