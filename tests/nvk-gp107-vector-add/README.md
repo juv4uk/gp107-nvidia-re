@@ -20,7 +20,9 @@ When it exits with code 0, the run has:
 6. waited for a fence, invalidated non-coherent mapped memory when needed,
    and checked every output element plus an independent CPU checksum.
 
-It reports the physical device API version returned by the driver. The
+It reports the physical device API version returned by the driver and
+supports two required sizes: 257 elements (to exercise the final partial
+workgroup) and 1,048,576 elements (a larger dispatch/buffer case). The
 expected Vulkan API version is intentionally **not hard-coded**: the current
 NVK documentation headline and older per-device source snapshots have used
 different scopes, so the physical device's actual `apiVersion` is the runtime
@@ -40,8 +42,11 @@ Example on Debian/Kali-derived systems (package names may vary by release):
 ```sh
 sudo apt install build-essential libvulkan-dev glslang-tools vulkan-tools
 glslangValidator -V --target-env vulkan1.1 -o vector_add.spv vector_add.comp
+spirv-val --target-env vulkan1.1 vector_add.spv
+spirv-dis vector_add.spv -o vector_add.spvasm
 cc -std=c11 -O2 -Wall -Wextra -Wpedantic \
   -o nvk-vector-add nvk-vector-add.c -lvulkan
+sha256sum vector_add.comp vector_add.spv vector_add.spvasm nvk-vector-add
 ```
 
 Do not install, replace, or remove the working proprietary NVIDIA driver as
@@ -63,7 +68,10 @@ Mesa's Vulkan device enumeration to that PCI device:
 ```sh
 BDF=0000:01:00.0
 DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
-  ./nvk-vector-add --bdf "$BDF" --spv vector_add.spv
+  ./nvk-vector-add --bdf "$BDF" --elements 257 --spv vector_add.spv
+
+DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+  ./nvk-vector-add --bdf "$BDF" --elements 1048576 --spv vector_add.spv
 ```
 
 The example BDF is illustrative only. The executable independently checks
@@ -108,6 +116,14 @@ exit "$rc"
   tested Vulkan device is the physical target.
 - `NVK_DRIVER_MISMATCH`: not an NVK acceptance run.
 - `COMPUTE_QUEUE_NOT_FOUND`: no usable compute queue was exposed.
+- Run both `--elements 257` (tail/bounds coverage) and
+  `--elements 1048576` (larger buffer/dispatch coverage); retain their
+  logs separately.
+- If normal enumeration does not expose GP107, a separate diagnostic
+  enumeration-only check may use
+  `NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 DRI_PRIME="pci-$BDF!" vulkaninfo --summary`.
+  Do not run this compute harness under that override: the override result is
+  `EXPERIMENTAL_ENUMERATION_ONLY`, not supported/working acceptance.
 - pipeline, submit, fence, invalidate, or checksum failures are separate
   failure stages and must retain their raw error output.
 - `NVK_GP107_VECTOR_ADD_PASS` means this one simple shader completed on the
