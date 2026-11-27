@@ -48,11 +48,11 @@
 | [`26-rea-p1-uvm-alloc-enum-and-alignment.md`](docs/26-rea-p1-uvm-alloc-enum-and-alignment.md) | Enum-розгалуження `uvm_rm_mem_alloc` і виправлення disalignment у `channel_pool_add`; RM-семантика лишається UNPROVEN |
 | [`27-rea-p1-uvm-object-field-aliasing.md`](docs/27-rea-p1-uvm-object-field-aliasing.md) | Offset `+0x1e0` має різні базові об'єкти в `nvidia-uvm.ko`; RM-handle/feature-flag лишаються UNPROVEN |
 | [`28-rea-p1-uvm-channel-manager-callers.md`](docs/28-rea-p1-uvm-channel-manager-callers.md) | 5 call-site `uvm_channel_manager_create`: `rdi=parent`, `rsi=&parent+0x19f8`; RM-семантика лишається UNPROVEN |
-| [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | C11 sysfs identity + gated C/ASM MMIO API; фізичний MMIO NOT AUTHORIZED / NOT RUN |
+| [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | C11 sysfs identity; C та Pascal MMIO API завжди NOT_AUTHORIZED / NOT RUN |
 | [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | PCI config-header і capability ledger; software gate ≠ owner approval, RM/BOOT0 UNPROVEN |
-| [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | Власний x86-64 read-only asm-примітив з еквівалентністю до C; не release, hardware MMIO NOT_RUN |
+| [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | Історичний assembly experiment; loader вилучено з active build/API |
 | [`tests/nvk-gp107-vector-add/README.md`](tests/nvk-gp107-vector-add/README.md) | NVK GP107 vector-add harness: compile-only CI, fail-closed gates; фізичний GPU тест NOT_RUN |
-| [`32-freepascal-primary-slice.md`](docs/32-freepascal-primary-slice.md) | Free Pascal 3.2.2 як основна реалізація; C/asm лишаються еталонами, hardware MMIO NOT_RUN |
+| [`32-freepascal-primary-slice.md`](docs/32-freepascal-primary-slice.md) | Free Pascal 3.2.2 — основна реалізація sysfs identity; C11 reference, обидва MMIO API fail-closed |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
