@@ -34,6 +34,7 @@ docs/
   08-final-sprint-report.md     підсумок proprietary R580 RM-зондів; не є Nouveau/NVK runtime acceptance
   09-gp107-fifo-nonstall-source-audit.md source audit і read-only trace plan (RUNLIST_ID_NOT_OBSERVED)
   10-open-driver-capability-identity.md research-контракт першого зрізу відкритого драйвера для лісп-машини
+  11-proprietary-shipped-artifact-abi-facts.md REA-факти з nvidia.ko та пропрієтарного ICD (без псевдокоду)
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
