@@ -152,7 +152,6 @@ echo 'API-OPTIN-GATE-OK'
 step 'public C API ignores a forged unbound inventory'
 expect_fail 16 'MMIO-FAIL step=driver-bound' "$WORK/api-bound.err" \
 echo 'API-DRIVER-GATE-OK forged-bound-state=ignored'
-echo 'API-DRIVER-GATE-OK'
 
 step 'malformed driver entry is not treated as unbound'
 mv "$FIX/bus/pci/devices/0000:01:00.0/driver" "$WORK/driver.saved"
