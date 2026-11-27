@@ -1,64 +1,45 @@
-# 32 — Free Pascal як основна мова capability-identity зрізу
+# 32 — Free Pascal як основна research-реалізація identity
 
-Власник уточнив: писати одразу на Free Pascal, бо в нього є доступ до C-бібліотек
-і зручний асемблер. Це не змінює меж доказів: мова не перетворює `UNPROVEN` на
-факт. Новий Pascal-зріз є **основною реалізацією** для research-коду, а C11-зріз
-лишається еталоном для байтової еквівалентності. Реліз, tag, publish, installer,
-RM, firmware, reboot і фізичний MMIO не виконувалися.
+Free Pascal 3.2.2 є основною мовою цього дослідницького зрізу для sysfs PCI
+identity, inventory та capability projection. C11-зріз залишається
+паралельною reference-реалізацією для перевірки layout і byte-for-byte parity.
+Це не змінює меж доказів і не є ABI-рішенням.
 
-## 1. Що додано
+## Що реалізовано
 
 | Файл | Призначення |
 |---|---|
-| `pascal/gp107_identity.pas` | FAIL-CLOSED sysfs inventory; публічний PCI-заголовок; `{$packrecords 1}` + `{$if SizeOf(...)}{$fatal}` |
-| `pascal/gp107_mmio.pas` | Ті самі ворота opt-in/driver-bound/size/offset; `mmap(PROT_READ\|MAP_SHARED)`; власний inline-асемблер `mov eax,[rdi]` + `lfence` |
-| `pascal/gp107_capabilities.pas` | Машиночитаний capability-ledger, байтово ідентичний C-виводу |
-| `pascal/gp107ctl.pas` | CLI `inventory`, `mmio-read`, `capabilities`, `layout` |
-| `pascal/Makefile` | Ціль `gp107ctl-pascal` з FPC 3.2.2, `-Sh`, `-XS` |
-| `scripts/test-capability-driver.sh` | Pascal/C parity для позитивних і негативних випадків |
+| `pascal/gp107_identity.pas` | Fail-closed sysfs inventory, PCI header та driver binding; packed layout assertions |
+| `pascal/gp107_capabilities.pas` | Ledger, byte-identical до C reference |
+| `pascal/gp107_mmio.pas` | Публічний fail-closed API; завжди повертає `STATUS_NOT_AUTHORIZED` |
+| `pascal/gp107ctl.pas` | CLI inventory, capabilities, layout і відмовний mmio-read |
+| `pascal/Makefile` | FPC 3.2.2 pinned build |
+| `scripts/test-capability-driver.sh` | C/Pascal identity, denial і ledger parity на synthetic sysfs |
 
-Збірка: `make -C pascal gp107ctl-pascal`. Компілятор перевіряється через
-`make -C pascal check-fpc`: очікується точно `3.2.2`.
+## Фізичний MMIO
 
-Inline-асемблер належить цьому проєкту. Він робить **одне** 32-бітне читання
-вже змапованого read-only вікна і не містить регістрних констант, BOOT0-адрес,
-запису, vendor-послідовності чи RM-коду.
+**НЕ АВТОРИЗОВАНО / НЕ ВИКОНУВАЛОСЯ.** Pascal `Read32()` не має
+`resource0` open, `mmap`, pointer dereference або inline assembly. C
+`gp107_mmio_read32()` має ту саму fail-closed поведінку. Прапорець
+`--allow-mmio` не надає owner authorization і не змінює результату API.
 
-## 2. Статус фактів
+## Статус доказів
 
-| # | Факт | Статус | Свідок / межа |
-|---:|---|---|---|
-| 1 | FPC 3.2.2 компілює Pascal-зріз з `-XS` | **statically proven** | `FPC-COMPILE-OK version=3.2.2 layout=32/68/140` |
-| 2 | Розкладки `32/68/140` байт | **statically proven** | `{$if SizeOf(...)<>...}{$fatal}` і `LAYOUT-OK identity=32 binding=68 inventory=140` |
-| 3 | Inline `lfence` присутній у бінарнику | **statically proven** | `PASCAL-ASM-STATIC-OK primitive=movl+lfence sysv-amd64`; `objdump -d` |
-| 4 | Pascal/C виводи `inventory`, `capabilities` і `mmio-read` байтово ідентичні на синтетичному sysfs | **runtime-proven (fixture)** | `PASCAL-PARITY-OK`, `PASCAL-MMIO-PARITY-OK` |
-| 5 | Pascal/C негативні маркери ідентичні: card-count, config-read, bdf-mismatch, driver-binding-read, offset-required, opt-in, driver-bound, resource0-size, offset-unaligned, offset-out-of-window, bar0-not-memory | **runtime-proven (fixture)** | `cmp` stderr у кожному named step |
-| 6 | Прямий виклик публічного C API не обходить opt-in і driver-bound | **runtime-proven (fixture)** | `MMIO-API-GATE-OK direct-call=guarded optin=required bound-driver=denied` |
-| 7 | Ledger `deferred`/`granted` і BAR-flag mutation однакові в Pascal і C | **runtime-proven (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK`, `BAR-FLAG-MUTATION-OK` |
-| 8 | На реальному hostі Pascal inventory збігається з C | **runtime-proven** | `HOST-INVENTORY-PASS evidence=runtime-proven pascal=C`; `10de:1c82 @ 0000:01:00.0` |
-| 9 | Фізичний MMIO-доступ до реальної GP107 | **NOT RUN** | `nvidia` bound; cmdline без `wsm_open_driver=1`; жодного unbind/reboot |
-| 10 | BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, `BDF ↔ RM gpu_id` | **UNPROVEN / string-only** | Pascal не додає жодного нового твердження; константа відсутня у коді |
-| 11 | Використання Pascal як основи майбутнього релізу під плату власника | **design choice / interpretation** | owner-заява про цільове залізо; не release-рішення й не ABI-pin |
-| 12 | C перевіряє `driver`-symlink через `readlinkat()` на відкритому каталозі; Pascal — шляхом через `FpReadLink` | **interpretation / PARTIAL** | у FPC 3.2.2 RTL немає `FpReadLinkAt`; названі маркери й fail-closed поведінка збігаються на fixture, але C-якір сильніший |
+| Факт | Статус |
+|---|---|
+| FPC 3.2.2 build та layout `32/68/140` | **очікує exact-head CI** |
+| C/Pascal inventory та ledger parity на synthetic fixtures | **очікує exact-head CI** |
+| CLI denial з/без `--allow-mmio` | **очікує exact-head CI** |
+| Direct C/Pascal API denial | **очікує exact-head CI** |
+| Host H170 inventory у цій сесії | **NOT RUN**; executor offline |
+| BOOT0, BAR0 register semantics, RM/channel/runlist/fence | **UNPROVEN** |
 
-## 3. Межі
+Перевірка локального або hosted gate має використовувати:
+`make -C lib clean all`, `make -C pascal gp107ctl-pascal` та
+`bash scripts/test-capability-driver.sh`.
 
-- C11-код і x86-64 `.S` лишаються в репозиторії **лише як контрольні еталони**;
-  жоден з них не оголошується продукційним драйвером.
-- Жодного `PROT_WRITE`, `MAP_FIXED`, `O_RDWR`, write-MMIO, RM-запиту, transfer
-  коду, firmware, GPFIFO чи reboot.
-- SENS, CML, `wsm-os-lisp`, ADR, target contract і ABI-pin v8/v9 не змінено.
-- Базовий `scripts/test-pascal-probe.sh`, `make test-valid-cards-static` і
-  старий C-гейт не послаблено.
-- gp107 #33 лишається Draft, PR #21 — Draft і `NOT_RUN`.
+Очікуваний маркер:
 
-Підсумковий маркер гейту:
-`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 pascal=equiv hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-sysfs=only pascal=parity physical-mmio=NOT-AUTHORIZED/NOT-RUN`
 
-## 4. Питання без відповіді й найменший крок
-
-Питання без відповіді: який BAR0-offset безпечно читати після unbind? Асемблер
-не змінює відповідь. Найменший крок — після окремого owner-рішення запустити
-`pascal/gp107ctl-pascal mmio-read --offset=0x... --allow-mmio`, зберегти
-stdout/stderr як artifact з SHA-256 і позначити `runtime-proven` або fail-closed.
-Без цього BOOT0 лишається `UNPROVEN`.
+Це не hardware validation, не release і не зміна ABI pin.
