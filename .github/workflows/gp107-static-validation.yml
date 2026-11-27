@@ -68,6 +68,6 @@ jobs:
             echo "- Static source guard: passed"
             echo "- Pascal compilation: passed; no probe executable was run"
             echo "- C11 capability identity: compiled with -Werror; fail-closed gate passed"
-            echo "- GPU/RM/MMIO/firmware/reboot: NOT_RUN (MMIO seam read-only and opt-in)"
+            echo "- GPU/RM/MMIO/firmware/reboot: NOT_RUN (physical MMIO NOT AUTHORIZED)"
             echo "- Multi-NVIDIA runtime negative: NOT_RUN"
           } >> "$GITHUB_STEP_SUMMARY"
