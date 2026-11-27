@@ -351,7 +351,8 @@ run_case(Gpu *g, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSet d
            count, (count + LOCAL_SIZE - 1U) / LOCAL_SIZE, checksum);
     ok = true;
 done:
-    if (cmd) vkFreeCommandBuffers(g->device, pool, 1, &cmd);
+    if (cmd && g->queue_idle_safe)
+        vkFreeCommandBuffers(g->device, pool, 1, &cmd);
     return ok;
 }
 
