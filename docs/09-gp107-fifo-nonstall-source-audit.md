@@ -69,16 +69,19 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    Очікуваний BDF тут лише приклад із нашого однокарткового witness;
    для іншого хоста BDF треба взяти з `lspci`, не підставляти.
 
-2. У test boot передати module option (не kernel command line, якщо `nouveau` — модуль):
+2. У **одноразовому** test boot передати параметр модулю через тимчасовий boot entry:
 
-   ```bash
-   # лише після перевірки CONFIG_NOUVEAU_DEBUG >= 5 у цільовому ядрі
-   printf 'options nouveau debug=TOP=trace,FIFO=debug\n' \
-     | sudo tee /etc/modprobe.d/gp107-fifo-trace.conf
-   sudo update-initramfs -u
-   sudo reboot
+   ```text
+   nouveau.debug=TOP=trace,FIFO=debug
    ```
 
+   Наприклад, у меню GRUB відредагувати лише поточний запис клавішею `e`,
+   додати параметр до рядка `linux` і завантажити цей запис через Ctrl+X/F10.
+   Це діє лише для поточного boot. Не створювати постійний файл
+   `/etc/modprobe.d`, не виконувати `update-initramfs` і не змінювати
+   основний boot entry. Перед цим перевірити `modinfo nouveau` та
+   `CONFIG_NOUVEAU_DEBUG >= 5` саме для обраного kernel. Зберегти окремий
+   rollback entry; proprietary NVIDIA driver не повинен одночасно володіти GPU.
 3. Після завантаження з Nouveau зібрати лог:
 
    ```bash
