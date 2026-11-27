@@ -8,11 +8,21 @@
 
 ## Статус і межі
 
-- **Runtime-proven:** 12/12 точок (`4096`, 1 Mi, 8 Mi, 32 Mi × 3 повтори)
+- **NOT ACCEPTED / EXPLORATORY:** первинні 12/12 запусків, описані нижче,
+  були виконані бінарником без явних Vulkan memory dependencies між
+  TRANSFER→COMPUTE→TRANSFER→HOST. Їхні raw logs/manifests збережені як
+  історичне свідчення поведінки того бінарника, але correctness та performance
+  висновки не є прийнятими Vulkan-сумісними результатами.
+- **CODE-UPDATED, PHYSICAL-RERUN-PENDING:** у `vk_transfer_bench.c` додано
+  memory barriers для TRANSFER_WRITE→SHADER_READ, SHADER_WRITE→TRANSFER_READ
+  та TRANSFER_WRITE→HOST_READ; `make_buf()` тепер перевіряє `memoryTypeBits`
+  кожного буфера перед allocation. Це лише зміни коду: вони ще не доведені
+  збіркою або фізичним запуском.
+- **Runtime-proven (історичний факт виконання, не acceptance):** 12/12 точок (`4096`, 1 Mi, 8 Mi, 32 Mi × 3 повтори)
   `rc=0`, `driver_id=4`, `NVIDIA`, `host_type=8`, `device_type=7`,
   `device_local_only=1`, `mismatch=0`, `TRANSFER-OK ... pr21=NOT-RUN mmio=none`,
   `MANIFEST-OK files=11` для всіх 12, порожні kernel-delta.
-- **Runtime-proven:** ще 3 повтори канонічного HOST_VISIBLE бінарника на
+- **Runtime-proven (окремий незмінений контроль):** ще 3 повтори канонічного HOST_VISIBLE бінарника на
   32 Mi (`artifacts-hostvisible-32m-rep{1,2,3}/`), `BENCH-CORRECT-AFTER
   mismatch=0`, `BENCH-OK ... pr21=NOT-RUN mmio=none`, MANIFEST-OK.
 - **Interpretation:** нижчі співвідношення — похідні медіан, не новий вимір.
@@ -20,6 +30,16 @@
   стеком, годинники/енергія, пікова VRAM-пропускна здатність.
 
 ## Метод
+
+Виправлений command stream має три явні memory dependencies:
+1. H2D transfer writes → compute shader reads (перед dispatch);
+2. compute shader write → D2H transfer read (перед копіюванням результату);
+3. D2H transfer write → host read (після копіювання, перед fence wait/CPU read).
+
+Старі цифри нижче зняті до цих barriers і не є baseline для A/B.
+Потрібно повторити всі точки новим бінарником у нових каталогах; старі
+артефакти не перезаписувати. Також `make_buf()` відхиляє allocation, якщо
+вибраний memory type не входить у `VkMemoryRequirements.memoryTypeBits`.
 
 Кожна фаза — власний `vkQueueSubmit` + `vkWaitForFences`:
 
@@ -33,7 +53,7 @@ Thermal/warmup: 2 прогрівочні цикли, далі 20 ітераці�
 4 байти/елемент для копій і 12 байтів/елемент для compute (2 читання + 1 запис).
 Це не пропускна здатність шини VRAM і не PCIe-теоретичний максимум.
 
-## Результати (медіани 3 повторів, ns)
+## Історичні результати первинного бінарника (NOT ACCEPTED; медіани 3 повторів, ns)
 
 | Елементів | h2d A | h2d B | compute (DEVICE_LOCAL) | d2h C | сума фаза | compute GB/s |
 |---:|---:|---:|---:|---:|---:|---:|
@@ -46,7 +66,7 @@ Thermal/warmup: 2 прогрівочні цикли, далі 20 ітераці�
 8/32 Mi). DEVICE_LOCAL compute виходить на ~90 GB/s умовного traffic для
 великих задач.
 
-## Порівняння з HOST_VISIBLE на 32 Mi
+## Історичне порівняння з HOST_VISIBLE на 32 Mi (NOT ACCEPTED як Vulkan A/B)
 
 | Шлях | Медіана (ns) | Умовний GB/s |
 |---|---:|---:|
@@ -68,6 +88,18 @@ Thermal/warmup: 2 прогрівочні цикли, далі 20 ітераці�
 4. Пропрієтарний ICD міг би вибирати DEVICE_LOCAL для подібних workload-ів;
    це гіпотеза, не доведений факт. REA з `docs/19` дає лише статичні імена
    `NV_MEMORY_TYPE_FRAMEBUFFER` / `MAP_MEMORY_DMA`, не вибір типу в рантаймі.
+
+## Наступний acceptance run
+
+1. Зібрати оновлений `vk_transfer_bench` і зафіксувати compiler/version та SHA бінарника.
+2. Запустити Khronos validation layer із synchronization validation, якщо шар
+   встановлений; зберегти повний validation output. Якщо недоступний —
+   записати `VALIDATION_LAYER=UNAVAILABLE`.
+3. Повторити 12 DEVICE_LOCAL точок і 3 HOST_VISIBLE контрольні точки у нових
+   output-каталогах із новими manifests.
+4. Перевірити post-loop correctness, BDF, ICD та `memoryTypeBits` fail-closed.
+5. Не переносити жодну цифру з історичних таблиць до прийнятого baseline до
+   успішного build + physical runtime + validation review.
 
 ## Відтворення
 
