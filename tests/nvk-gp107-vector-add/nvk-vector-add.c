@@ -300,9 +300,9 @@ int main(int argc, char **argv)
 
     if (matching_devices != 1 || physical == VK_NULL_HANDLE) {
         if (matching_devices == 0)
-            fprintf(stderr, "GP107_NOT_FOUND pci_id=10de:1c82\\n");
+            fprintf(stderr, "GP107_NOT_FOUND pci_id=10de:1c82\n");
         else
-            fprintf(stderr, "GP107_AMBIGUOUS matching_devices=%u\\n",
+            fprintf(stderr, "GP107_AMBIGUOUS matching_devices=%u\n",
                     matching_devices);
         return 2;
     }
