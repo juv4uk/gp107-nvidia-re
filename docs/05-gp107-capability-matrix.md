@@ -22,7 +22,7 @@
 | Можливість / твердження | Інтерфейс або джерело | Стан доказу | Межа висновку |
 |---|---|---|---|
 | PCI vendor/device identity | `NV_ESC_CARD_INFO` + PCI config sysfs | **runtime-proven** | Два незалежні джерела збігаються для GP107 на базовій машині |
-| PCI BDF і BAR0 base/size | `NV_ESC_CARD_INFO` + PCI config sysfs | **runtime-proven** | Підтверджено ідентичність і BAR resource; це не доступ до MMIO |
+| PCI BDF і BAR0 base | `NV_ESC_CARD_INFO` + PCI config sysfs | **runtime-proven** | PCI config підтверджує BAR0 base; BAR0 size повідомляє `NV_ESC_CARD_INFO`; це не доступ до MMIO |
 | Вибір GP107 за PCI ID і minor | `SelectTargetCard` + `GpuDevicePath` | **в master; локальний runtime повторити** | Перевіряє унікальний PCI ID і межу minor; додатковий PCI-config cross-check входить до цього PR |
 | RM GPU-ID enumeration | `GPU_GET_PROBED_IDS` | **новий fail-closed gate; runtime очікується** | Пробник відхиляє нуль або кілька ID, бо відповідність RM gpu_id ↔ PCI BDF ще не доведена |
 | RM architecture info | `NV_ESC_RM_CONTROL`, `NV2080_CTRL_CMD_MC_GET_ARCH_INFO` | **runtime-proven** | Числа прочитані через RM; зіставлення з іменами сімейства/реалізації має окремий статус interpretation |
