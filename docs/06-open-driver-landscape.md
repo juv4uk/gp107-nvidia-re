@@ -1363,21 +1363,7 @@ challenge не дозволив підтвердити live state на 27.11.202
 - [NVIDIA PTX ISA 8.7: `.target` semantics](https://docs.nvidia.com/cuda/pdf/ptx_isa_8.7.pdf)
 - [Mesa MR !37831](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/37831)
 
-**SM61 gate для GP107:** технічний огляд MR !37831 від 2026-09-08
-зафіксував hardcoded `SM86` у reviewed snapshot і відсутність
-SM-aware lowering у NIR→PTX generator. Якщо модуль має PTX `.target sm_86`,
-його не можна JIT-компілювати назад на GP107/SM61: NVIDIA визначає
-сумісність PTX target як same-or-higher compute capability. CUDA 12.9
-ще підтримує `sm_61`/`compute_61`, але це вимагає повноцінного
-target-aware NIR→PTX lowering та перевірки інструкцій, а не механічної
-заміни константи. Отже статус — `NOT_SUPPORTED_BY_REVIEWED_SNAPSHOT`;
-поточний MR head/state залишається `NOT_VERIFIED` до прямої GitLab перевірки.
-Детальна координація: [issue #3, PTX/SM61 audit](https://github.com/juv4uk/gp107-nvidia-re/issues/3#issuecomment-7209199916).
 
-Джерела:
-- [NVIDIA PTX target compatibility semantics](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html)
-- [NVIDIA CUDA 12.9: allowed `sm_61` / `compute_61` targets](https://docs.nvidia.com/cuda/archive/12.9.0/cuda-compiler-driver-nvcc/index.html)
-- [ITN review of NOCL MR !37831 and SM86 limitation (2026-09-08)](https://itn.lv/programmatura/mesa-draiveris-nocl-dod-opencl-uz-nvidia-cuda-luxmark-57-702-pret-64-009/)
 
 **Якщо MR merged або є придатний тестовий branch**, локальний агент має:
 1. В окремому worktree/prefix зафіксувати Mesa commit і MR head.
