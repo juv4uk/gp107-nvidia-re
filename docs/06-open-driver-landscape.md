@@ -792,10 +792,12 @@ NVIDIA Video Encode/Decode Support Matrix прямо перелічує GeForce 
 параметри 10-bit, 4:4:4, lossless, B-frames або конкретні decode formats
 з одного рядка на інший.
 
-NVIDIA FFmpeg documentation підтверджує, що Pascal покоління входить у
-сімейства, для яких існують NVENCODE та NVDECODE API шляхи. Це означає,
-що vendor stack має окремий hardware encode/decode маршрут; не означає,
-що його реалізує відкритий Nouveau userspace stack.
+NVIDIA Video Codec Support Matrix підтверджує наявність відповідних
+апаратних поколінь; сумісність конкретної версії Video Codec SDK та драйвера
+перевіряти окремо. Наприклад, актуальна документація Video Codec SDK 13.1
+вимагає Turing або новіший GPU, тому її не можна використовувати як доказ
+сумісності Pascal із цією новою SDK. Для GP107 контрольний proprietary шлях
+потрібно перевіряти на останньому Pascal-сумісному R580/API 13.0.
 
 ### 18.2. Що реально реалізовано в Nouveau для GP107
 
@@ -867,6 +869,8 @@ matrix підтверджує наявність блоків.
 
 Це підтверджує upstream firmware inventory для GR/ACR/SEC2/Falcon
 initialization і наявність scrubber blob у kernel firmware package.
+
+WHENCE для NVIDIA firmware вказує `LicenseRef-LICENCE.nvidia` та redistribution terms: це redistributable binary firmware, але не відкритий firmware source. Не включати ці blobs до репозиторію.
 Це не доводить, що ці файли встановлені на локальній системі або фактично
 завантажені у runtime. Перевіряти package manifest, symlink targets,
 hashes та kernel firmware-load messages окремо.
@@ -956,9 +960,7 @@ Nouveau одночасно з proprietary NVIDIA KMD на цій карті.
 **Atomic KMS regression gate:** зафіксувати kernel source package/commit.
 Mainline fix `ed7fb901fce31588bd12ab95adc36ebcb51bc8ea` увійшов у
 v7.4-rc3; однак `Cc: stable` не гарантує backport у поточне distro
-ядро. У перевірених stable гілках 7.3.y та 7.2.y на 2026-11-27
-backport ще не було. Для Kali `7.2.15+kali-amd64` не робити
-припущень за номером: перевірити відповідний source package/patch set.
+ядро. У перевірених stable snapshots Linux 7.3.5 (`988117cc1bb17338c586a4e21ade88b5397eac33`) та 7.2.15 (`497791a0a96b866d90add64041c47acdff49cae6`) на 2026-11-27 backport ще не було. Для Kali `7.2.15+kali-amd64` перевірити саме source package/patch set; не робити припущень за номером.
 `nouveau.atomic=0` — лише тимчасовий діагностичний boot для ядра
 без fix, якщо atomic regression саме відтворюється; не постійний параметр.
 
