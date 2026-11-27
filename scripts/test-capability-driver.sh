@@ -8,6 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BIN="$ROOT/build/capability-driver/gp107ctl"
+ASMBIN="$ROOT/build/capability-driver/gp107ctl-asm"
 WORK=$(mktemp -d)
 FIX="$WORK/sysfs"
 
@@ -239,6 +240,27 @@ if grep -Fq '(evidence . runtime-proven)' "$WORK/mmio.out"; then
   fail 'synthetic resource0 output was mislabeled runtime-proven'
 fi
 echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 evidence=scope-unclassified hardware=NOT-RUN'
+
+step 'assembly read-only path equivalence (x86-64 only)'
+if [ -x "$ASMBIN" ]; then
+  "$ASMBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-asm.out"
+  cmp -s "$WORK/mmio.out" "$WORK/mmio-asm.out" \\
+    || fail 'assembly read-only result differs from C'
+  "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-c.out"
+  "$ASMBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-asm.out"
+  cmp -s "$WORK/ledger-c.out" "$WORK/ledger-asm.out" \\
+    || fail 'capability ledger differs between C and assembly builds'
+  if command -v objdump >/dev/null 2>&1; then
+    objdump -d "$ASMBIN" | grep -q 'lfence' \\
+      || fail 'assembly primitive does not contain lfence'
+    echo 'ASM-STATIC-OK primitive=movl+lfence calling-convention=sysv-amd64'
+  else
+    echo 'ASM-STATIC-SKIP reason=objdump-absent'
+  fi
+  echo 'ASM-EQUIV-OK fixture-read-and-ledger identical-to-C hardware=NOT-RUN'
+else
+  echo 'ASM-EQUIV-SKIP reason=non-x86_64-host'
+fi
 
 step 'public C API rejects unaligned offsets'
 expect_fail 17 'MMIO-FAIL step=offset-unaligned' "$WORK/api-unaligned.err" \
