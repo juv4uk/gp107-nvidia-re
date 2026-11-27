@@ -36,6 +36,8 @@ enum gp107_status {
     GP107_ERR_DRIVER_BOUND = 16,
     GP107_ERR_OFFSET       = 17,
     GP107_ERR_MAP          = 18,
+    GP107_ERR_NOT_AUTHORIZED = 19,
+    GP107_ERR_DRIVER_UNKNOWN = 20,
     GP107_ERR_USAGE        = 64
 };
 
