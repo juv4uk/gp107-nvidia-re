@@ -526,7 +526,7 @@ issues/bugs. Rusticl потребує явного ввімкнення: `RUSTIC
 |---|---|---|
 | Nouveau KMS / базова графіка | NV130 DONE | board runtime UNPROVEN |
 | Mesa Nouveau Gallium OpenGL | NV130 shader/3D features DONE | board runtime UNPROVEN |
-| Mesa NVK Vulkan | Pascal supported; per-device Mesa source snapshot exposes Vulkan 1.3 on pre-Turing; conformant flag includes Kepler–Ada | board runtime UNPROVEN |
+| Mesa NVK Vulkan | Pascal включено; per-device API version 1.3 за перевіреним source snapshot; conformance eligibility не замінює runtime test | board runtime UNPROVEN |
 | OpenCL через Rusticl/Nouveau | nouveau у Rusticl supported-driver list | board runtime UNPROVEN |
 | VDPAU/VA-API video decode | NV130 TODO; GP107 не listed у engine table | не підтверджено |
 | Engine/memory reclocking та automatic PM | NV130 TODO | не підтверджено; firmware limitation |
