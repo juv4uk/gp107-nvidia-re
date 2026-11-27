@@ -8,6 +8,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef GP107_USE_ASM
+/* Private assembly load primitive; not exposed as public API. */
+extern uint32_t gp107_mmio_load32_asm(const volatile void *addr);
+#endif
+
 static int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
 {
     if (!allow) {
@@ -46,6 +51,7 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
     uint32_t v;
     int n;
     int rc;
+    struct stat st;
 
     if (sysfs_root == NULL || expect_bdf == NULL || value == NULL) {
         return gp107_set_error(err, errsz,
@@ -108,13 +114,13 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
                                GP107_ERR_SIZE, saved);
     }
     if (st.st_size < (off_t)GP107_MMIO_WINDOW ||
-        st.st_size != (off_t)expected_size) {
+        st.st_size != (off_t)inv.pci.bar0_size) {
         off_t size = st.st_size;
         (void)close(fd);
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bar0-size-mismatch code=%d size=0x%llx expected=0x%x",
                                GP107_ERR_SIZE, (unsigned long long)size,
-                               expected_size);
+                               inv.pci.bar0_size);
     }
     map = mmap(NULL, GP107_MMIO_WINDOW, PROT_READ, MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
