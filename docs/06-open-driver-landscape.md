@@ -1176,10 +1176,11 @@ elif [ -r /proc/config.gz ]; then
 fi
 test -r /sys/kernel/btf/vmlinux && echo VMLINUX_BTF_PRESENT || echo VMLINUX_BTF_ABSENT
 test -r /sys/kernel/tracing/available_filter_functions && echo FTRACE_FILTER_LIST_PRESENT || true
+test -r /sys/kernel/debug/tracing/available_filter_functions && echo DEBUGFS_FTRACE_FILTER_LIST_PRESENT || true
 MOD=$(modinfo -n nouveau 2>/dev/null || true)
-printf 'NOUVEAU_MODULE_FILE=%s\\n' "$MOD"
+printf 'NOUVEAU_MODULE_FILE=%s\n' "$MOD"
 if [ -n "$MOD" ] && [ -r "$MOD" ]; then
-  readelf -SW "$MOD" | grep -E '\\.BTF|\\.BTF\\.ext' || true
+  readelf -SW "$MOD" | grep -E '\.BTF|\.BTF\.ext' || true
   nm -n "$MOD" 2>/dev/null | grep -w nvkm_uchan_uevent || true
   sha256sum "$MOD"
 fi
