@@ -32,11 +32,11 @@
 | [`10-open-driver-capability-identity.md`](docs/10-open-driver-capability-identity.md) | Дослідницький контракт identity-capability для відкритого драйвера лісп-машини |
 | [`11-proprietary-shipped-artifact-abi-facts.md`](docs/11-proprietary-shipped-artifact-abi-facts.md) | REA-факти з `nvidia.ko` та пропрієтарного ICD без декомпільованого псевдокоду |
 | [`12-nouveau-nvk-boot-witness.md`](docs/12-nouveau-nvk-boot-witness.md) | Шаблон одноразового boot-свідка Nouveau/NVK |
-| [`13-nouveau-nvk-boot-witness-result.md`](docs/13-nouveau-nvk-boot-witness-result.md) | Результат boot-свідка: NVK runtime-proven, compute ще не перевірено |
+| [`13-nouveau-nvk-boot-witness-result.md`](docs/13-nouveau-nvk-boot-witness-result.md) | Фізичне Nouveau/NVK identity та Vulkan enumeration runtime-proven; GR TOP runlist 0, channel/event correlation лишається UNPROVEN (compute result — у docs/14) |
 | [`14-nvk-vector-add-compute-result.md`](docs/14-nvk-vector-add-compute-result.md) | Результат clean-room NVK vector-add: фізичний compute-тест пройдено |
 | [`15-rea-static-markers-nonstall-runlist-event.md`](docs/15-rea-static-markers-nonstall-runlist-event.md) | Статичні маркери non-stall, channel/runlist та event у пропрієтарному модулі |
 | [`16-nvidia-settings-autostart-open-driver-fix.md`](docs/16-nvidia-settings-autostart-open-driver-fix.md) | Виправлення автозапуску NVIDIA Settings у відкритому boot |
-| [`17-vulkan-compute-benchmark-open-vs-proprietary.md`](docs/17-vulkan-compute-benchmark-open-vs-proprietary.md) | Порівняння Vulkan compute між відкритим і пропрієтарним драйверами |
+| [`17-vulkan-compute-benchmark-open-vs-proprietary.md`](docs/17-vulkan-compute-benchmark-open-vs-proprietary.md) | Історичний NVK ↔ NVIDIA R580 A/B до reliability fixes у docs/18; не є поточним acceptance baseline |
 | [`18-procedural-deviation-and-benchmark-reliability.md`](docs/18-procedural-deviation-and-benchmark-reliability.md) | Процедурне відхилення, надійність вимірювань і межі evidence; старий A/B у docs/17 лишається історичним |
 | [`19-rea-icd-boundary-and-memory-controls.md`](docs/19-rea-icd-boundary-and-memory-controls.md) | Статичні REA-факти про межу proprietary ICD та RM memory/submit controls; не доводить runtime memory path |
 | [`20-reliability-baseline-proprietary.md`](docs/20-reliability-baseline-proprietary.md) | Надійна NVIDIA R580 HOST_VISIBLE/HOST_COHERENT baseline після виправлень harness; не VRAM bandwidth і не NVK A/B |
