@@ -525,6 +525,26 @@ source commits:
 - [Introduced: atomic modesetting by default for NV50+](https://github.com/torvalds/linux/commit/2652aca460dcfdd0d169bbfa358aa15804dc736b)
 - [Fix: add atomic DRM mode-config callbacks](https://github.com/torvalds/linux/commit/ed7fb901fce31588bd12ab95adc36ebcb51bc8ea)
 
+### Важлива різниця в назвах: GK107 (Kepler) ≠ GP107 (Pascal)
+
+У списках патчів Nouveau трапляється серія
+[`drm/nouveau: fix GK107 VDPAU regressions`](https://lists.openwall.net/linux-kernel/2026/09/13/863).
+Вона стосується **GK107 / Kepler** (legacy MSVLD/MSPDEC/MSPPP video engines,
+FIFO engine-context mapping та nonstall-event handling), а не **GP107 /
+Pascal** із GTX 1050 Ti. Попри схожий рядок моделі, це інші чипи та інші
+engine paths. Не переносити ці патчі й не рахувати їх як виправлення
+NV130/GP107 video decode.
+
+Цей пошук ще раз підкреслює правило: фільтрувати upstream issues/patches
+за точним chipset code (`GK107` проти `GP107`), а не лише за числом `107`
+або загальним словом «Nouveau». Для нашої карти NV130 video decode лишається
+TODO у Feature Matrix; GP107 NVDEC kernel object і `scrubber.bin` hooks не
+є доказом готового VDPAU/VA-API codec path.
+
+Джерела:
+- [GK107 VDPAU patch series (Kepler, 2026-09-13)](https://lists.openwall.net/linux-kernel/2026/09/13/863)
+- [Follow-up discussion and test results (GK208B/Kepler)](https://www.mail-archive.com/dri-devel%40lists.freedesktop.org/msg646346.html)
+- [Nouveau Feature Matrix](https://nouveau.freedesktop.org/FeatureMatrix.html)
 ### Feature matrix: що ще не готове або залежить від покоління
 
 Офіційна [Nouveau Feature Matrix](https://nouveau.freedesktop.org/FeatureMatrix.html)
