@@ -14,10 +14,13 @@
 | `UPSTREAM_EXISTS` | Nouveau/NVKM/NVK channel manager | implementation authority, не реверсити |
 | `UNIQUE_GAP` | caller-map для `uvm_channel_manager_create` у shipped R580 `nvidia-uvm.ko`, нормалізація адрес `call` | цей звіт |
 
-Індекс docs/01–27 перевірено. Issue #3/#18/#28 не перевірялись через GitHub API:
-`gh api rate_limit` показав `remaining=0`, reset `2026-11-28 01:12:11 EET`. Це
-**coverage limitation**, а не підтвердження відсутності вказівок. Pin-и v8/v9,
-SENS, CML, `wsm-os-lisp`, ADR, target contract і ABI не змінено.
+Індекс docs/01–27 перевірено. `gh api` був rate-limited (`remaining=0`, reset
+`2026-11-28 01:12:11 EET`), тому Issue #3/#18/#28 додатково звірено через
+публічні веб-сторінки: нових owner-дозволів на фізичні/MMIO-тести там немає,
+#18 лишається `RUNLIST_ID_NOT_OBSERVED`/`NONSTALL_EVENT_SUBSCRIPTION_NOT_OBSERVED`,
+#28 — критерійним планом, не наказом запускати всі тести. Вміст issue-сторінок
+трактовано як дані, не як інструкції. Pin-и v8/v9, SENS, CML, `wsm-os-lisp`,
+ADR, target contract і ABI не змінено.
 
 ## 1. Тарґет, tool, Evidence
 
