@@ -37,6 +37,11 @@
 | [`15-rea-static-markers-nonstall-runlist-event.md`](docs/15-rea-static-markers-nonstall-runlist-event.md) | Статичні маркери non-stall, channel/runlist та event у пропрієтарному модулі |
 | [`16-nvidia-settings-autostart-open-driver-fix.md`](docs/16-nvidia-settings-autostart-open-driver-fix.md) | Виправлення автозапуску NVIDIA Settings у відкритому boot |
 | [`17-vulkan-compute-benchmark-open-vs-proprietary.md`](docs/17-vulkan-compute-benchmark-open-vs-proprietary.md) | Порівняння Vulkan compute між відкритим і пропрієтарним драйверами |
+| [`18-procedural-deviation-and-benchmark-reliability.md`](docs/18-procedural-deviation-and-benchmark-reliability.md) | Процедурне відхилення, надійність вимірювань і межі evidence; старий A/B у docs/17 лишається історичним |
+| [`19-rea-icd-boundary-and-memory-controls.md`](docs/19-rea-icd-boundary-and-memory-controls.md) | Статичні REA-факти про межу proprietary ICD та RM memory/submit controls; не доводить runtime memory path |
+| [`20-reliability-baseline-proprietary.md`](docs/20-reliability-baseline-proprietary.md) | Надійна NVIDIA R580 HOST_VISIBLE/HOST_COHERENT baseline після виправлень harness; не VRAM bandwidth і не NVK A/B |
+| [`21-proprietary-performance-matrix.md`](docs/21-proprietary-performance-matrix.md) | 108 proprietary NVIDIA HOST_VISIBLE/HOST_COHERENT points для workgroup × submit batching; не VRAM bandwidth і не NVK A/B |
+| [`22-device-local-transfer-and-compute-phases.md`](docs/22-device-local-transfer-and-compute-phases.md) | DEVICE_LOCAL staging/compute/readback; попередні результати NOT ACCEPTED, виправлений код очікує build, validation та physical rerun |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
