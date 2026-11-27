@@ -1,7 +1,8 @@
 # 30 — Другий зріз C-драйвера: публічний PCI-заголовок і capability-ledger
 
-Це розширення `docs/29` у межах того самого owner-дозволу: userspace
-capability-identity, read-only sysfs, опційний read-only aperture seam. Тут
+Це розширення `docs/29`: userspace capability-identity, read-only sysfs,
+програмний opt-in seam для read-only aperture. Фізичний MMIO, unbind і зміна
+boot не авторизовані. Тут
 **нема** RM-запитів, write mapping, GPFIFO, firmware, dispatch, reboot чи
 змін ABI/pin. SENS, CML, `wsm-os-lisp`, ADR і target contract не змінено.
 
@@ -25,8 +26,12 @@ capability-identity, read-only sysfs, опційний read-only aperture seam. 
 | не bound, але немає `--allow-mmio` | `deferred` | `opt-in-required` |
 | не bound і є `--allow-mmio` | `granted` | `read-only-window` |
 
-`granted` означає **дозвіл на одне read-only 32-бітне читання**, а не право на
-запис, не RM-право й не GPU-завдання.
+`granted` означає лише, що **внутрішні програмні передумови** для вузького
+read-only API пройшли (unbound за sysfs + явний прапорець). Це не owner
+approval і не дозвіл на фізичний доступ. Ledger друкує
+`owner-approval=not-inferred` та `physical-mmio=not-authorized`; ці поля не
+можна підвищувати за `--allow-mmio`. Це також не право на запис, RM-операції
+чи GPU-завдання.
 
 ## 2. Статус фактів
 
@@ -36,8 +41,8 @@ capability-identity, read-only sysfs, опційний read-only aperture seam. 
 | 2 | На hostі: `revision=0xa1`, `class=0x030000`, `header=0x80`, `command=0x0407`, BAR0 `0xee000000`, memory / 32-bit / non-prefetch | **runtime-proven** | `gp107ctl inventory` з реального sysfs `config` |
 | 3 | Інтерпретація `0x030000` як «VGA display controller» і `0x80` як «PCI-to-PCI bridge header» — половина класу | **interpretation / UNPROVEN** | Код друкує сирі байти; назва типу заголовка не використовується для жодної дії |
 | 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, після мутації повертається `memory` | **runtime-proven (fixture)** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
-| 5 | Ledger з `nvidia` bound: `mmio-read=denied`, `rm-identity=deferred` | **runtime-proven (fixture + host)** | `LEDGER-BOUND-OK`, реальний `--allow-mmio` не запускався |
-| 6 | Ledger unbound без opt-in: `deferred`; з opt-in: `granted`, але `write/dispatch/rm = none` | **runtime-proven (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK` |
+| 5 | Ledger з `nvidia` bound: software gate `denied`, owner approval `not-inferred` | **software runtime (fixture + host)** | `LEDGER-BOUND-OK`; реальний `--allow-mmio` не запускався |
+| 6 | Ledger unbound без opt-in: software gate `deferred`; з opt-in: gate `granted`, але owner approval `not-inferred` і physical MMIO `not-authorized` | **software runtime (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK`; жодного реального MMIO |
 | 7 | `PCI BDF ↔ RM gpu_id`, RM class/runlist/notifier/fence, BOOT0 | **UNPROVEN** | У коді немає RM-шляху; BOOT0 не читався |
 | 8 | `0x137000A1` | **string-only** | константа відсутня у коді й у виводі |
 | 9 |Ledger є capability word у Lisp-машині / частина ABI | **UNPROVEN, не стверджується** | owner-рішення про ABI не ухвалено; S-вираз лише проєкція стану |
