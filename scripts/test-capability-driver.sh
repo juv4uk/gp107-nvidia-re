@@ -65,8 +65,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\\n", err);
         return rc;
     }
-    rc = gp107_mmio_read32(argv[1], &inv, atoi(argv[2]),
-                           (uint32_t)offset, &value, err, sizeof(err));
+    rc = gp107_mmio_read32(argv[1], &inv, atoi(argv[2]), (uint32_t)offset,
+                           &value, err, sizeof(err));
     if (rc != GP107_OK) {
         fprintf(stderr, "%s\\n", err);
         return rc;
