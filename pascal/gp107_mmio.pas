@@ -1,18 +1,14 @@
 unit gp107_mmio;
 
 {
-  Clean-room Free Pascal read-only aperture seam for GP107.
+  Clean-room Free Pascal counterpart of the C capability gate.
 
-  This unit is the Pascal counterpart of lib/gp107_mmio.c. The public
-  operation re-scans sysfs identity, then enforces opt-in, driver binding,
-  BAR0 space/size and offset gates before mapping. The inline assembler
-  primitive is owned by this project and performs exactly one 32-bit load
-  with a following load fence; it contains no register constants, no writes,
-  no vendor sequence and no boot assumption.
+  This unit validates identity, driver binding, BAR0 type/size and offset
+  alignment/bounds. It then returns READ_SAFE_OFFSET_UNPROVEN. It never opens
+  resource0, maps BAR0, or dereferences a hardware aperture.
 
-  Hardware MMIO is NOT_RUN. This unit does not grant a right to touch a
-  register; it only mirrors the C reference behaviour on a mapped read-only
-  window that has passed all fail-closed gates.
+  Load32Asm is retained only as an isolated instruction reference; Read32
+  never calls it. Hardware MMIO is NOT AUTHORIZED / NOT RUN.
 }
 
 {$mode objfpc}{$H+}{$asmmode intel}{$codepage utf8}
@@ -30,9 +26,6 @@ function Read32(const sysfsRoot, expectBdf: string; allow: LongInt;
                 out err: string): LongInt;
 
 implementation
-
-uses
-  BaseUnix, Unix, Linux;
 
 function HexNoPad(v: QWord): string;
 begin
@@ -82,71 +75,6 @@ begin
   Result := STATUS_OK;
 end;
 
-function MapRead32(const sysfsRoot, bdf: string; expectedSize: LongWord;
-                   offset: LongWord; out value: LongWord;
-                   out err: string): LongInt;
-var
-  path: string;
-  fd: cint;
-  p: Pointer;
-  v: LongWord;
-  saved: cint;
-  st: TStat;
-  size: Int64;
-begin
-  err := '';
-  value := 0;
-
-  path := sysfsRoot + '/bus/pci/devices/' + bdf + '/resource0';
-  if Length(path) > 511 then
-  begin
-    err := 'MMIO-FAIL step=path-too-long code=' + IntToStr(STATUS_PARSE);
-    Exit(STATUS_PARSE);
-  end;
-
-  fd := FpOpen(PChar(path), O_RDONLY or O_CLOEXEC, 0);
-  if fd < 0 then
-  begin
-    err := 'MMIO-FAIL step=resource0-open code=' +
-           IntToStr(STATUS_OPEN) + ' errno=' + IntToStr(fpgeterrno);
-    Exit(STATUS_OPEN);
-  end;
-
-  if FpFStat(fd, st) <> 0 then
-  begin
-    saved := fpgeterrno;
-    FpClose(fd);
-    err := 'MMIO-FAIL step=bar0-stat code=' +
-           IntToStr(STATUS_SIZE) + ' errno=' + IntToStr(saved);
-    Exit(STATUS_SIZE);
-  end;
-
-  size := st.st_size;
-  if (size < MMIO_WINDOW) or (QWord(size) <> QWord(expectedSize)) then
-  begin
-    FpClose(fd);
-    err := 'MMIO-FAIL step=bar0-size-too-small code=' +
-           IntToStr(STATUS_SIZE) + ' size=0x' + HexNoPad(QWord(size));
-    Exit(STATUS_SIZE);
-  end;
-
-  p := FpMMap(nil, MMIO_WINDOW, PROT_READ, MAP_SHARED, fd, 0);
-  if p = MAP_FAILED then
-  begin
-    saved := fpgeterrno;
-    FpClose(fd);
-    err := 'MMIO-FAIL step=read-only-map code=' +
-           IntToStr(STATUS_MAP) + ' errno=' + IntToStr(saved);
-    Exit(STATUS_MAP);
-  end;
-  FpClose(fd);
-
-  v := Load32Asm(Pointer(PChar(p) + offset));
-  FpMunmap(p, MMIO_WINDOW);
-  value := v;
-  Result := STATUS_OK;
-end;
-
 function Read32(const sysfsRoot, expectBdf: string; allow: LongInt;
                 offset: LongWord; out value: LongWord;
                 out err: string): LongInt;
@@ -156,7 +84,7 @@ var
 begin
   err := '';
   value := 0;
-  if sysfsRoot = '' then
+  if (sysfsRoot = '') or (expectBdf = '') then
   begin
     err := 'MMIO-FAIL step=bad-argument code=' + IntToStr(STATUS_USAGE);
     Exit(STATUS_USAGE);
@@ -202,8 +130,10 @@ begin
     Exit(STATUS_OFFSET);
   end;
 
-  Result := MapRead32(sysfsRoot, string(inv.bdf), inv.pci.bar0_size,
-                      offset, value, err);
+  err := 'MMIO-FAIL step=read-safe-offset-unproven code=' +
+         IntToStr(STATUS_SAFE_OFFSET_UNPROVEN) + ' offset=0x' +
+         HexNoPad(QWord(offset));
+  Result := STATUS_SAFE_OFFSET_UNPROVEN;
 end;
 
 end.
