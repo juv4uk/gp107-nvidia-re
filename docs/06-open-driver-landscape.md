@@ -1332,6 +1332,60 @@ merge. Прямий GitLab MR у цьому проході повертав anti
 стан MR треба перевірити перед build, не припускаючи, що NOCL уже є
 в Mesa release. Не створювати системний build наосліп.
 
+**SM61 gate за останнім доступним source review (08.09.2026):** детальний
+розбір MR !37831 повідомляє, що reviewed snapshot мав hardcoded SM86
+(Ampere) у hardware/test target profile, а NIR→PTX generator ще не
+враховував рівень SM. Це не доводить, що кожна гілка компілятора завжди
+видає `.target sm_86`, але означає, що Pascal target у цьому snapshot
+не підтверджений. Для нашого GP107 (compute capability 6.1 / SM61) NOCL
+не можна вважати сумісним, доки source audit не покаже target-aware
+lowering і коректний PTX для SM61. NVIDIA PTX JIT сумісність спрямована
+вперед: PTX target може запускатися на рівному або вищому compute
+capability, але не назад; отже PTX, націлений на `sm_86`, не JIT-иться
+на SM61. Не замінювати literal SM86 на SM61 механічно: перевірити NIR
+opcodes, feature gates, PTX `.version`, `.target`, та відсутність
+Ampere-only інструкцій. До завершення аудиту статус для нашої карти —
+`NOT_SUPPORTED_BY_REVIEWED_SOURCE_SNAPSHOT / SM61_UNPROVEN`.
+
+Огляд !37831 від 08.09.2026 наводить 12 commits, 34 files, 102 comments,
+останню зміну коду 09.11.2025, reduced CTS 3886 pass / 4 fail / 0 crash
+і LuxMark 57,702 проти 64,009 на RTX A6000. Це Ampere/SM86 test evidence,
+не тест GTX 1050 Ti. На XDC 28.09.2026 автор також повідомив, що MR ще
+не merged і image support залишався незавершеним. Поточний MR endpoint
+не вдалося незалежно прочитати через GitLab anti-bot challenge, тому
+ці дані — останній перевірений snapshot, не live status на 27.11.2026.
+
+**R580 API gate окремо від SM61 gate:** NVIDIA release notes для
+580.196.11 (2026-11-23) декларують CUDA 13.x підтримку, включно з
+Pascal; CUDA 13.0 GA має мінімальну вимогу Linux driver 580.65.06.
+Це підтверджує придатність R580.196.11 як загального CUDA Driver API
+baseline, але не доводить NOCL сумісність. XDC-слайди показують
+`cuGetProcAddress_v2`; його фактичний export/ABI та інші entrypoints
+треба перевірити у конкретній `libcuda.so`, а значення
+`cuDriverGetVersion()` — прочитати runtime probe. CUDA Driver Entry
+Point Access API доступний починаючи з CUDA 11.3; окремо звірити
+конкретну ABI-версію функції `_v2`.
+
+Локальна перевірка лише читання:
+```sh
+LIBCUDA=$(readlink -f "$(ldconfig -p | awk '/libcuda\\.so\\.1 / {print $NF; exit}')")
+readelf -Ws "$LIBCUDA" | grep -E 'cu(GetProcAddress(_v2)?|DriverGetVersion)'
+objdump -T "$LIBCUDA" | grep -E 'cu(GetProcAddress(_v2)?|DriverGetVersion)'
+```
+Після цього потрібен мінімальний власний `dlopen` probe, що викликає
+`cuInit(0)`, `cuDriverGetVersion()` та резолвить фактичні required
+entrypoints. Symbol grep сам по собі не є runtime PASS. Не оновлювати
+R580 і не встановлювати CUDA Toolkit у системний prefix заради цього.
+
+Джерела:
+- [ITN: review MR !37831, 2026-09-08](https://itn.lv/programmatura/mesa-draiveris-nocl-dod-opencl-uz-nvidia-cuda-luxmark-57-702-pret-64-009/)
+- [NVIDIA PTX JIT compatibility](https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-gpu-computing/)
+- [NVIDIA PTX ISA 8.7: .target semantics](https://docs.nvidia.com/cuda/pdf/ptx_isa_8.7.pdf)
+- [NVIDIA R580.196.11 release notes](https://docs.nvidia.com/datacenter/tesla/tesla-release-notes-580-196-11/index.html)
+- [CUDA 13.0.3 minimum driver version](https://docs.nvidia.com/cuda/archive/13.0.3/cuda-toolkit-release-notes/index.html)
+- [CUDA Driver Entry Point Access, introduced in CUDA 11.3](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/driver-entry-point-access.html)
+- [XDC NOCL slides](https://indico.freedesktop.org/event/12/contributions/542/attachments/350/507/nocl.html)
+
 **Критичний SM61 gate за останнім доступним review MR (08.09.2026):**
 детальний розбір !37831 повідомляє, що reviewed snapshot мав hardcoded
 SM86 (Ampere) у hardware/test target profile, а NIR→PTX генератор ще
