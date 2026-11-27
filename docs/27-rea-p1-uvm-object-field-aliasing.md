@@ -71,7 +71,9 @@ Enclosing function: `0x08036580`, 2333 B, `GLOBAL FUNC` (**statically proven**).
 
 Все вище — **statically proven** за relocation + лінійною disassembly від
 справжнього entry. `rax` тут **не** `r13`; отже `+0x1e0` належить об'єкту,
-на який вказує `[[r13]]`, а не новому manager-об'єкту.
+на який вказує `[[r13]]`, а не новому manager-об'єкту. docs/28 додатково
+показує, що `rbp`/`[r13]` — це батьківський об'єкт із call-site, де `rdi=parent`,
+а `rsi=&parent+0x19f8`.
 
 ### 3.2. `channel_pool_add` → `nvUvmInterfacePagingChannelAllocate`
 
