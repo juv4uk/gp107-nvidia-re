@@ -6,8 +6,12 @@ program rm_arch_info;
   This is a SEPARATE channel from BOOT0/MMIO. It never maps BAR0, never
   opens resource0 and never claims a direct hardware register read.
 
+  The GPU node is NOT hard-coded: it comes from the minor_number reported
+  by NV_ESC_CARD_INFO for the unique PCI 10de:1c82 card. Ambiguity (0 or
+  more than 1 match) is a hard failure, never a guess.
+
   The cuInit LD_PRELOAD trace on this host showed the required sequence:
-    open /dev/nvidia0 (must stay open), NV_ESC_SYS_PARAMS,
+    open /dev/nvidia<N> (must stay open), NV_ESC_SYS_PARAMS,
     NV_ESC_RM_ALLOC(NV01_ROOT_CLIENT),
     NV0000_CTRL_CMD_GPU_GET_PROBED_IDS,
     NV0000_CTRL_CMD_GPU_ATTACH_IDS,
@@ -20,7 +24,7 @@ program rm_arch_info;
 
   Understanding questions for this fragment:
     1) Why is this not evidence about NV_PMC_BOOT_0?
-    2) Why does the opened /dev/nvidia0 fd have to stay open until the end?
+    2) Why does the opened /dev/nvidia<N> fd have to stay open until the end?
     3) What would change if device_id were the PCI device id 0x1c82?
     4) Why is a nonzero RM status a hard failure rather than a warning?
 }
@@ -34,9 +38,12 @@ const
   NV_SUCCESS = LongWord(0);
 
 var
-  ctl_fd:   cint;
-  gpu_fd:   cint;
-  memblock: QWord;
+  ctl_fd:      cint;
+  gpu_fd:      cint;
+  card:        Tnv_card_info;
+  matches:     Integer;
+  valid_cards: Integer;
+  gpu_path:    string;
   client:   Tnvos64;
   device:   Tnvos64;
   subdev:   Tnvos64;
@@ -64,18 +71,27 @@ begin
 end;
 
 begin
-  if not ReadMemBlockSize(memblock) then
-    Die('read sysfs block_size_bytes', fpgeterrno);
+  if not SelectTargetCard(card, matches, valid_cards) then
+  begin
+    WriteLn(StdErr, 'RM-ARCH-FAIL step=NV_ESC_CARD_INFO target=10de:1c82 ',
+            'matches=', matches, ' valid_cards=', valid_cards);
+    Halt(2);
+  end;
+  WriteLn('NV_ESC_CARD_INFO target   : ',
+          IntToHex(card.pci.vendor_id, 4), ':',
+          IntToHex(card.pci.device_id, 4),
+          ' @ ', DeviceBdf(card),
+          ' minor=', card.minor_number);
+
+  gpu_path := GpuDevicePath(card);
+  if gpu_path = '' then
+    Die('GPU minor_number out of range', card.minor_number);
+  WriteLn('GPU device node           : ', gpu_path);
 
   ctl_fd := FpOpen('/dev/nvidiactl', O_RDWR or O_CLOEXEC, 0);
   if ctl_fd < 0 then Die('open /dev/nvidiactl', fpgeterrno);
-  gpu_fd := FpOpen('/dev/nvidia0', O_RDWR or O_CLOEXEC, 0);
-  if gpu_fd < 0 then Die('open /dev/nvidia0', fpgeterrno);
-
-  { Set-once driver parameter; same value as the cuInit probe, so it is
-    idempotent here. A different cached value would be a real failure. }
-  if FpIOCtl(ctl_fd, NV_IOC_SYS_PARAMS, @memblock) < 0 then
-    Die('NV_ESC_SYS_PARAMS', fpgeterrno);
+  gpu_fd := FpOpen(PChar(gpu_path), O_RDWR or O_CLOEXEC, 0);
+  if gpu_fd < 0 then Die('open ' + gpu_path, fpgeterrno);
 
   FillChar(client, SizeOf(client), 0);
   if FpIOCtl(ctl_fd, RmIOC(NV_ESC_RM_ALLOC, SizeOf(client)), @client) < 0 then
@@ -141,6 +157,8 @@ begin
           ' subDeviceInstance=', info2[3]);
 
   FillChar(devpars, SizeOf(devpars), 0);
+  { RM device_id stays 0: this is NOT the PCI device id 0x1c82 and its
+    semantics have not been independently confirmed. Do not change it. }
   devpars.device_id := 0;
   devpars.h_client_share := client.h_new;
   FillChar(device, SizeOf(device), 0);

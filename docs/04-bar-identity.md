@@ -152,6 +152,21 @@ RM-ARCH-OK
 
 ELF статичний, без `DT_NEEDED`; `make test` зелений для всіх трьох пробників.
 
+**Вибір GPU-вузла — runtime-proven, без хардкоду:** `pascal/03_rm_arch_info.pas`
+викликає спільний `nv_device.SelectTargetCard()`, який через `NV_ESC_CARD_INFO`
+шукає унікальну картку `10de:1c82`, повертає `minor_number` і будує шлях
+`/dev/nvidia<N>` через `GpuDevicePath()`. Якщо збігів 0 або більше 1 — це
+явний `RM-ARCH-FAIL`, а не вибір першої картки. На цій конфігурації:
+
+```text
+NV_ESC_CARD_INFO target   : 10DE:1C82 @ 0000:01:00.0 minor=0
+GPU device node           : /dev/nvidia0
+```
+
+`devpars.device_id` лишається `0`: це **не** PCI device id `0x1c82`, і семантика
+нуля окремо не підтверджена. Гейт забороняє literals `/dev/nvidia0` у коді
+RM-зонда (коментарі зрізаються перед перевіркою).
+
 **Межі висновку:**
 
 - `arch=0x130` зіставлено з `ARCHITECTURE_GP100`, `impl=0x07` — з

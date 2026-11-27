@@ -73,6 +73,17 @@ grep -Fq 'FpMMap(nil, MMIO_PAGE_BYTES, PROT_READ, MAP_SHARED, fd, 0)' \
 grep -Fq 'FpOpen(PChar(path), O_RDONLY or O_CLOEXEC, 0)' \
   pascal/02_bar_identity.pas || fail 'resource0 відкрито не O_RDONLY'
 
+# 3b) RM firewall. The GPU node must be derived from NV_ESC_CARD_INFO.
+step 'RM firewall (dynamic GPU node, unique GP107)'
+if strip_pascal_comments pascal/03_rm_arch_info.pas \
+   | grep -nE '/dev/nvidia0'; then
+  fail 'RM-зонд містить хардкодований /dev/nvidia0'
+fi
+grep -Fq 'SelectTargetCard(card, matches, valid_cards)' \
+  pascal/03_rm_arch_info.pas || fail 'нема вибору цільової картки через nv_device'
+grep -Fq 'GpuDevicePath(card)' pascal/03_rm_arch_info.pas \
+  || fail 'шлях GPU-пристрою не похідний від minor_number'
+
 # 4) Clean build: compile-time SizeOf asserts live in nv_abi.pas.
 step 'clean build'
 make -C pascal clean >/dev/null
@@ -154,6 +165,8 @@ step 'runtime witness (03_rm_arch_info)'
 timeout 20s "./$RM_BIN" >"$RM_OUT"
 cat "$RM_OUT"
 for marker in \
+  'NV_ESC_CARD_INFO target   : 10DE:1C82 @ 0000:01:00.0 minor=0' \
+  'GPU device node           : /dev/nvidia0' \
   'GPU_ATTACH_IDS            : gpu=0x100 status=0 deviceInstance=0 subDeviceInstance=0' \
   'NV2080_CTRL_MC_GET_ARCH_INFO: arch=0x00000130 impl=0x00000007 rev=0x000000A1 subrev=0x02' \
   'BOOT0: UNPROVEN (RM arch info is a separate channel)' \

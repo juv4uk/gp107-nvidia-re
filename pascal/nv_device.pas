@@ -22,6 +22,14 @@ uses
 const
   PCI_CONFIG_PATH_FMT   = '/sys/bus/pci/devices/%s/config';
   PCI_RESOURCE0_PATH_FMT = '/sys/bus/pci/devices/%s/resource0';
+  GPU_DEVICE_PATH_FMT   = '/dev/nvidia%d';
+
+  { Цільова ідентичність для цього репозиторія. Це PCI vendor/device,
+    НЕ RM device_id в NV0080_ALLOC_PARAMETERS (там значення 0 лишається
+    незмінним до окремого підтвердження його семантики). }
+  PCI_VENDOR_NVIDIA     = Word($10de);
+  PCI_DEVICE_GP107      = Word($1c82);
+  GPU_MINOR_MAX         = 255;
 
 type
   Tpci_identity = record
@@ -32,6 +40,9 @@ type
 
 function ReadMemBlockSize(out value: QWord): Boolean;
 function ReadFirstCard(out card: Tnv_card_info): Boolean;
+function SelectTargetCard(out card: Tnv_card_info;
+                          out matches, valid_cards: Integer): Boolean;
+function GpuDevicePath(const card: Tnv_card_info): string;
 function DeviceBdf(const card: Tnv_card_info): string;
 function DevicePath(const card: Tnv_card_info; const fmt: string): string;
 function ReadPciConfig(const card: Tnv_card_info; out id: Tpci_identity): Boolean;
@@ -116,6 +127,70 @@ begin
   end;
 
   FpClose(ctl_fd);
+end;
+
+function SelectTargetCard(out card: Tnv_card_info;
+                          out matches, valid_cards: Integer): Boolean;
+var
+  ctl_fd:   cint;
+  memblock: QWord;
+  cards:    array[0..NV_MAX_CARDS - 1] of Tnv_card_info;
+  i:        Integer;
+begin
+  Result := False;
+  FillChar(card, SizeOf(card), 0);
+  matches := 0;
+  valid_cards := 0;
+
+  ctl_fd := FpOpen('/dev/nvidiactl', O_RDWR or O_CLOEXEC, 0);
+  if ctl_fd < 0 then
+    Exit;
+
+  if not ReadMemBlockSize(memblock) then
+  begin
+    FpClose(ctl_fd);
+    Exit;
+  end;
+
+  { NV_ESC_SYS_PARAMS is set-once: pass exactly what cuInit passes. }
+  if FpIOCtl(ctl_fd, NV_IOC_SYS_PARAMS, @memblock) < 0 then
+  begin
+    FpClose(ctl_fd);
+    Exit;
+  end;
+
+  FillChar(cards, SizeOf(cards), 0);
+  if FpIOCtl(ctl_fd, NV_IOC_CARD_INFO, @cards[0]) < 0 then
+  begin
+    FpClose(ctl_fd);
+    Exit;
+  end;
+
+  for i := 0 to NV_MAX_CARDS - 1 do
+  begin
+    if cards[i].valid = 0 then
+      Continue;
+    Inc(valid_cards);
+    if (cards[i].pci.vendor_id = PCI_VENDOR_NVIDIA) and
+       (cards[i].pci.device_id = PCI_DEVICE_GP107) then
+    begin
+      Inc(matches);
+      if matches = 1 then
+        card := cards[i];
+    end;
+  end;
+
+  FpClose(ctl_fd);
+  { Ambiguity is never resolved silently: caller must reject matches <> 1. }
+  Result := matches = 1;
+end;
+
+function GpuDevicePath(const card: Tnv_card_info): string;
+begin
+  Result := '';
+  if card.minor_number > GPU_MINOR_MAX then
+    Exit;
+  Result := Format(GPU_DEVICE_PATH_FMT, [card.minor_number]);
 end;
 
 function DeviceBdf(const card: Tnv_card_info): string;
