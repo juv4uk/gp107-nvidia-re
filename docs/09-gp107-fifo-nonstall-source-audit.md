@@ -7,6 +7,9 @@
 Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (release 2026-11-23).
 Посилання нижче — на commit-pinned public kernel source, не на vendor source й не на Ghidra-псевдокод.
 
+
+Для порівняння upstream stable `v7.2.15` (той самий numerically named baseline, що й користувацький kernel string) — окремий immutable tag; це **не** доводить, що `7.2.15+kali-amd64` містить ідентичний source/backport set. Kali package source і його patches залишаються окремою перевіркою.
+
 ## 1. Що вже доведено з source (`statically proven, source`)
 
 | Факт | Файл | Що саме |
@@ -178,7 +181,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 дублюється. Його build/CI перевірено без GPU; dispatch/readback на цій платі
 не виконувався.
 
-## 6. Незмінні посилання на pinned source
+## 5. Незмінні посилання на pinned source
 
 Усі наведені нижче файли взяті з одного immutable stable release commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (`v7.3.6`):
 
@@ -195,7 +198,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 - [CLIENT debug selector](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/client.c)
 - [client-aware logging macro](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/include/nvkm/core/subdev.h)
 
-## 5. Межі
+## 6. Межі
 
 - Не робити MMIO/BAR writes, `nva`, кастомний reset, VBIOS/firmware flash.
 - Не додавати patch 1 (Kepler legacy video) до GP107 без окремого обґрунтування.
