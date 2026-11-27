@@ -41,8 +41,8 @@ begin
   end
   else
   begin
-    state := 'granted';
-    reason := 'read-only-window';
+    state := 'deferred';
+    reason := 'read-safe-offset-unproven';
   end;
 
   if inv.pci.cfg_bytes = CONFIG_BYTES then
