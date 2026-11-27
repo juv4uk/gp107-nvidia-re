@@ -45,14 +45,22 @@ ret
 `resource0`. Це було технічним недоліком: менший файл міг би бути змапований
 як повне вікно. Виправлено:
 
-- `gp107_mmio_read32` тепер приймає `struct gp107_inventory` і вимагає
-  `bar0_size >= 4096` (`MMIO-FAIL step=bar0-size-too-small code=19`) та
-  `offset + 4 <= bar0_size` (`step=offset-out-of-range`);
-- додано два негативні witness: урізаний `resource0` і offset `0x1000`;
-- синтетичний `resource0` збільшено до 4096 байт.
+- Публічна сигнатура тепер `gp107_mmio_read32(sysfs_root, expect_bdf, allow, ...)`:
+  API сама повторно збирає точну PCI identity та перевіряє driver binding; вона
+  не приймає caller-supplied `struct gp107_inventory`.
+- Приватний mapper перевіряє, що BAR0 є memory-space, `bar0_size >= 4096`,
+  відкритий `resource0` має очікуваний розмір через `fstat()`, а mapping є
+  тільки `O_RDONLY` + `PROT_READ`.
+- Offset має бути вирівняний на 4 байти та повністю міститися в 4-КіБ вікні
+  і заявленому BAR0. Невирівняний, позамежний, I/O-space або замалий ресурс
+  завершується fail-closed.
+- Synthetic regression cases перевіряють I/O-space BAR0, short `resource0`,
+  unaligned offset і offset `0x1000`; це не physical MMIO witness.
+- Синтетичний `resource0` — звичайний файл 4096 байтів.
 
-Це **synthetic-fixture**; на реальному GP107 розмір BAR0 зчитано з
-sysfs як `0x01000000`, але самий aperture-read не виконувався.
+Це **synthetic-fixture**; розмір BAR0 `0x01000000` окремо спостерігався
+на RE test host через sysfs. Це не доказ для власної H170-плати й не aperture-read:
+фізичне MMIO лишається `NOT AUTHORIZED / NOT RUN`.
 
 ## 4. Що не змінилося
 
