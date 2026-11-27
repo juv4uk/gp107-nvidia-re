@@ -23,10 +23,16 @@ When it exits with code 0, the run has:
 It reports the physical device API version returned by the driver and
 supports two required sizes: 257 elements (to exercise the final partial
 workgroup) and 1,048,576 elements (a larger dispatch/buffer case). The
-expected Vulkan API version is intentionally **not hard-coded**: the current
-NVK documentation headline and older per-device source snapshots have used
-different scopes, so the physical device's actual `apiVersion` is the runtime
-witness.
+expected Vulkan API version is intentionally **not hard-coded**. The public
+NVK docs headline describes Vulkan 1.4 conformance for supported GPUs, while
+the current `mirror/mesa` source snapshot (main commit
+`e24dc5bd1e7fe6101bdc866fb16a15a8fcae1aae`, file blob
+`b4c255c5e86a2e016b64c794f0c73581486f75be`) still makes
+`nvk_get_vk_version()` return 1.3 for `cls_eng3d < TURING_A`, including
+Pascal/GP107: `hostImageCopy` is Turing+ only. The same source enables
+`VK_EXT_pci_bus_info` on discrete GPUs, which supports the BDF assertion
+used here. We therefore print the physical device's actual `apiVersion`
+and do not override it or substitute the broad docs headline.
 
 ## Build
 
