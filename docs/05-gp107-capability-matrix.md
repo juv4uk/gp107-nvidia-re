@@ -49,10 +49,10 @@ clean-room зондами справді виконано на цій машин
 | 26 | Перенесення `PciConfig`/`Mmio`/`RmControl` у `wsm-os-lisp` | **UNPROVEN, не авторизовано** | ABI-pin v8 і v9 не змінювалися; потрібне owner-рішення |
 | 27 | `valid_cards == 1` перед RM-алокацією | **source guard CI PASS; multi-GPU runtime negative NOT_RUN** | `make test-valid-cards-static` і mutation-negative пройшли в [GitHub Actions run #46078211864](https://github.com/juv4uk/gp107-nvidia-re/actions/runs/46078211864); цей host-independent тест не запускає Pascal RM probe й не є multi-GPU runtime fixture; кореляцію `PCI BDF ↔ RM gpu_id` не доведено |
 | 28 | Userspace C11 capability-identity (`lib/`) з компільованими layout-assertами | **statically proven layout + sysfs-observation на RE host** | `LAYOUT-OK identity=32 binding=68 inventory=140`; `gp107ctl inventory` спостерігав `10de:1c82 @ 0000:01:00.0`, driver `nvidia`; це не H170 certification; див. docs/29 |
-| 29 | Опційний read-only MMIO-сеам | **synthetic-fixture checks PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | 8 fail-closed witnesses і позитивне читання звичайного synthetic `resource0`; `--allow-mmio` не є owner approval |
+| 29 | Fail-closed C/Pascal MMIO API | **physical MMIO NOT AUTHORIZED / NOT RUN** | CLI та direct API завжди повертають NOT_AUTHORIZED; позитивного BAR read немає; див. docs/29, docs/32 |
 | 30 | Декодування публічного PCI config-header і capability-ledger | **statically proven layout + sysfs-observation на RE host** | `revision=0xa1`, `class=0x030000`, `command=0x0407`, BAR0 memory/32-bit/non-prefetch спостерігалися з host sysfs; ledger відділяє software gate від owner approval; див. docs/30 |
-| 31 | Власний x86-64 asm-примітив read-only MMIO | **statically proven + synthetic-fixture PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | `movl`+`lfence` у бінарнику, C/asm-виводи ідентичні на синтетичному `resource0`; див. docs/31 |
-| 32 | Free Pascal як основна research-реалізація capability-identity | **statically proven layout + runtime-proven parity (fixture + host sysfs); physical MMIO NOT RUN** | FPC 3.2.2, `LAYOUT-OK identity=32 binding=68 inventory=140`, Pascal/C байтова еквівалентність на синтетичному sysfs і host inventory; C/asm лишаються еталонами; див. docs/32 |
+| 31 | Історичний x86-64 load experiment | **retired / not built; physical MMIO NOT AUTHORIZED / NOT RUN** | Assembly loader не збирається й не експортується; попередній C/ASM fixture — historical only; див. docs/31 |
+| 32 | Free Pascal 3.2.2 як основна реалізація sysfs identity | **layout/parity gates pending exact-head CI; physical MMIO always denied** | Паскальський inventory/ledger/API; C11 reference parity; direct C/Pascal denial; див. docs/32 |
 
 ## Що реально дає репозиторій
 
