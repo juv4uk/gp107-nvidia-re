@@ -93,14 +93,14 @@ else
 fi
 
 printf '\nPREFLIGHT: READY\n'
-printf 'ONE_BOOT_ARGUMENT: nouveau.debug=TOP=trace\n'
+printf 'ONE_BOOT_ARGUMENT: nouveau.debug=TOP=trace,FIFO=debug\n'
 printf '%s\n' \
   'Use only in a separate rollback-capable native-Linux test boot.' \
   'Do not edit persistent GRUB/initramfs/module configuration with this script.' \
   'After boot, capture the full kernel log and keep the raw file unchanged:'
 cat <<'EOF'
   journalctl -b -k -o short-monotonic --no-pager > nouveau-top-trace.log
-  grep -Ei 'top:|runlist|nvkm|engine.*(GR|CE)' nouveau-top-trace.log
+  grep -Ei 'top:|runlist|nvkm|fifo|engine.*(GR|CE)' nouveau-top-trace.log
 EOF
 printf '%s\n' \
   'Accept decoded TOP records for GR and CE* only when they include engine/type/instance/runlist.' \

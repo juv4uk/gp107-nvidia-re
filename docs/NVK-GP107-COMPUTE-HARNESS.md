@@ -10,11 +10,15 @@
 https://github.com/juv4uk/gp107-nvidia-re/issues/18
 
 Потрібно отримати TOP trace з фізичної GP107, встановити GR/compute runlist
-і вирішити conditional FIFO non-stall event-index risk. Поки цього немає,
-run script повертає exit 78 до enumeration; сам C harness теж має
-compile-time fail-closed gate GP107_FIFO_NONSTALL_REVIEW_CLEARED=0.
-Не створювати gate file вручну й не запускати dispatch до owner-reviewed
-evidence та окремого source change.
+і вирішити conditional FIFO non-stall event-index risk. Read-only preflight
+перед окремим test boot: ./scripts/preflight-gp107-nouveau-top-trace.sh.
+Capture і точний selector описані в docs/GP107-NOUVEAU-TOP-TRACE.md;
+перший rollback-capable boot використовує nouveau.debug=TOP=trace,FIFO=debug.
+
+Поки issue #18 не вирішено, run script повертає exit 78 до enumeration;
+сам C harness теж має compile-time fail-closed gate
+GP107_FIFO_NONSTALL_REVIEW_CLEARED=0. Не створювати gate file вручну й не
+запускати dispatch до owner-reviewed evidence та окремого source change.
 
 ## Що саме перевіряється після зняття gate
 
