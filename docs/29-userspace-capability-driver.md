@@ -39,7 +39,7 @@
 | `lib/gp107_mmio.h/.c` | Єдина gated read-only API з внутрішніми opt-in, identity, binding і BAR-size checks; фізичний доступ не авторизований |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
-| `scripts/test-capability-driver.sh` | названі кроки, 5 негативних witness, firewall коду, best-effort host inventory |
+| `scripts/test-capability-driver.sh` | synthetic identity/binding/API negatives, BAR0-space/size/fstat, explicit/aligned/bounded offsets, C/ASM equivalence та code firewall |
 | `docs/29-userspace-capability-driver.md` | цей звіт |
 
 Публічний контракт:
@@ -91,12 +91,12 @@ make test-valid-cards-static   # старий базовий гейт не по�
    BOOT0-константа, атестація й authoritative pin;
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. capability ledger states та BAR I/O-flag mutation;
-6. driver-link errors fail-closed: лише `ENOENT` дорівнює unbound;
-7. direct C API tests: opt-in і bound-driver gates не можна обійти повз CLI;
-8. short BAR0 та offset поза 4 KiB window fail-closed;
-9. C/ASM equivalence на синтетичному `resource0`; жодного фізичного mapping;
-10. best-effort host sysfs inventory; результат не приписується H170.
+5. capability-ledger states та BAR I/O-flag mutation;
+6. driver-binding negative: PCI-device directory закріплюється file descriptor, а `readlinkat()` перевіряє саме його `driver` entry; лише `ENOENT` для цього entry означає unbound;
+7. direct C API tests: opt-in і bound-driver gates не обходяться CLI;
+8. CLI explicit-offset requirement;
+9. BAR0 I/O-space denial, short/mismatched `resource0`, 4 KiB bounds та 32-bit alignment;
+10. C/ASM equivalence на synthetic `resource0` та best-effort host inventory без H170 claims.
 
 Підсумковий маркер:
 `CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
