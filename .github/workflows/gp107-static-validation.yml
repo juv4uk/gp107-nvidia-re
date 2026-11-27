@@ -6,7 +6,9 @@ on:
       - ".github/workflows/gp107-static-validation.yml"
       - "Makefile"
       - "pascal/**"
+      - "lib/**"
       - "scripts/test-pascal-probe.sh"
+      - "scripts/test-capability-driver.sh"
 
 permissions:
   contents: read
@@ -44,6 +46,12 @@ jobs:
       - name: Compile Pascal probes without executing them
         run: make -C pascal clean all
 
+      - name: Compile C11 capability identity and run fail-closed gate
+        run: |
+          set -euo pipefail
+          make -C lib clean all
+          bash scripts/test-capability-driver.sh
+
       - name: Check patch whitespace
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -59,6 +67,7 @@ jobs:
             echo "- FPC: `$(fpc -iV)`"
             echo "- Static source guard: passed"
             echo "- Pascal compilation: passed; no probe executable was run"
-            echo "- GPU/RM/MMIO/firmware/reboot: NOT_RUN"
+            echo "- C11 capability identity: compiled with -Werror; fail-closed gate passed"
+            echo "- GPU/RM/MMIO/firmware/reboot: NOT_RUN (MMIO seam read-only and opt-in)"
             echo "- Multi-NVIDIA runtime negative: NOT_RUN"
           } >> "$GITHUB_STEP_SUMMARY"

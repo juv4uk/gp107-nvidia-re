@@ -48,6 +48,8 @@ clean-room зондами справді виконано на цій машин
 | 25 | Bare-metal/UEFI пряме читання BOOT0 | **UNPROVEN** | належить окремому seam; тут активний `nvidia.ko` |
 | 26 | Перенесення `PciConfig`/`Mmio`/`RmControl` у `wsm-os-lisp` | **UNPROVEN, не авторизовано** | ABI-pin v8 і v9 не змінювалися; потрібне owner-рішення |
 | 27 | `valid_cards == 1` перед RM-алокацією | **source guard CI PASS; multi-GPU runtime negative NOT_RUN** | `make test-valid-cards-static` і mutation-negative пройшли в [GitHub Actions run #46078211864](https://github.com/juv4uk/gp107-nvidia-re/actions/runs/46078211864); цей host-independent тест не запускає Pascal RM probe й не є multi-GPU runtime fixture; кореляцію `PCI BDF ↔ RM gpu_id` не доведено |
+| 28 | Userspace C11 capability-identity (`lib/`) з компільованими layout-assertами | **statically proven + runtime-proven на hostі** | `LAYOUT-OK identity=20 binding=68 inventory=128`, `gp107ctl inventory` → `10de:1c82 @ 0000:01:00.0`, driver `nvidia`; див. docs/29 |
+| 29 | Опційний read-only MMIO-сеам | **runtime-proven на синтетичному `resource0`; hardware MMIO NOT_RUN** | 5 негативних witness + read-only fixture; `nvidia` bound, фізичний aperture-тест не виконувався |
 
 ## Що реально дає репозиторій
 
