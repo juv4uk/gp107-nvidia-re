@@ -43,6 +43,46 @@ make -C "$ROOT/lib" clean all >/dev/null
   || fail 'compile-time layout assertion output missing'
 echo 'C11-COMPILE-OK werror=yes layout=32/68/140'
 
+step 'authoritative opcode artifact (asm-first target contract)'
+command -v objdump >/dev/null 2>&1 \
+  || fail 'objdump absent; opcode authority cannot be verified'
+objdump -d --disassemble=gp107_mmio_load32_asm "$ASMBIN" >"$WORK/asm-opcode-dis.txt"
+python3 - "$WORK/asm-opcode-dis.txt" <<'PY'
+import hashlib
+import re
+import sys
+
+lines = open(sys.argv[1], 'r', encoding='utf-8', errors='replace').read().splitlines()
+byte_re = re.compile(r'^\s*[0-9a-fA-F]+:\s+((?:[0-9a-fA-F]{2}\s+)+)')
+blob = bytearray()
+mnemonics = []
+for line in lines:
+    match = byte_re.match(line)
+    if match is None:
+        continue
+    blob.extend(bytes.fromhex(''.join(match.group(1).split())))
+    parts = line.split('\t')
+    if len(parts) >= 3:
+        mnemonics.append(parts[-1].strip().split()[0])
+
+expected = bytes.fromhex('8b070faee8c3')
+expected_sha = 'c9f23d75c45286adc4660cab6971e4d9ecf1f864ea261a5b6d3a1c5baf7a61fc'
+if bytes(blob) != expected:
+    raise SystemExit('ASM-OPCODE-FAIL bytes=' + blob.hex())
+if hashlib.sha256(bytes(blob)).hexdigest() != expected_sha:
+    raise SystemExit('ASM-OPCODE-FAIL sha256 mismatch')
+banned = {'call', 'push', 'pop', 'leave', 'syscall', 'sysenter',
+          'int', 'in', 'ins', 'out', 'outs', 'xchg', 'cmpxchg', 'lock'}
+for mnemonic in mnemonics:
+    if mnemonic in banned:
+        raise SystemExit('ASM-OPCODE-FAIL banned=' + mnemonic)
+if any('%rsp' in ln for ln in lines):
+    raise SystemExit('ASM-OPCODE-FAIL stack-pointer-touched')
+print('ASM-OPCODE-OK function=gp107_mmio_load32_asm bytes=6 hex=' + expected.hex() +
+      ' sha256=' + expected_sha +
+      ' mnemonic=' + ','.join(mnemonics) + ' hardware-mmio=NOT-RUN')
+PY
+
 step 'compile Free Pascal capability driver (pinned 3.2.2)'
 make -C "$ROOT/pascal" gp107ctl-pascal >/dev/null
 [ -x "$PASBIN" ] || fail 'no Pascal gp107ctl binary'

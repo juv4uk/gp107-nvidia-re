@@ -68,7 +68,9 @@ ret
 - жодного MMIO-запису, `nva`, RM-запиту, firmware, GPFIFO чи reboot;
 - SENS, CML, `wsm-os-lisp`, ADR, target contract і ABI-pin v8/v9 не змінено;
 - базовий `scripts/test-pascal-probe.sh` і `make test-valid-cards-static` не послаблено;
-- gp107 #33 лишається Draft без повного exact-head `make test`.
+- gp107 #33 лишається Draft без повного exact-head `make test`;
+- `docs/33` підносить цей `.S`-примітив до авторитетного opcode-контракту,
+  але не до релізу: Pascal і C11 лишаються обгорткою та oracle.
 
 Фінальний маркер гейту тепер:
 `CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 pascal=equiv hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
