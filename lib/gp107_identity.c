@@ -135,33 +135,51 @@ static int parse_bdf(const char *name, struct gp107_pci_identity *id,
     return 0;
 }
 
-static void read_driver_link(const char *devdir, struct gp107_driver_binding *out)
+static int read_driver_link(const char *devdir,
+                            struct gp107_driver_binding *out,
+                            char *err, size_t errsz)
 {
     char path[GP107_PATH_CAP];
     char target[GP107_PATH_CAP];
     ssize_t n;
     const char *base;
+    size_t len;
 
     memset(out, 0, sizeof(*out));
     if (join_path(path, sizeof(path), devdir, "driver") != 0) {
-        return;
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-path code=%d",
+                               GP107_ERR_PARSE);
     }
-    n = readlink(path, target, sizeof(target) - 1);
-    if (n <= 0) {
-        return;
+
+    errno = 0;
+    n = readlink(path, target, sizeof(target));
+    if (n < 0) {
+        if (errno == ENOENT) {
+            return GP107_OK;
+        }
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-binding-read code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, errno);
     }
+    if (n == 0 || (size_t)n >= sizeof(target)) {
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-binding-truncated code=%d",
+                               GP107_ERR_DRIVER_BINDING);
+    }
+
     target[n] = '\0';
     base = strrchr(target, '/');
     base = (base != NULL) ? base + 1 : target;
-    {
-        size_t len = strlen(base);
-        if (len >= sizeof(out->name)) {
-            len = sizeof(out->name) - 1;
-        }
-        memcpy(out->name, base, len);
-        out->name[len] = '\0';
+    len = strlen(base);
+    if (len == 0 || len >= sizeof(out->name)) {
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-name-invalid code=%d",
+                               GP107_ERR_DRIVER_BINDING);
     }
+    memcpy(out->name, base, len + 1);
     out->bound = 1;
+    return GP107_OK;
 }
 
 static void read_bar0_size(const char *devdir, struct gp107_pci_identity *id)
@@ -173,8 +191,9 @@ static void read_bar0_size(const char *devdir, struct gp107_pci_identity *id)
     if (join_path(path, sizeof(path), devdir, "resource0") != 0) {
         return;
     }
-    if (stat(path, &st) == 0 && st.st_size > 0) {
-        id->bar0_size = (uint32_t)(((uint64_t)st.st_size) & 0xffffffffu);
+    if (stat(path, &st) == 0 && st.st_size > 0 &&
+        (uint64_t)st.st_size <= UINT32_MAX) {
+        id->bar0_size = (uint32_t)st.st_size;
     }
 }
 
@@ -295,7 +314,10 @@ int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
                                  GP107_ERR_PARSE, de->d_name);
             goto done;
         }
-        read_driver_link(path, &out->driver);
+        rc = read_driver_link(path, &out->driver, err, errsz);
+        if (rc != GP107_OK) {
+            goto done;
+        }
         read_bar0_size(path, &candidate);
         out->pci = candidate;
         out->valid_count++;
