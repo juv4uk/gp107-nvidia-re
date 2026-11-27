@@ -1,7 +1,8 @@
 # 30 — Другий зріз C-драйвера: публічний PCI-заголовок і capability-ledger
 
-Це розширення `docs/29` у межах того самого owner-дозволу: userspace
-capability-identity, read-only sysfs, опційний read-only aperture seam. Тут
+Це розширення `docs/29`: userspace capability-identity, read-only sysfs,
+програмний opt-in seam для read-only aperture. Фізичний MMIO, unbind і зміна
+boot не авторизовані. Тут
 **нема** RM-запитів, write mapping, GPFIFO, firmware, dispatch, reboot чи
 змін ABI/pin. SENS, CML, `wsm-os-lisp`, ADR і target contract не змінено.
 
@@ -25,8 +26,11 @@ capability-identity, read-only sysfs, опційний read-only aperture seam. 
 | не bound, але немає `--allow-mmio` | `deferred` | `opt-in-required` |
 | не bound і є `--allow-mmio` | `granted` | `read-only-window` |
 
-`granted` означає **дозвіл на одне read-only 32-бітне читання**, а не право на
-запис, не RM-право й не GPU-завдання.
+`granted` означає лише, що **внутрішні програмні передумови** для вузького
+read-only API пройшли (unbound за sysfs + явний прапорець). Це не owner
+approval, не дозвіл на фізичний доступ, не право на запис, не RM-право й не
+GPU-завдання. Ledger окремо друкує `owner-approval=not-inferred` та
+`physical-mmio=not-authorized`; ці поля не можна підвищувати за `--allow-mmio`.
 
 ## 2. Статус фактів
 
@@ -36,8 +40,8 @@ capability-identity, read-only sysfs, опційний read-only aperture seam. 
 | 2 | На hostі: `revision=0xa1`, `class=0x030000`, `header=0x80`, `command=0x0407`, BAR0 `0xee000000`, memory / 32-bit / non-prefetch | **runtime-proven** | `gp107ctl inventory` з реального sysfs `config` |
 | 3 | Інтерпретація `0x030000` як «VGA display controller» і `0x80` як «PCI-to-PCI bridge header» — половина класу | **interpretation / UNPROVEN** | Код друкує сирі байти; назва типу заголовка не використовується для жодної дії |
 | 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, після мутації повертається `memory` | **runtime-proven (fixture)** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
-| 5 | Ledger з `nvidia` bound: `mmio-read=denied`, `rm-identity=deferred` | **runtime-proven (fixture + host)** | `LEDGER-BOUND-OK`, реальний `--allow-mmio` не запускався |
-| 6 | Ledger unbound без opt-in: `deferred`; з opt-in: `granted`, але `write/dispatch/rm = none` | **runtime-proven (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK` |
+| 5 | Ledger з `nvidia` bound: software MMIO gate `denied`, owner approval `not-inferred` | **software runtime (fixture + host)** | `LEDGER-BOUND-OK`; реальний `--allow-mmio` не запускався |
+| 6 | Ledger unbound без opt-in: software gate `deferred`; з opt-in: gate `granted`, але owner approval `not-inferred` і physical MMIO `not-authorized` | **software runtime (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK`; жодного реального MMIO |
 | 7 | `PCI BDF ↔ RM gpu_id`, RM class/runlist/notifier/fence, BOOT0 | **UNPROVEN** | У коді немає RM-шляху; BOOT0 не читався |
 | 8 | `0x137000A1` | **string-only** | константа відсутня у коді й у виводі |
 | 9 |Ledger є capability word у Lisp-машині / частина ABI | **UNPROVEN, не стверджується** | owner-рішення про ABI не ухвалено; S-вираз лише проєкція стану |
@@ -54,7 +58,7 @@ make test-capability-driver
 Окрім попередніх кроків, гейт перевіряє три стани ledger, декодування
 прапорців BAR0 на мутованому fixture і збереження compile-time розкладок.
 Фінальний маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` і `make test-valid-cards-static` не
 змінено. Фізичний MMIO на цій платі не виконувався: `nvidia` лишається bound.
@@ -63,10 +67,10 @@ make test-capability-driver
 
 Питання без відповіді: який саме BAR0-offset є безпечним для читання на цій
 платі після unbind? Код свідомо не містить жодного припущення про адресу
-регістру. Найменший крок — після окремого owner-рішення про unbind/boot
-запустити вже наявний `gp107ctl mmio-read --offset=0x... --allow-mmio`,
-зберегти stdout/stderr як artifact з SHA-256 і позначити результат як
-`runtime-proven` або fail-closed. Без цього BOOT0 лишається `UNPROVEN`.
+регістру. Наступний безпечний крок — source-only аудит та уточнення BAR/resource semantics.
+Фізичний тест не запускається без окремого owner approval; `--allow-mmio` є
+лише програмним прапорцем, а не достатнім погодженням. BOOT0 лишається
+`UNPROVEN`.
 
 Межі: жодного transfer-коду, release/tag/publish, `Tested-by`, installer-змін,
 RM-запитів чи запуску PR #21.
