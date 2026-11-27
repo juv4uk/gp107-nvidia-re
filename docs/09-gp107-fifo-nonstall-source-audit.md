@@ -189,6 +189,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 - [GP100 FIFO function table](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c)
 - [FIFO non-stall event initialization](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c)
 - [user-channel event callback](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
+- [upstream v7.2.15 `uchan.c` comparison (same blob)](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
 - [event reference and notification paths](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/event.c)
 - [TOP table parsing](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c)
 - [runlist creation](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c)
