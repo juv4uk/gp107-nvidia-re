@@ -31,10 +31,11 @@
 |---|---|
 | `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
 | `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
-| `lib/gp107_mmio.h/.c` | Опційний read-only 32-бітний aperture seam з двома воротами (opt-in + driver-unbound) |
+| `lib/gp107_mmio.h/.c` | Опційний read-only 32-бітний aperture seam: API-level opt-in, driver-unbound, BAR0 memory/size, alignment та range gates |
+| `lib/gp107_mmio_asm.S` | Необов'язковий x86-64 SysV read-only `movl` + `lfence` примітив; policy/gates лишаються в C |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
-| `scripts/test-capability-driver.sh` | названі кроки, 5 негативних witness, firewall коду, best-effort host inventory |
+| `scripts/test-capability-driver.sh` | 11 негативних кейсів, direct API gate tests, C/asm fixture equivalence, code firewall |
 | `docs/29-userspace-capability-driver.md` | цей звіт |
 
 Публічний контракт:
@@ -94,10 +95,11 @@ make test-valid-cards-static   # старий базовий гейт не по�
 7. synthetic read-only fixture, який не є фізичним GPU свідком;
 8. capability ledger, що залишає MMIO `deferred` навіть після software opt-in,
    доки немає owner consent і доведеного safe register;
-9. best-effort runner sysfs inventory із `scope-unclassified`, не H170 PASS.
+9. best-effort runner sysfs inventory із `scope-unclassified`, не H170 PASS;
+10. x86-64 C/assembly output equivalence на синтетичному resource0 та наявність `lfence` у бінарнику.
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=11 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=11 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.
