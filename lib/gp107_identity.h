@@ -35,7 +35,9 @@ enum gp107_status {
     GP107_ERR_DRIVER_BOUND = 16,
     GP107_ERR_OFFSET       = 17,
     GP107_ERR_MAP          = 18,
-    GP107_ERR_USAGE        = 64
+    GP107_ERR_DRIVER_BINDING = 19,
+    GP107_ERR_BAR_SIZE       = 20,
+    GP107_ERR_USAGE          = 64
 };
 
 enum gp107_evidence {
