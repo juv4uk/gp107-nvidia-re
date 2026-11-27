@@ -298,6 +298,42 @@ resume з D3; зібрати повний `dmesg` Nouveau та зафіксув�
 GR/SEC2 проходить без зависань. Кожен сценарій повторити кілька разів,
 зберігаючи точну версію kernel, firmware і VBIOS hash.
 
+### Окрема DRM atomic-modesetting регресія для GP107 (вже виправлена в mainline)
+
+Не плутати наведений вище GR/PRI firmware quirk із іншою, програмною
+регресією DRM/KMS, яка теж була зафіксована на GP107:
+
+- Commit [`2652aca460dcfdd0d169bbfa358aa15804dc736b`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=2652aca460dcfdd0d169bbfa358aa15804dc736b)
+  увімкнув atomic modesetting за замовчуванням для NV50+ Nouveau.
+- 2 листопада 2026 власник GP107 у гібридному ноутбуці Intel+NVIDIA повідомив
+  про NULL pointer dereference під час ініціалізації: `drm_atomic_commit`
+  викликався з fbdev client setup, після повідомлень `No compatible format
+  found` / `Cannot find any crtc or sizes`. У тому звіті тимчасовим
+  обходом було завантаження з `nouveau.atomic=0`.
+- Автор звіту 25 листопада підтвердив, що проблему виправлено в mainline
+  комітом [`ed7fb901fce31588bd12ab95adc36ebcb51bc8ea`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=ed7fb901fce31588bd12ab95adc36ebcb51bc8ea).
+  Виправлення надає окрему `drm_mode_config_funcs` структуру з
+  `atomic_commit = drm_atomic_helper_commit` та
+  `atomic_check = drm_atomic_helper_check`, і вибирає її, коли
+  `drm_drv_uses_atomic_modeset(dev)` повертає true.
+- Fix має `Cc: stable@vger.kernel.org`; це запит на stable backport, а не
+  доказ, що кожен дистрибутив уже містить його. У pinned Linux upstream
+  snapshot [`9437ee8b6cf607e883b36e44bd755968daaebd48`](https://github.com/torvalds/linux/commit/9437ee8b6cf607e883b36e44bd755968daaebd48)
+  виправлення вже є.
+
+Це **DRM atomic/KMS software regression**, а не підтверджений дефект самого
+GP107 або той самий GR/PRI reset issue вище. У фізичному тест-плані слід
+зафіксувати kernel commit/version і перевірити normal atomic modesetting
+на ядрі з `ed7fb901fce31588bd12ab95adc36ebcb51bc8ea` або його stable
+backport. `nouveau.atomic=0` залишити лише як діагностичний workaround
+для відтворення старого регресійного стану, а не як постійне acceptance
+налаштування.
+
+Джерела:
+- [GP107 regression report and follow-up (2026-11-02 — 2026-11-25)](https://kernelthread.org/t/OS7PR01MB1391484D564CF93DFBB4C1DCE966A2@OS7PR01MB13914.jpnprd01.prod.outlook.kr)
+- [Introduced: atomic modesetting by default for NV50+](https://github.com/torvalds/linux/commit/2652aca460dcfdd0d169bbfa358aa15804dc736b)
+- [Fix: add atomic DRM mode-config callbacks](https://github.com/torvalds/linux/commit/ed7fb901fce31588bd12ab95adc36ebcb51bc8ea)
+
 ### Feature matrix: що ще не готове або залежить від покоління
 
 Офіційна [Nouveau Feature Matrix](https://nouveau.freedesktop.org/FeatureMatrix.html)
