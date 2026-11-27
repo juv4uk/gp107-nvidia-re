@@ -34,6 +34,33 @@ int gp107_mmio_check_driver(const struct gp107_inventory *inv,
     return GP107_OK;
 }
 
+static int inventory_same_target(const struct gp107_inventory *before,
+                                 const struct gp107_inventory *after,
+                                 char *err, size_t errsz)
+{
+    if (before == NULL || after == NULL ||
+        strcmp(before->bdf, after->bdf) != 0 ||
+        before->pci.vendor != after->pci.vendor ||
+        before->pci.device != after->pci.device ||
+        before->pci.domain != after->pci.domain ||
+        before->pci.bus != after->pci.bus ||
+        before->pci.slot != after->pci.slot ||
+        before->pci.function != after->pci.function ||
+        before->pci.bar0_raw != after->pci.bar0_raw ||
+        before->pci.bar0_base != after->pci.bar0_base ||
+        before->pci.bar0_size != after->pci.bar0_size ||
+        before->pci.bar0_space != after->pci.bar0_space ||
+        before->pci.bar0_width != after->pci.bar0_width ||
+        before->pci.bar0_prefetch != after->pci.bar0_prefetch ||
+        before->pci.cfg_bytes != after->pci.cfg_bytes ||
+        before->pci.command != after->pci.command) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=inventory-changed code=%d",
+                               GP107_ERR_CONFIG);
+    }
+    return GP107_OK;
+}
+
 int gp107_mmio_read32(const char *sysfs_root,
                       const struct gp107_inventory *provided, int allow_mmio,
                       uint32_t offset, uint32_t *value,
@@ -41,6 +68,7 @@ int gp107_mmio_read32(const char *sysfs_root,
 {
     char path[512];
     struct gp107_inventory inv;
+    struct gp107_inventory current;
     struct stat st;
     int fd;
     void *map;
@@ -51,7 +79,9 @@ int gp107_mmio_read32(const char *sysfs_root,
     int saved;
 
     if (sysfs_root == NULL || provided == NULL || value == NULL ||
-        err == NULL || errsz == 0 || provided->bdf[0] == '\\0') {
+        err == NULL || errsz == 0 ||
+        strnlen(provided->bdf, sizeof(provided->bdf)) == sizeof(provided->bdf) ||
+        provided->bdf[0] == '\\0') {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bad-argument code=%d",
                                GP107_ERR_USAGE);
@@ -118,6 +148,7 @@ int gp107_mmio_read32(const char *sysfs_root,
                                GP107_ERR_READ, saved);
     }
     if (st.st_size < (off_t)GP107_MMIO_WINDOW ||
+        st.st_size != (off_t)inv.pci.bar0_size ||
         (uint64_t)offset + 4u > (uint64_t)st.st_size) {
         (void)close(fd);
         return gp107_set_error(err, errsz,
@@ -126,9 +157,12 @@ int gp107_mmio_read32(const char *sysfs_root,
     }
 
     /* sysfs has no exclusive bind lock; recheck immediately before mapping. */
-    rc = gp107_inventory_scan(sysfs_root, inv.bdf, &inv, err, errsz);
+    rc = gp107_inventory_scan(sysfs_root, inv.bdf, &current, err, errsz);
     if (rc == GP107_OK) {
-        rc = gp107_mmio_check_driver(&inv, err, errsz);
+        rc = inventory_same_target(&inv, &current, err, errsz);
+    }
+    if (rc == GP107_OK) {
+        rc = gp107_mmio_check_driver(&current, err, errsz);
     }
     if (rc != GP107_OK) {
         (void)close(fd);
@@ -146,9 +180,12 @@ int gp107_mmio_read32(const char *sysfs_root,
     (void)close(fd);
 
     /* Last best-effort binding check before the actual read. */
-    rc = gp107_inventory_scan(sysfs_root, inv.bdf, &inv, err, errsz);
+    rc = gp107_inventory_scan(sysfs_root, inv.bdf, &current, err, errsz);
     if (rc == GP107_OK) {
-        rc = gp107_mmio_check_driver(&inv, err, errsz);
+        rc = inventory_same_target(&inv, &current, err, errsz);
+    }
+    if (rc == GP107_OK) {
+        rc = gp107_mmio_check_driver(&current, err, errsz);
     }
     if (rc != GP107_OK) {
         (void)munmap(map, GP107_MMIO_WINDOW);
