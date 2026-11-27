@@ -40,6 +40,27 @@ PCI ID перевіряється за [envytools PCI ID database](https://githu
 - [Mesa NVK physical-device API-version and conformance logic (pinned source snapshot)](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c)
 - [Mesa NVK physical-device queue-family flags (same pinned source snapshot)](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c#1664)
 
+### Khronos Conformance Registry: GTX 1050 Ti є у записі Vulkan 1.3
+
+У Vulkan Conformant Products Registry є окремий запис **#908** від
+Software Freedom Conservancy, датований 2025-04-18. Він явно перелічує
+GeForce GTX 1050 і GTX 1050 Ti серед продуктів із рівнем **Vulkan_1_3**;
+для нього вказано CTS Version **1.4.1.2**, Linux 6.14 (Fedora 41) та
+Intel i9-10980XE. Це незалежне формальне підтвердження, що Pascal / GTX
+1050 Ti входили до Vulkan 1.3 conformant submission у тій тестовій
+конфігурації.
+
+Не плутати рівень API **Vulkan_1_3** із версією тестового набору
+**CTS 1.4.1.2**: це різні значення. Запис #908 не підтверджує runtime на
+нашій конкретній платі, її firmware, kernel або поточній збірці Mesa.
+У тому самому реєстрі є й окремі NVIDIA vendor submissions, зокрема
+Pascal із Vulkan 1.4; це не слід приписувати NVK. Для GP107/NVK наше
+очікування за per-device Mesa source лишається **apiVersion 1.3**.
+
+Джерела:
+- [Khronos Vulkan Conformant Products — entry #908](https://www.khronos.org/conformance/adopters/conformant-products/vulkan)
+- [Mesa NVK per-device API version selection (pinned source)](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c)
+
 ## 2.1. OpenCL через Mesa Rusticl: окремий експериментальний шлях
 
 Окрім Vulkan/NVK, для compute існує інший відкритий шлях: **Nouveau Gallium → Mesa Rusticl → OpenCL**. Rusticl є реалізацією OpenCL поверх Gallium, а не CUDA runtime або сумісним шаром CUDA. Документація `RUSTICL_ENABLE` перелічує `nouveau` серед драйверів із «decent support», але попереджає про можливі conformance issues/bugs. Пристрої не рекламуються автоматично: потрібен явний opt-in через `RUSTICL_ENABLE`.
@@ -63,7 +84,69 @@ RUSTICL_ENABLE=nouveau clinfo
 - [Mesa environment variables — `RUSTICL_ENABLE` and supported drivers](https://docs.mesa3d.org/envvars.html#rusticl-environment-variables)
 - [Pinned Mesa `meson.options`: Nouveau Gallium buildable, but absent from Rusticl default-enable allowlist](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/660c14e2e7d85f1bb5d4b4b86bec77befe802dab/meson.options)
 
-## 2.2. Актуальна Mesa baseline та межа Vulkan Video
+## 2.2. NOCL: OpenCL/Rusticl поверх proprietary CUDA — не Nouveau
+
+NOCL (раніше CLUDA) — інший compute-напрям Mesa: **compute-only Gallium
+driver → Rusticl/OpenCL → NVIDIA CUDA Driver API (`libcuda.so`)**. Це не
+Nouveau kernel driver і не відкритий firmware/KMD шлях. Runtime викликає
+CUDA Driver API; `libcuda.so` завантажується через `dlopen`, CUDA SDK
+потрібний під час build, а не як CUDA Runtime dependency. Backend
+перекладає Mesa NIR у PTX, після чого PTX JIT компілює його NVIDIA driver.
+
+Первинні матеріали Karol Herbst на XDC 2026 (2026-09-28) повідомляють:
+OpenCL 3.1, понад 99% проходження тодішнього CTS-піднабору, CUDA 6.5+
+як заявлену нижню межу «теоретично для всіх CUDA-capable GPU». Але ті
+саме слайди кажуть, що MR ще не merged, image support відсутній, є
+global/implicit stream та synchronization complications. Це стан
+тестового стенда автора, не Khronos conformance certificate і не
+результат на GTX 1050 Ti.
+
+**Критична межа для нашої SM61:** доступний огляд MR !37831 від
+2026-09-08 повідомляє про hardcoded `SM86` target у тодішньому diff;
+NIR→PTX path не враховував SM-рівень. Це Ampere target, а не Pascal
+GP107 / SM61. Огляд MR також фіксує image support як TODO. Отже, на
+підставі доступного diff evidence NOCL треба позначати
+**SM61 UNPROVEN / not ready for GP107**, навіть попри загальну фразу
+«all CUDA capable GPUs (in theory)». Перш ніж витрачати час на build,
+локальний аудит має перевірити поточний MR head, чи зник `SM86`
+hardcode, як вибирається PTX `.target`, які CUDA entrypoints/version
+потрібні та чи R580 PTX JIT приймає ціль для SM61.
+
+Стан MR: XDC-слайди від 2026-09-28 казали «not merged yet», Phoronix
+29.09.2026 також повідомляв MR як pending. У нашій перевірці 2026-11-27
+GitLab MR сторінка/API віддала anti-bot verification, тому **поточний
+open/merged state незалежно не підтверджено**. Це останній публічно
+доступний статус, а не твердження про live GitLab state.
+
+Тримати три compute шляхи окремо:
+
+| Шлях | Kernel/compute backend | Що це означає для 1050 Ti |
+|---|---|---|
+| Nouveau Gallium → Rusticl | Відкритий Nouveau KMD + Mesa Gallium | Основний open-driver track; GP107 runtime UNPROVEN |
+| NOCL → Rusticl → `libcuda.so` | Proprietary NVIDIA KMD/CUDA Driver API | Перспективний OpenCL frontend, але SM61 наразі UNPROVEN через SM86 target у доступному MR snapshot |
+| NVIDIA OpenCL ICD | Пропрієтарний vendor OpenCL | Контрольний baseline під R580, не відкритий драйвер |
+
+**Рекомендація локальному агенту:** поки не збирати NOCL для GP107 і не
+вгадувати Meson driver token або `RUSTICL_ENABLE` значення. Спочатку
+прочитати актуальний [Mesa MR !37831](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/37831)
+і його останній diff; перевірити, чи підтримує він runtime capability
+detection для `sm_61`, PTX target відповідного покоління, image support,
+точні build options і залежності. Якщо target усе ще зафіксований як
+SM86 — відкласти фізичний тест. Якщо SM61 шлях реально з'явився, робити
+окремий Mesa/Rusticl build prefix під R580, не змінюючи системний
+NVIDIA driver або системну Mesa; acceptance — device enumeration,
+vector-add із незалежним CPU checksum, потім OpenCL CTS subset. Результат
+NOCL ніколи не зараховувати як Nouveau kernel-driver PASS.
+
+Джерела:
+- [XDC 2026 primary slides — NOCL design/status](https://indico.freedesktop.org/event/12/contributions/542/attachments/350/507/nocl.html)
+- [XDC 2026 session description](https://indico.freedesktop.org/event/12/contributions/542/)
+- [Mesa MR !37831](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/37831)
+- [Khronos — NOCL progress, 2026-10-07](https://www.khronos.org/news/permalink/nocl-making-progress-as-mesa-gallium-opencl-atop-nvidia-cuda)
+- [Phoronix — NOCL status, 2026-09-29](https://www.phoronix.com/news/NOCL-OpenCL-CUDA)
+- [MR !37831 SM86/image-support analysis, 2026-09-08](https://itn.lv/programmatura/mesa-draiveris-nocl-dod-opencl-uz-nvidia-cuda-luxmark-57-702-pret-64-009/)
+
+## 2.3. Актуальна Mesa baseline та межа Vulkan Video
 
 Для відтворюваних тестів фіксувати не лише «Mesa latest», а конкретний
 release і його checksum. Станом на 2026-11-27:
@@ -1049,14 +1132,25 @@ glmark2
 а не GP107 acceleration. За headless/Wayland/remote session можливий
 інший результат — фіксувати session type.
 
-**Гібридна графіка Intel HD 530 + GP107.** Не копіювати BDF із
-прикладів у локальний runbook: єдиний авторитетний dynamic PCI selector
-для OpenGL/Vulkan міститься у [розділі 16.2](#162-intel-hd-530--gp107-примусовий-вибір-dgpu-в-mesa).
-Він отримує BDF через `lspci -Dnn -d 10de:1c82` і формує Mesa
-`DRI_PRIME=pci-<BDF>`; для Vulkan використовується суфікс `!`.
-У кожному виводі перевірити `deviceName`, `driverName` і PCI identity:
-Intel або llvmpipe не є GP107 runtime witness.
+**Гібридна графіка Intel HD 530 + GP107.** На цій машині desktop може
+працювати через Intel GPU, тому звичайний `glxinfo` або перший Vulkan
+device не доводить, що тестується GTX 1050 Ti. Після окремого Nouveau
+boot отримати BDF динамічно; не копіювати у звіт чи скрипт попередній
+BDF із прикладу:
+```sh
+BDF=$(lspci -Dnn -d 10de:1c82 | awk 'NR == 1 { print $1 }')
+[ -n "$BDF" ] || { echo "GP107 10de:1c82 not found" >&2; exit 1; }
+DRI_BDF=$(printf '%s' "$BDF" | tr ':.' '__')
 
+DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$DRI_BDF" glxinfo -B
+DRI_PRIME="pci-$DRI_BDF" glmark2
+DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$DRI_BDF!" vulkaninfo --summary
+DRI_PRIME="pci-$DRI_BDF!" vkcube
+```
+Для Vulkan суфікс `!` обмежує видимі застосунку пристрої вибраним GPU.
+У кожному виводі перевірити `deviceName`, `driverName`, `driverInfo`
+та PCI identity; якщо показано Intel або llvmpipe, це не GP107 runtime
+witness. Джерело: [Mesa `DRI_PRIME` documentation](https://docs.mesa3d.org/envvars.html).
 **Vulkan:**
 ```sh
 vulkaninfo --summary
@@ -1064,8 +1158,21 @@ vkcube
 ```
 Зафіксувати `deviceName`, `driverName`, `driverInfo`,
 `apiVersion`, device extensions і exit status. Для GP107 за
-перевіреним per-device Mesa source очікується Vulkan 1.3, але значення
-з `vulkaninfo` є остаточним runtime witness.
+перевіреним per-device Mesa source очікується Vulkan 1.3; у тому самому
+pinned NVK source queue family має graphics + compute + transfer flags.
+Але це лише source evidence: потрібні runtime queue-family properties
+та окремий реальний compute dispatch з перевіркою результату на CPU.
+`vkcube` перевіряє graphics/presentation, **не** доводить compute.
+
+Після звичайного Vulkan smoke test зробити окремий діагностичний прогін:
+```sh
+MESA_VK_ABORT_ON_DEVICE_LOSS=1 DRI_PRIME="pci-$DRI_BDF!" vkcube
+```
+Цей Mesa прапорець примушує драйвер викликати `abort()` відразу після
+виявлення device loss. Запускати окремо від benchmark і зберігати exit
+status/core (якщо політика хоста дозволяє) та повний kernel journal.
+Не вмикати `NVK_I_WANT_A_BROKEN_VULKAN_DRIVER`: це override для GPU з
+неперевіреною/зламаною підтримкою, а GP107 має офіційний NVK Pascal path.
 
 Для окремого детального проходу NVK debug flags запускати по одному:
 ```sh
@@ -1155,7 +1262,7 @@ usernames, повну конфігурацію хоста або firmware binari
 - [Mesa environment variables / RUSTICL_ENABLE](https://docs.mesa3d.org/envvars.html)
 - [llama.cpp Vulkan build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
 - [Linux Nouveau GP107 compute class](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
-- [Mesa NVK Vulkan API version selection](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+- [Mesa NVK Vulkan API version and queue-family selection](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c)
 
 
 ## 19. Compute paths для GP107: що відкрите, а що залежить від R580
