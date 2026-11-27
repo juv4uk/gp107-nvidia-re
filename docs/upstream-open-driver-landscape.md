@@ -93,6 +93,8 @@ NVIDIA вказує сумісність відкритих kernel modules ли�
 
 Джерела: [NVIDIA open kernel modules README](https://github.com/NVIDIA/open-gpu-kernel-modules/blob/main/README.md), [NVIDIA kernel modules guide](https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/kernel-modules.html), [open-module limitations](https://download.nvidia.com/XFree86/Linux-x86_64/580.95.05/README/kernel_open.html).
 
+У дереві Linux також розвивається проєкт Nova (nova-core / nova-drm), який задуманий як наступник Nouveau для GPU, що мають GSP. Це не альтернатива для Pascal: GP107 належить до покоління до GSP, тому робоча upstream-лінія для GTX 1050 Ti залишається Nouveau/NVKM.
+
 ## 5. Firmware: доступна, але не відкрита
 
 Пакети linux-firmware містять окремі GP107 blobs. Серед опублікованих шляхів:
@@ -212,6 +214,7 @@ vulkaninfo --summary
 10. [NVIDIA open kernel module README](https://github.com/NVIDIA/open-gpu-kernel-modules/blob/main/README.md) — Turing+ restriction.
 11. [NVIDIA WSL guide](https://docs.nvidia.com/cuda/wsl-user-guide/) — Windows host driver only; no Linux display driver inside WSL.
 12. [GP107 firmware package inventory](https://archlinux.org/packages/core/any/linux-firmware-nvidia/files/) — набір firmware paths у Linux distribution.
+13. [Linux Nova driver documentation](https://github.com/torvalds/linux/blob/master/Documentation/gpu/nova/index.rst) — Nova призначений для GPU на базі GSP.
 
 ---
 *Цей документ фіксує стан джерел на 2026-11-27. Перед кожною реалізацією перевіряти актуальні upstream revisions; це не постійно оновлюваний API-контракт.*
