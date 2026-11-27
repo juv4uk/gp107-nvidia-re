@@ -160,7 +160,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", err);
         return rc;
     }
-    rc = gp107_mmio_read32(root, inv.bdf, offset, &value, err, sizeof(err));
+    rc = gp107_mmio_read32(root, &inv, offset, &value, err, sizeof(err));
     if (rc != GP107_OK) {
         fprintf(stderr, "%s\n", err);
         return rc;

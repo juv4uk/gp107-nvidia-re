@@ -38,7 +38,22 @@ ret
 | 6 | BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, причина розриву NVK↔NVIDIA | **UNPROVEN / string-only** | асемблер не додає жодного нового твердження |
 | 7 | Асемблерний шлях дає право запису чи dispatch | **UNPROVEN, не стверджується** | у коді немає write, RM, FIFO чи doorbell |
 
-## 3. Що не змінилося
+## 3. Виправлення межі resource0
+
+У першій версії сеам перевіряв тільки межу сторінки (`0x1000`), але не розмір
+`resource0`. Це було технічним недоліком: менший файл міг би бути змапований
+як повне вікно. Виправлено:
+
+- `gp107_mmio_read32` тепер приймає `struct gp107_inventory` і вимагає
+  `bar0_size >= 4096` (`MMIO-FAIL step=bar0-size-too-small code=19`) та
+  `offset + 4 <= bar0_size` (`step=offset-out-of-range`);
+- додано два негативні witness: урізаний `resource0` і offset `0x1000`;
+- синтетичний `resource0` збільшено до 4096 байт.
+
+Це **runtime-proven на fixture**; на реальному GP107 розмір BAR0 зчитано з
+sysfs як `0x01000000`, але самий aperture-read не виконувався.
+
+## 4. Що не змінилося
 
 - жодного release/tag/publish чи публікації артефакта;
 - жодного MMIO-запису, `nva`, RM-запиту, firmware, GPFIFO чи reboot;
@@ -47,9 +62,9 @@ ret
 - gp107 #33 лишається Draft без повного exact-head `make test`.
 
 Фінальний маркер гейту тепер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=8 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
-## 4. Питання без відповіді й найменший крок
+## 5. Питання без відповіді й найменший крок
 
 Який BAR0-offset безпечно читати після unbind? Асемблер тут не допомагає:
 потрібен або явний owner-дозвіл на фізичний read, або новий statically proven

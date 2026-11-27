@@ -64,7 +64,7 @@ with open(os.path.join(dev, 'vendor'), 'w') as fh:
 with open(os.path.join(dev, 'device'), 'w') as fh:
     fh.write('0x1c82\n')
 with open(os.path.join(dev, 'resource0'), 'wb') as fh:
-    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(60))
+    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 
@@ -152,8 +152,28 @@ grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
   || fail 'нема названого negative-маркера driver-bound'
 echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
 
-step 'MMIO read-only witness on synthetic resource0 (not hardware)'
+step 'negative witness (undersized resource0 is refused)'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+python3 - "$FIX/bus/pci/devices/0000:01:00.0/resource0" <<'PY'
+import sys
+p = sys.argv[1]
+b = bytearray(open(p, 'rb').read())
+open(p, 'wb').write(b[:64])
+PY
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/small.out" 2>"$WORK/small.err"; then
+  fail 'MMIO-шлях прийняв resource0 менше за вікно'
+fi
+grep -Fq 'MMIO-FAIL step=bar0-size-too-small code=19 size=0x40' "$WORK/small.err" \
+  || fail 'нема названого negative-маркера bar0-size-too-small'
+python3 - "$FIX/bus/pci/devices/0000:01:00.0/resource0" <<'PY'
+import sys
+p = sys.argv[1]
+open(p, 'wb').write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
+PY
+echo 'NEGATIVE-BAR0-SIZE-OK marker=step=bar0-size-too-small'
+
+step 'MMIO read-only witness on synthetic resource0 (not hardware)'
 "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
 for marker in \
   '(kind . gp107-mmio-read)' \
@@ -165,6 +185,15 @@ for marker in \
   grep -Fq "$marker" "$WORK/mmio.out" || fail "нема маркера: $marker"
 done
 echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
+
+step 'negative witness (offset past one-page window is refused)'
+if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/offset.out" 2>"$WORK/offset.err"; then
+  fail 'MMIO-шлях прийняв offset поза вікном'
+fi
+grep -Fq 'MMIO-FAIL step=offset-out-of-window code=17 offset=0x1000' "$WORK/offset.err" \
+  || fail 'нема названого negative-маркера offset-out-of-window'
+echo 'NEGATIVE-MMIO-OFFSET-OK marker=step=offset-out-of-window'
 
 step 'assembly read-only path equivalence (x86-64 only)'
 if [ -x "$ASMBIN" ]; then
@@ -232,4 +261,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=8 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN"

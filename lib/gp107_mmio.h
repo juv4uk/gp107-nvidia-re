@@ -26,7 +26,8 @@ int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz);
 
-int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
+int gp107_mmio_read32(const char *sysfs_root,
+                      const struct gp107_inventory *inv,
                       uint32_t offset, uint32_t *value,
                       char *err, size_t errsz);
 
