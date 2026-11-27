@@ -4,8 +4,11 @@
 Він **не** стверджує помилку на нашій платі й не є hardware witness.
 Поточний стан: `SOURCE_CONFIRMED_CONDITIONAL / GP107_RUNLIST_ID_NOT_OBSERVED / BOARD_RUNTIME_UNPROVEN`.
 
-Pinned source: Linux `gregkh/linux` `linux-7.3.y`, зріз перевірено 2026-11-27.
-Посилання нижче — на public kernel source, не на vendor source й не на Ghidra-псевдокод.
+Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (release 2026-11-23).
+Посилання нижче — на commit-pinned public kernel source, не на vendor source й не на Ghidra-псевдокод.
+
+
+Для порівняння upstream stable `v7.2.15` (той самий numerically named baseline, що й користувацький kernel string) — окремий immutable tag; це **не** доводить, що `7.2.15+kali-amd64` містить ідентичний source/backport set. Kali package source і його patches залишаються окремою перевіркою.
 
 ## 1. Що вже доведено з source (`statically proven, source`)
 
@@ -51,7 +54,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
 `nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому для pinned Linux `9437ee8...` і stable `gregkh/linux:v7.2.15` source-correct selector — **`FIFO=debug`**. Офіційна [сторінка параметрів Nouveau](https://nouveau.freedesktop.org/KernelModuleParameters.html) досі перелічує engine name `PFIFO`; це документаційна/legacy назва. Для конкретного kernel вирішальним є його source: якщо distro несе відмінний `layout.h`/parser, selector треба підтвердити за цим пакетом перед boot. Для профільного Kali `7.2.15+kali-amd64` перевірений upstream stable `v7.2.15` має token `fifo`.
 
-`CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` можна залишити як best-effort контекст для client-aware повідомлень; якщо таких рядків немає, це не є доказом відсутності каналу чи події.
+`CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` є технічно підтримуваним, але **не входить до першого boot**: початковий trace має залишатися вузьким і містити лише TOP та FIFO selectors. За окремої потреби його можна перевірити в наступному спеціальному проході для client-aware повідомлень; відсутність таких рядків нічого не доводить щодо каналу чи події.
 
 `nvkm_fifo_oneinit()` створює `nonstall.event` із `&fifo->engine.subdev`, тобто trace-події `nvkm_event_*` також ідуть через `fifo`. `nvkm_event_ntfy_add()`, `nvkm_event_get()` і `nvkm_event_put()` мають `nvkm_trace()` записи (`event: ntfy add`, `event: incr/decr`). Якщо першого проходу `FIFO=debug` недостатньо, можливий **окремий, більш гучний** rollback boot із `nouveau.debug=TOP=trace,FIFO=trace` для збору цих event-level повідомлень.
 
@@ -98,7 +101,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 2. У **одноразовому** test boot передати параметр модулю через тимчасовий boot entry:
 
    ```text
-   nouveau.debug=TOP=trace,FIFO=debug,CLIENT=debug
+   nouveau.debug=TOP=trace,FIFO=debug
    ```
 
    Наприклад, у меню GRUB відредагувати лише поточний запис клавішею `e`,
@@ -111,12 +114,26 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 3. Після завантаження з Nouveau зібрати лог:
 
    ```bash
+   set -eu
+   # New shell after reboot: rediscover the GPU; the pre-boot BDF variable is gone.
+   BDFS=$(lspci -Dnn -d 10de:1c82 | awk '{print $1}')
+   COUNT=$(printf '%s\n' "$BDFS" | sed '/^$/d' | wc -l)
+   [ "$COUNT" -eq 1 ] || { echo "GP107_BDF_COUNT_AFTER_BOOT=$COUNT"; exit 2; }
+   BDF=$(printf '%s\n' "$BDFS" | sed -n '1p')
+   SYSFS="/sys/bus/pci/devices/$BDF"
+   [ "$(cat "$SYSFS/vendor")" = '0x10de' ] || { echo 'GP107_VENDOR_MISMATCH'; exit 2; }
+   [ "$(cat "$SYSFS/device")" = '0x1c82' ] || { echo 'GP107_DEVICE_MISMATCH'; exit 2; }
+   LSPCI=$(lspci -Dnnk -s "$BDF")
+   DRIVER=$(printf '%s\n' "$LSPCI" | sed -n 's/^[[:space:]]*Kernel driver in use: //p')
+   [ "$DRIVER" = 'nouveau' ] || { echo "GP107_DRIVER_NOT_NOUVEAU=${DRIVER:-none}"; exit 2; }
    OUT="$HOME/gp107-trace-$BDF-$(date +%Y%m%d-%H%M%S)"
    mkdir -p "$OUT"
    uname -a > "$OUT/uname.txt"
    cat /proc/cmdline > "$OUT/cmdline.txt"
-   lspci -Dnnk -s "$BDF" > "$OUT/lspci.txt"
+   printf '%s\n' "$LSPCI" > "$OUT/lspci.txt"
+   printf 'GP107_BDF=%s vendor=10de device=1c82 driver=%s\n' "$BDF" "$DRIVER" > "$OUT/device-identity.txt"
    modinfo -p nouveau > "$OUT/nouveau-module-params.txt"
+   cat /sys/module/nouveau/parameters/debug > "$OUT/loaded-debug-parameter.txt" 2>/dev/null || true
    if [ -r "/boot/config-$(uname -r)" ]; then
      cp "/boot/config-$(uname -r)" "$OUT/kernel.config"
    elif [ -r /proc/config.gz ]; then
@@ -127,7 +144,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    printf 'EVIDENCE_DIR=%s\n' "$OUT"
    ```
 
-   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи. `CLIENT=debug` є окремим підтримуваним selector для client-aware NVIF logging, але не окремим NVKM subdevice; його додаткові рядки — best-effort, а їх відсутність нічого не доводить про channel/event subscription.
+   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи. `CLIENT=debug` у першому проході не вмикається. Це окремий підтримуваний selector для client-aware logging, але не окремий NVKM subdevice; його можна перевірити окремо лише за потреби, і відсутність таких рядків нічого не доводить про channel/event subscription.
 
    Шукати decoded записи у `relevant-lines.log`, але всі висновки звіряти з повним `kernel.log`:
 
@@ -164,7 +181,25 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 дублюється. Його build/CI перевірено без GPU; dispatch/readback на цій платі
 не виконувався.
 
-## 5. Межі
+## 5. Незмінні посилання на pinned source
+
+Усі наведені нижче файли взяті з одного immutable stable release commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (`v7.3.6`):
+
+- [NV130 / GP107 device dispatch](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
+- [GP100 FIFO function table](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c)
+- [FIFO non-stall event initialization](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c)
+- [user-channel event callback](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
+- [upstream v7.2.15 `uchan.c` comparison (same blob)](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
+- [event reference and notification paths](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/event.c)
+- [TOP table parsing](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c)
+- [runlist creation](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c)
+- [channel runlist selection](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nouveau_chan.c)
+- [NVKM layout / FIFO token](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/include/nvkm/core/layout.h)
+- [subdevice name generation](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/subdev.c)
+- [CLIENT debug selector](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/client.c)
+- [client-aware logging macro](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/include/nvkm/core/subdev.h)
+
+## 6. Межі
 
 - Не робити MMIO/BAR writes, `nva`, кастомний reset, VBIOS/firmware flash.
 - Не додавати patch 1 (Kepler legacy video) до GP107 без окремого обґрунтування.
