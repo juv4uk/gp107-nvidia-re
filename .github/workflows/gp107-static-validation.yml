@@ -64,7 +64,7 @@ jobs:
           {
             echo "## GP107 static validation"
             echo ""
-            printf -- "- FPC: `%s`\\n" "$(fpc -iV)"
+            printf -- '- FPC: `%s`\n' "$(fpc -iV)"
             echo "- Static source guard: passed"
             echo "- Pascal compilation: passed; no probe executable was run"
             echo "- C11 capability identity: compiled with -Werror; fail-closed gate passed"
