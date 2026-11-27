@@ -21,6 +21,12 @@
   обрізаний link завершуються fail-closed як unknown.
 - Перед mapping перевіряються розмір BAR0 з inventory та розмір відкритого
   `resource0` через `fstat`.
+- Приватний mapper закріплює PCI device directory через `dirfd`, повторно
+  перевіряє `driver` через `readlinkat`, а `resource0` відкриває через
+  `openat(O_NOFOLLOW)` і перевіряє тим самим fd через `fstat`.
+- Binding перевіряється ще раз безпосередньо перед `mmap`. Це best-effort
+  snapshot, а не атомарний lock: kernel може змінити binding після останньої
+  перевірки. Це не надає дозволу на фізичне MMIO.
 - C та x86-64 assembly paths проходять через ту саму gated API. ASM load
   primitive не експортується у public header.
 - Фізичні `resource0` mapping/read, driver unbind і Nouveau boot тут не

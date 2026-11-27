@@ -34,56 +34,146 @@ static int require_unbound(const struct gp107_inventory *inv,
     return GP107_OK;
 }
 
+static int require_unbound_at(int dirfd, char *err, size_t errsz)
+{
+    char target[512];
+    const char *base;
+    ssize_t n;
+    int saved;
+
+    errno = 0;
+    n = readlinkat(dirfd, "driver", target, sizeof(target) - 1);
+    saved = errno;
+    if (n < 0) {
+        if (saved == ENOENT) {
+            return GP107_OK;
+        }
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=driver-binding-read code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, saved);
+    }
+    if (n == 0 || (size_t)n >= sizeof(target) - 1) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=driver-binding-read code=%d",
+                               GP107_ERR_DRIVER_BINDING);
+    }
+
+    target[n] = '\0';
+    base = strrchr(target, '/');
+    base = (base != NULL) ? base + 1 : target;
+    if (*base == '\0') {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=driver-binding-read code=%d",
+                               GP107_ERR_DRIVER_BINDING);
+    }
+    return gp107_set_error(err, errsz,
+                           "MMIO-FAIL step=driver-bound code=%d driver=%s",
+                           GP107_ERR_DRIVER_BOUND, base);
+}
+
 static int map_read32(const char *sysfs_root, const char *bdf,
                       uint32_t expected_size, uint32_t offset, uint32_t *value,
                       char *err, size_t errsz)
 {
-    char path[512];
-    int fd;
+    char devdir[512];
+    int dirfd = -1;
+    int fd = -1;
     void *map;
     volatile const unsigned char *p;
     uint32_t v;
     int n;
-    struct stat st;
+    int rc;
+    struct stat dir_st;
+    struct stat resource_st;
 
-    n = snprintf(path, sizeof(path), "%s/bus/pci/devices/%s/resource0",
+    n = snprintf(devdir, sizeof(devdir), "%s/bus/pci/devices/%s",
                  sysfs_root, bdf);
-    if (n < 0 || (size_t)n >= sizeof(path)) {
+    if (n < 0 || (size_t)n >= sizeof(devdir)) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=path-too-long code=%d",
                                GP107_ERR_PARSE);
     }
-    fd = open(path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
+
+    /* Pin one PCI device directory. Binding checks and resource0 opening then
+     * use that same directory descriptor rather than resolving fresh paths. */
+    dirfd = open(devdir, O_RDONLY | O_CLOEXEC);
+    if (dirfd < 0) {
         return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=resource0-open code=%d errno=%d",
+                               "MMIO-FAIL step=device-directory-open code=%d errno=%d",
                                GP107_ERR_OPEN, errno);
     }
-    if (fstat(fd, &st) != 0) {
+    errno = 0;
+    if (fstat(dirfd, &dir_st) != 0) {
+        int saved = errno;
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=device-directory-stat code=%d errno=%d",
+                               GP107_ERR_OPEN, saved);
+    }
+    if (!S_ISDIR(dir_st.st_mode)) {
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=device-directory-stat code=%d errno=%d",
+                               GP107_ERR_OPEN, ENOTDIR);
+    }
+
+    rc = require_unbound_at(dirfd, err, errsz);
+    if (rc != GP107_OK) {
+        (void)close(dirfd);
+        return rc;
+    }
+
+    /* O_NOFOLLOW rejects a substituted resource0 symlink. O_NONBLOCK also
+     * prevents hanging if that path is replaced by a FIFO. */
+    fd = openat(dirfd, "resource0",
+                O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+    if (fd < 0) {
+        int saved = errno;
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=resource0-open code=%d errno=%d",
+                               GP107_ERR_OPEN, saved);
+    }
+    if (fstat(fd, &resource_st) != 0) {
         int saved = errno;
         (void)close(fd);
+        (void)close(dirfd);
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bar0-stat code=%d errno=%d",
                                GP107_ERR_SIZE, saved);
     }
-    if (st.st_size < (off_t)GP107_MMIO_WINDOW ||
-        st.st_size != (off_t)expected_size) {
-        off_t size = st.st_size;
+    if (!S_ISREG(resource_st.st_mode) ||
+        resource_st.st_size < (off_t)GP107_MMIO_WINDOW ||
+        resource_st.st_size != (off_t)expected_size) {
+        off_t size = resource_st.st_size;
+        int regular = S_ISREG(resource_st.st_mode);
         (void)close(fd);
+        (void)close(dirfd);
         return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=bar0-size-too-small code=%d size=0x%llx",
-                               GP107_ERR_SIZE, (unsigned long long)size);
+                               "MMIO-FAIL step=bar0-size-too-small code=%d size=0x%llx regular=%d",
+                               GP107_ERR_SIZE, (unsigned long long)size, regular);
+    }
+
+    /* Recheck immediately before mmap. This narrows the window but is not an
+     * atomic lock against a later kernel driver bind. */
+    rc = require_unbound_at(dirfd, err, errsz);
+    if (rc != GP107_OK) {
+        (void)close(fd);
+        (void)close(dirfd);
+        return rc;
     }
 
     map = mmap(NULL, GP107_MMIO_WINDOW, PROT_READ, MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
         int saved = errno;
         (void)close(fd);
+        (void)close(dirfd);
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=read-only-map code=%d errno=%d",
                                GP107_ERR_MAP, saved);
     }
     (void)close(fd);
+    (void)close(dirfd);
 
     p = (const volatile unsigned char *)map + offset;
 #ifdef GP107_USE_ASM
