@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
+static int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
 {
     if (!allow) {
         return gp107_set_error(err, errsz,
@@ -18,7 +18,7 @@ int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
     return GP107_OK;
 }
 
-int gp107_mmio_check_driver(const struct gp107_inventory *inv,
+static int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz)
 {
     if (inv == NULL) {
@@ -67,6 +67,11 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
         return rc;
     }
 
+    if (inv.pci.bar0_space != 0) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bar0-not-memory code=%d",
+                               GP107_ERR_CONFIG);
+    }
     if (inv.pci.bar0_size < GP107_MMIO_WINDOW) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bar0-size-too-small code=%d size=0x%x",
@@ -94,6 +99,22 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=resource0-open code=%d errno=%d",
                                GP107_ERR_OPEN, errno);
+    }
+    if (fstat(fd, &st) != 0) {
+        int saved = errno;
+        (void)close(fd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bar0-stat code=%d errno=%d",
+                               GP107_ERR_SIZE, saved);
+    }
+    if (st.st_size < (off_t)GP107_MMIO_WINDOW ||
+        st.st_size != (off_t)expected_size) {
+        off_t size = st.st_size;
+        (void)close(fd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bar0-size-mismatch code=%d size=0x%llx expected=0x%x",
+                               GP107_ERR_SIZE, (unsigned long long)size,
+                               expected_size);
     }
     map = mmap(NULL, GP107_MMIO_WINDOW, PROT_READ, MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
