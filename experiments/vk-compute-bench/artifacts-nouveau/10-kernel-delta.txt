@@ -1,0 +1,22 @@
+лис 27 19:42:43 WSM kernel: nvidia-nvlink: Nvlink Core is being initialized, major device number 234
+лис 27 19:42:43 WSM kernel: NVRM: GPU 0000:01:00.0 is already bound to nouveau.
+лис 27 19:42:43 WSM kernel: NVRM: The NVIDIA probe routine was not called for 1 device(s).
+лис 27 19:42:43 WSM kernel: NVRM: This can occur when another driver was loaded and 
+                               NVRM: obtained ownership of the NVIDIA device(s).
+лис 27 19:42:43 WSM kernel: NVRM: Try unloading the conflicting kernel module (and/or
+                               NVRM: reconfigure your kernel without the conflicting
+                               NVRM: driver(s)), then try loading the NVIDIA kernel module
+                               NVRM: again.
+лис 27 19:42:43 WSM kernel: NVRM: No NVIDIA devices probed.
+лис 27 19:42:43 WSM kernel: nvidia-nvlink: Unregistered Nvlink Core, major device number 234
+лис 27 19:42:47 WSM kernel: nvidia-nvlink: Nvlink Core is being initialized, major device number 234
+лис 27 19:42:47 WSM kernel: NVRM: GPU 0000:01:00.0 is already bound to nouveau.
+лис 27 19:42:47 WSM kernel: NVRM: The NVIDIA probe routine was not called for 1 device(s).
+лис 27 19:42:47 WSM kernel: NVRM: This can occur when another driver was loaded and 
+                               NVRM: obtained ownership of the NVIDIA device(s).
+лис 27 19:42:47 WSM kernel: NVRM: Try unloading the conflicting kernel module (and/or
+                               NVRM: reconfigure your kernel without the conflicting
+                               NVRM: driver(s)), then try loading the NVIDIA kernel module
+                               NVRM: again.
+лис 27 19:42:47 WSM kernel: NVRM: No NVIDIA devices probed.
+лис 27 19:42:47 WSM kernel: nvidia-nvlink: Unregistered Nvlink Core, major device number 234

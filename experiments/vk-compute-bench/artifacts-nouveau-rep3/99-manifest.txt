@@ -1,0 +1,19 @@
+# clean-room Vulkan compute benchmark artifacts
+bdf=0000:01:00.0
+binding=nouveau
+icd=/usr/share/vulkan/icd.d/nouveau_icd.json
+bench_rc=0
+capture_utc=2026-11-27T17:47:30Z
+uname=Linux WSM 7.2.15+kali-amd64 #1 SMP PREEMPT_DYNAMIC Kali 7.2.15-1kali1 (2026-11-03) x86_64 GNU/Linux
+
+adb28038d7ad68cc9ae3360af74d47a7f41d359a5d13bb61fe72b65d4c03dd59  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/00-utc.txt
+0c6bfced87d4d064af4b29e637097198a26c5c1b9f43b55abda36c0ae33ec26c  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/01-cmdline.txt
+6cd6ac6518ebf36a27cb28f689c814210fc7e3a707b44262aa4505d068665702  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/02-lspci.txt
+528b50fd68bb28f3c402531375dab2aecc9e81202dc1c96cdfcc216ef9b56c10  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/03-lsmod.txt
+4924850a21daf00a86406a46646c3b8f7797be04b1eabbb4aa7c3546a0e22a50  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/04-binding.txt
+c4e3026661d2f0c519347b8ddd3149b2d320dc81635105e42c9c2b853872f012  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/05-icd.txt
+ca6c9865428027c34ef5613d30531a65e03e2b985813c7af42ee217179554a9a  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/06-vulkaninfo.txt
+74a289fa30977dee885c5edf468572623f6b6f7e1dc064eb6e5eb0ac42bd405c  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/07-kernel-before.txt
+46aa3d69b1c6f66d8fe051e010a55bd756349b097f636b8e87d19cf9c1ec576f  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/08-run.log
+74a289fa30977dee885c5edf468572623f6b6f7e1dc064eb6e5eb0ac42bd405c  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/09-kernel-after.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau-rep3/10-kernel-delta.txt

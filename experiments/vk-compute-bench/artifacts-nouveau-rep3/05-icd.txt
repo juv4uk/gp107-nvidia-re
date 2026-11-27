@@ -1,0 +1,1 @@
+icd=/usr/share/vulkan/icd.d/nouveau_icd.json

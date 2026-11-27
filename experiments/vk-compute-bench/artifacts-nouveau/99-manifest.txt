@@ -1,0 +1,19 @@
+# clean-room Vulkan compute benchmark artifacts
+bdf=0000:01:00.0
+binding=nouveau
+icd=default
+bench_rc=0
+capture_utc=2026-11-27T17:43:45Z
+uname=Linux WSM 7.2.15+kali-amd64 #1 SMP PREEMPT_DYNAMIC Kali 7.2.15-1kali1 (2026-11-03) x86_64 GNU/Linux
+
+09e196bf32d65d6b0f983a32ac7c00cf89b4b75aa94430822ff5202756a5193d  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/00-utc.txt
+0c6bfced87d4d064af4b29e637097198a26c5c1b9f43b55abda36c0ae33ec26c  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/01-cmdline.txt
+6cd6ac6518ebf36a27cb28f689c814210fc7e3a707b44262aa4505d068665702  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/02-lspci.txt
+782dafdc25965eb08def7cd3cf9f1f360e8e47398e66968a5c18090707fdbfc7  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/03-lsmod.txt
+4924850a21daf00a86406a46646c3b8f7797be04b1eabbb4aa7c3546a0e22a50  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/04-binding.txt
+75d6b9b2e074ae8c969096caaadb9240c63d6637b988e931d77a94f5bc9b6928  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/05-icd.txt
+ca6c9865428027c34ef5613d30531a65e03e2b985813c7af42ee217179554a9a  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/06-vulkaninfo.txt
+9ebe6d4ed91e83224044bfb440410204b5b3a0da3365b68a86f6c36ad5d6d8d1  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/07-kernel-before.txt
+9fd85b3b9d292c0ef6cd829b6645705fbac542a57634196ba515ec5100467b3b  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/08-run.log
+5ea20b88cb6015f2f4e07bbfd28ba5f3602ddb4884bb1896ee1d71a8f72464b2  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/09-kernel-after.txt
+cf1c5bf4fde56b795d6c37c5af67b8041d16b747ef03c1610144b3b32a4608ae  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-nouveau/10-kernel-delta.txt
