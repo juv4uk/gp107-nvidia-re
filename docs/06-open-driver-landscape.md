@@ -51,6 +51,76 @@ RUSTICL_ENABLE=nouveau clinfo
 - [Mesa Rusticl — OpenCL on top of Gallium and enablement requirement](https://docs.mesa3d.org/rusticl.html)
 - [Mesa environment variables — `RUSTICL_ENABLE` and supported drivers](https://docs.mesa3d.org/envvars.html#rusticl-environment-variables)
 
+## 2.2. Актуальна Mesa baseline та межа Vulkan Video
+
+Для відтворюваних тестів фіксувати не лише «Mesa latest», а конкретний
+release і його checksum. Станом на 2026-11-27:
+
+- **Mesa 26.2.8 (2026-11-25)** — bug-fix release. У release notes є Nouveau
+  виправлення `pushbuf_dump()`: уникнути segfault після `ENODEV`, коли є один
+  push і нуль buffer references. Це корисне виправлення error/diagnostic path,
+  але воно не доводить кращу GP107 command submission чи стабільність усіх
+  каналів. SHA-256 source archive:
+  `58878dbad3a4bf7ec29639f5db8e2905631a52169729282a2f2614adf3cecbcf`.
+- **Mesa 26.3.1 (2026-11-18)** — bug-fix release після 26.3.0; у його
+  release notes немає явно названого GP107/NVK fix. Це не означає, що інші
+  зміни NVK не потрапили до релізу — лише те, що релізні нотатки не дають
+  окремого GP107-specific acceptance claim. SHA-256:
+  `4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961`.
+- **Mesa 26.3.0 (2026-11-04)** на офіційній сторінці News позначено як
+  development release; для стабільного bring-up брати bug-fix release
+  26.3.1, а не 26.3.0.
+- Загальні заголовки Mesa про OpenGL 4.6 / OpenCL 3.1 / Vulkan 1.4 — це
+  можливості Mesa API загалом; версія, яку реально повертає пристрій,
+  залежить від конкретного драйвера. Для GP107 очікуваний NVK Vulkan API
+  лишається **1.3** за per-device source logic вище.
+
+### Vulkan Video: NVK H.264 шлях не для GP107
+
+Початковий NVK Vulkan Video H.264 decoder, злитий для Mesa 26.3, залежить
+від NVIDIA GSP; upstream-анонс прямо обмежує його Turing і новішими GPU.
+Pascal GP107 не має GSP, тому **не включати NVK Vulkan Video H.264 до
+очікуваних можливостей GTX 1050 Ti**. Це не заперечує наявність NVDEC
+апаратного блоку або NVKM firmware hook у kernel tree: це різні рівні
+підтримки. Для GP107 video decode в Nouveau залишається окремою прогалиною
+(VideoAcceleration matrix), доки не з'явиться відповідний VP engine/userspace
+шлях зі свідками.
+
+### Vulkan compute: llama.cpp як application-level тест
+
+Після успішних NVK device enumeration, Vulkan graphics smoke test і
+перевірки базового compute pipeline можна додати [llama.cpp Vulkan backend]
+(https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md) як
+практичний workload. Проєкт офіційно документує збірку через
+`GGML_VULKAN` і просить спочатку перевірити loader через `vulkaninfo`.
+
+Приклад збірки в окремому тестовому worktree:
+```sh
+cmake -B build-vulkan -DGGML_VULKAN=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build-vulkan --config Release -j"$(nproc)"
+./build-vulkan/bin/llama-cli --list-devices
+```
+
+Перший workload має бути невеликим GGUF quantized моделем із невеликою
+кількістю GPU layers, а не повним offload одразу. У логах обов'язково
+переконатися, що обраний пристрій — саме GP107 через NVK, а не CPU fallback
+або інший GPU. Зберігати модель/quantization, context, кількість offloaded
+layers, tokens/s, VRAM, частоти/температуру та повний startup log. Якщо
+backend вимагає Vulkan extension/feature, якої GP107 не рекламує, зафіксувати
+точну помилку й properties; не підміняти API version чи capabilities.
+
+Це application-level перевірка Vulkan compute, не CUDA compatibility,
+не OpenCL/Rusticl test і не доказ придатності llama.cpp для щоденної
+продуктивної роботи на 4 GB GP107. До фактичного запуску всі ці результати
+мають стан **UNPROVEN**.
+
+Джерела:
+- [Mesa 26.2.8 release notes (2026-11-25)](https://docs.mesa3d.org/relnotes/26.2.8.html)
+- [Mesa 26.3.1 release notes (2026-11-18)](https://docs.mesa3d.org/relnotes/26.3.1.html)
+- [Mesa release news: 26.3.0 was a development release](https://mesa3d.org/news/)
+- [NVK Vulkan Video H.264/GSP support — Turing+ limitation](https://www.phoronix.com/news/NVK-Vulkan-Video-Mesa-26.3)
+- [llama.cpp — official Vulkan build instructions](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
+
 ## 3. Головне обмеження Pascal: reclocking
 
 Це найважливіша перешкода для практичного використання Nouveau на GP107.
