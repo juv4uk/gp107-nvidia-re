@@ -51,6 +51,7 @@
 | [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | Перший C11-код: fail-closed sysfs identity + опційний read-only MMIO-сеам; фізичний MMIO NOT_RUN |
 | [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | Публічний PCI config-header і машиночитаний ledger; RM/boot0 лишаються UNPROVEN |
 | [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | Власний x86-64 read-only asm-примітив з еквівалентністю до C; не release, hardware MMIO NOT_RUN |
+| [`tests/nvk-gp107-vector-add/README.md`](tests/nvk-gp107-vector-add/README.md) | NVK GP107 vector-add harness: compile-only CI, fail-closed gates; фізичний GPU тест NOT_RUN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
