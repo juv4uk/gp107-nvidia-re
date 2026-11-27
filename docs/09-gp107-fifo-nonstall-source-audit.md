@@ -49,7 +49,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
 ### Імена debug-subdevice: перевірено по parser path
 
-`nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому правильний selector — **`FIFO=debug`**, не `PFIFO=debug`.
+`nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому для pinned Linux `9437ee8...` і stable `gregkh/linux:v7.2.15` source-correct selector — **`FIFO=debug`**. Офіційна [сторінка параметрів Nouveau](https://nouveau.freedesktop.org/KernelModuleParameters.html) досі перелічує engine name `PFIFO`; це документаційна/legacy назва. Для конкретного kernel вирішальним є його source: якщо distro несе відмінний `layout.h`/parser, selector треба підтвердити за цим пакетом перед boot. Для профільного Kali `7.2.15+kali-amd64` перевірений upstream stable `v7.2.15` має token `fifo`.
 
 `CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` можна залишити як best-effort контекст для client-aware повідомлень; якщо таких рядків немає, це не є доказом відсутності каналу чи події.
 
