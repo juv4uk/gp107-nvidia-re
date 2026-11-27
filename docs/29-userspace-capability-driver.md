@@ -8,19 +8,24 @@
 
 ## 0. Межа owner-дозволу
 
-У цій сесії власник явно дозволив MMIO для першого коду. Дозвіл реалізовано
-**найвужче**:
+У цій координації **не надано дозволу на фізичний MMIO**, unbind драйвера,
+перехід у `wsm_open_driver=1`, зміну boot parameters або інший GPU boot.
+Прапорець `--allow-mmio` — програмна умова API, а не owner approval.
 
-- MMIO-сеам є окремим модулем і не активний за замовчуванням;
-- потрібен явний прапорець `--allow-mmio`;
-- відмова, якщо пристрій має bound kernel driver (зараз `nvidia`);
-- тільки read-only mapping одного вирівняного вікна й читання 32-бітового слова;
-- жодного write mapping, RM-запиту, FIFO, doorbell, firmware чи reboot.
+- MMIO-сеам є окремим експериментальним модулем.
+- Єдина публічна C-функція сама перевіряє opt-in, точну PCI identity,
+  driver binding, тип BAR0, розмір BAR0 і межі offset; low-level mapper приватний.
+- Відсутність driver link розпізнається через open device directory + `readlinkat`;
+  тільки відсутній `driver` entry (`ENOENT`) означає unbound.
+- Перед mapping відкритий `resource0` повторно перевіряється через `fstat`;
+  невідомий або змінений розмір відхиляється.
+- C та x86-64 assembly paths проходять через ту саму gated API.
+- Фізичні `resource0` mapping/read, driver unbind і Nouveau boot тут не
+  виконувалися й не авторизовані. Позитивний MMIO-тест — лише synthetic file.
 
-Фізичний MMIO на цій платі **не виконувався**: поточний boot пропрієтарний,
-`Kernel driver in use: nvidia`, `/proc/cmdline` без `wsm_open_driver=1`.
-Перехід у `wsm_open_driver=1`, unbind/зміна драйвера або фізичний aperture-тест
-потребують **окремої owner-дії**.
+Фізичне MMIO залишається **NOT AUTHORIZED / NOT RUN** до окремого явного
+рішення власника. Наявність `mmio-read`, `--allow-mmio` чи ASM primitive
+не змінює цю межу.
 
 ## 1. Що додано
 
@@ -56,13 +61,13 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
 | # | Факт | Статус | Свідок / межа |
 |---:|---|---|---|
 | 1 | Розкладки `gp107_pci_identity=32`, `gp107_driver_binding=68`, `gp107_inventory=140` байт | **statically proven** | `_Static_assert` у `lib/gp107_identity.h`; вивід `LAYOUT-OK identity=32 binding=68 inventory=140` (розширено у docs/30) |
-| 2 | На hostі рівно одна картка `10de:1c82 @ 0000:01:00.0`, `bar0-base=0xee000000`, driver `nvidia` | **runtime-proven** | `gp107ctl inventory` через sysfs; маркер `HOST-INVENTORY-PASS evidence=runtime-proven` |
+| 2 | На RE host виявлено картку `10de:1c82 @ 0000:01:00.0`, `bar0-base=0xee000000`, driver `nvidia` | **runtime-proven лише для того host inventory** | `gp107ctl inventory` на host `/sys`; це не H170 certification і не доказ для offline-плати власника |
 | 3 | Друга картка того самого vendor/device відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=card-count code=13 count=2` |
 | 4 | Відсутній `config` відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
 | 5 | Чужий BDF відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
 | 6 | Публічний MMIO C API сам вимагає opt-in до будь-якого mapping | **runtime-proven (fixture)** | прямий виклик API без opt-in повертає `MMIO-FAIL step=opt-in-required code=15` |
 | 7 | Публічний MMIO C API сам відхиляє bound driver | **runtime-proven (fixture)** | прямий виклик API з opt-in і bound driver повертає `MMIO-FAIL step=driver-bound code=16` |
-| 8 | Read-only 32-бітне читання з `resource0` | **runtime-proven (синтетичний файл), hardware NOT_RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом файлу |
+| 8 | Read-only 32-бітне читання з `resource0` | **software runtime на synthetic fixture; physical MMIO NOT AUTHORIZED / NOT RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом звичайного файлу |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
