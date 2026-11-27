@@ -36,9 +36,12 @@ Pinned source: Linux `gregkh/linux` `linux-7.3.y`, зріз перевірено
 умова — `CONFIG_NOUVEAU_DEBUG >= NV_DBG_DEBUG (4)` і level для subdev `top`.
 За замовчуванням `CONFIG_NOUVEAU_DEBUG=5`, `CONFIG_NOUVEAU_DEBUG_DEFAULT=3`
 (`drivers/gpu/drm/nouveau/Kconfig`), тобто `nouveau.debug=TOP=debug` достатньо для
-розібраних рядків, а `TOP=trace` додає сирі слова. `nvkm_dbgopt()` у
+розібраних рядків, а `TOP=trace` додає сирі слова. Важливо: `trace` вимагає
+compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перевірити в конфігурації
+саме цільового ядра, а не лише в upstream default. `nvkm_dbgopt()` у
 `nvkm/core/option.c` порівнює назви без регістру; subdev name для TOP — `top`
-з `nvkm/core/layout.h`.
+з `nvkm/core/layout.h`. Вузький варіант `TOP=trace` є кращим за глобальне
+`nouveau.debug=trace`, бо не піднімає level для всіх NVKM subdev-ів.
 
 `RUNL_DEBUG()` у `nvkm/engine/fifo/runl.h` друкує через `fifo` subdev рядки
 виду `fifo: 000000NN: ...`. Для них потрібен `nouveau.debug=PFIFO=debug`.
@@ -69,6 +72,7 @@ Pinned source: Linux `gregkh/linux` `linux-7.3.y`, зріз перевірено
 2. У test boot передати module option (не kernel command line, якщо `nouveau` — модуль):
 
    ```bash
+   # лише після перевірки CONFIG_NOUVEAU_DEBUG >= 5 у цільовому ядрі
    printf 'options nouveau debug=TOP=trace,PFIFO=debug\n' \
      | sudo tee /etc/modprobe.d/gp107-fifo-trace.conf
    sudo update-initramfs -u
@@ -110,9 +114,10 @@ Pinned source: Linux `gregkh/linux` `linux-7.3.y`, зріз перевірено
 | non-stall event subscription | не спостерігалась | `NOT_OBSERVED` |
 | patch 2/2 у mainline/stable | у pinned snapshot `uchan.c` досі `runl->id`; merged-стан окремого backport не доведений | `source-only` |
 
-Мінімальний compute harness для подальшого NVK witness лежить у
-[`probes/vulkan-vector-add/`](../probes/vulkan-vector-add/README.md). Його
-збірка перевірена без GPU; dispatch/readback на цій платі не виконувався.
+Мінімальний compute harness для подальшого NVK witness ведеться окремо в
+[Draft PR #21](https://github.com/juv4uk/gp107-nvidia-re/pull/21) і тут не
+дублюється. Його build/CI перевірено без GPU; dispatch/readback на цій платі
+не виконувався.
 
 ## 5. Межі
 

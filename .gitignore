@@ -7,7 +7,5 @@ probes/01_min_cuinit
 pascal/01_min_cuinit
 pascal/02_bar_identity
 pascal/03_rm_arch_info
-probes/vulkan-vector-add/vector_add
-probes/vulkan-vector-add/vector_add.spv
 __pycache__/
 *.pyc
