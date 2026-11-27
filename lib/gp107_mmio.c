@@ -35,7 +35,7 @@ static int require_unbound(const struct gp107_inventory *inv,
 }
 
 static int map_read32(const char *sysfs_root, const char *bdf,
-                      uint32_t offset, uint32_t *value,
+                      uint32_t expected_size, uint32_t offset, uint32_t *value,
                       char *err, size_t errsz)
 {
     char path[512];
@@ -66,7 +66,8 @@ static int map_read32(const char *sysfs_root, const char *bdf,
                                "MMIO-FAIL step=bar0-stat code=%d errno=%d",
                                GP107_ERR_SIZE, saved);
     }
-    if (st.st_size < (off_t)GP107_MMIO_WINDOW) {
+    if (st.st_size < (off_t)GP107_MMIO_WINDOW ||
+        st.st_size != (off_t)expected_size) {
         off_t size = st.st_size;
         (void)close(fd);
         return gp107_set_error(err, errsz,
@@ -126,11 +127,21 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
         return rc;
     }
 
+    if (inv.pci.bar0_space != 0) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bar0-not-memory code=%d",
+                               GP107_ERR_CONFIG);
+    }
     if (inv.pci.bar0_size < GP107_MMIO_WINDOW) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bar0-size-too-small code=%d size=0x%x required=%u",
                                GP107_ERR_SIZE, inv.pci.bar0_size,
                                GP107_MMIO_WINDOW);
+    }
+    if ((offset & 3u) != 0) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=offset-unaligned code=%d offset=0x%x",
+                               GP107_ERR_OFFSET, offset);
     }
     if (offset > GP107_MMIO_WINDOW - 4u ||
         (uint64_t)offset + 4u > inv.pci.bar0_size) {
@@ -138,5 +149,6 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
                                "MMIO-FAIL step=offset-out-of-window code=%d offset=0x%x size=0x%x",
                                GP107_ERR_OFFSET, offset, inv.pci.bar0_size);
     }
-    return map_read32(sysfs_root, inv.bdf, offset, value, err, errsz);
+    return map_read32(sysfs_root, inv.bdf, inv.pci.bar0_size,
+                       offset, value, err, errsz);
 }
