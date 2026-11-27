@@ -13,7 +13,9 @@
 
 - MMIO-сеам є окремим модулем і не активний за замовчуванням;
 - потрібен явний прапорець `--allow-mmio`;
-- відмова, якщо пристрій має bound kernel driver (зараз `nvidia`);
+- відмова, якщо пристрій має bound kernel driver (зараз `nvidia`), а також якщо sysfs `driver` link не можна однозначно класифікувати як відсутній або читабельний symlink;
+- opt-in і fresh BDF/driver inventory виконуються всередині самої C API-функції, не лише у CLI;
+- обов'язковий явний 32-бітно вирівняний offset у межах реального `resource0` size;
 - тільки read-only mapping одного вирівняного вікна й читання 32-бітового слова;
 - жодного write mapping, RM-запиту, FIFO, doorbell, firmware чи reboot.
 
@@ -42,7 +44,7 @@ int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
 int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz);
-int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
+int gp107_mmio_read32(const char *sysfs_root, const char *bdf, int allow_mmio,
                       uint32_t offset, uint32_t *value,
                       char *err, size_t errsz);
 ```
@@ -84,13 +86,14 @@ make test-valid-cards-static   # старий базовий гейт не по�
 2. firewall **коду** `lib/*.c`, `lib/*.h`: заборонені write mapping, RM-імена,
    BOOT0-константа, атестація й authoritative pin;
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
-4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. два MMIO-негативи й один read-only позитив на синтетичному `resource0`;
+4. синтетичний sysfs fixture: позитив, три identity-негативи й fail-closed malformed driver-link witness;
+5. MMIO opt-in/bound-driver gates, explicit-offset, alignment і `resource0` bounds negative tests;
+6. один read-only позитив на синтетичному `resource0`;
 6. best-effort реальний sysfs inventory (пропуск явно позначається, якщо
    пристрою немає).
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=5 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=9 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.
