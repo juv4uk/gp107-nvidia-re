@@ -2,7 +2,7 @@
 
 Protocol notes and clean-room probes for the NVIDIA Pascal **GP107** (GeForce GTX 1050 Ti) Linux driver ABI.
 
-This repository documents **how user space talks to the NVIDIA kernel driver** on Pascal: device nodes, `ioctl` numbers, RM command classes, and the path from public CUDA entry points down to `/dev/nvidia*`. It is a research knowledge base with small, independently written C probes — **not** a replacement CUDA runtime and **not** a dump of decompiled vendor code.
+This repository documents **how user space talks to the NVIDIA kernel driver** on Pascal: device nodes, `ioctl` numbers, RM command classes, and the path from public CUDA entry points down to `/dev/nvidia*`. It is a research knowledge base with small, independently written C and Free Pascal probes — **not** a replacement CUDA runtime and **not** a dump of decompiled vendor code.
 
 ## Environment the findings were verified on
 
@@ -26,12 +26,18 @@ LICENSE                       ВОЛЬНІСТЬ (same license as the author's o
 docs/
   01-cuInit-flow.md            cuInit -> RM device discovery: flow, nodes, ioctls
   02-cuMemAlloc-and-launch.md  allocation (UVM) and kernel launch (no ioctl)
+  03-fpc-clean-room-probe.md   FPC 3.2.2 substrate, evidence states, toolchain pin
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
   Makefile
+pascal/
+  nv_abi.pas                   clean-room ioctl ABI, {$PACKRECORDS C}, compile-time SizeOf proof
+  01_min_cuinit.pas            BaseUnix-only probe, static ELF
+  Makefile
 scripts/
   decode_ioctl.py              decode raw ioctl request numbers / strace lines
+  test-pascal-probe.sh         fail-closed gate: FPC pin, firewall, runtime, static ELF
 ```
 
 ## Quick start
@@ -40,6 +46,8 @@ scripts/
 make -C probes
 sudo ./probes/01_min_cuinit          # or run as a user in the `video` group
 echo 0xc90046c8 | python3 scripts/decode_ioctl.py
+
+bash scripts/test-pascal-probe.sh    # FPC 3.2.2 pin + static-ELF + runtime witness
 ```
 
 ## Method and verification
