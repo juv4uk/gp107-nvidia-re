@@ -7,7 +7,6 @@
 Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (release 2026-11-23).
 Посилання нижче — на commit-pinned public kernel source, не на vendor source й не на Ghidra-псевдокод.
 
-
 Для порівняння upstream stable `v7.2.15` (той самий numerically named baseline, що й користувацький kernel string) — окремий immutable tag; це **не** доводить, що `7.2.15+kali-amd64` містить ідентичний source/backport set. Kali package source і його patches залишаються окремою перевіркою.
 
 ## 1. Що вже доведено з source (`statically proven, source`)
