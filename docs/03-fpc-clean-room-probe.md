@@ -23,6 +23,8 @@
 | `NV_IOC_CARD_INFO=$c90046c8`, `NV_IOC_SYS_PARAMS=$c00846d6`, `NV_IOC_REGISTER_FD=$c00446c9` | **статично + self-check** | ті самі значення обчислюються `NvIOC_RDWR()`, звіряються перед будь-яким ioctl |
 | `BaseUnix` імпортує `FPC_SYSC_IOCTL` / `FPC_SYSC_MMAP` | **статично** | `ppudump /usr/lib/x86_64-linux-gnu/fpc/3.2.2/units/x86_64-linux/rtl/baseunix.ppu` |
 | Бінарник STATIC, без `DT_NEEDED` | **статично, ELF** | `file` → `statically linked`; `readelf -d` → немає `NEEDED`; перевіряється гейтом |
+| Відсутність `PT_INTERP`, `.dynamic`, `PT_DYNAMIC`, libc-символів | **статично, ELF** | окремі кроки `binary proof 1/3`, `2/3`, `3/3`; маркер `BINARY-PROOF-OK elf-static=yes no-dynamic-deps=yes libc-dynamic=no` |
+| Профіль хоста R580/GP107/`0000:01:00.0` | **runtime, preflight** | `HOST-PROFILE-OK ...`; несумісність дає `PASCAL-PROBE-UNSUPPORTED reason=...`, exit 3 |
 | `block_size_bytes = 0x08000000` (134217728) | **runtime** | sysfs, прочитаний через `FpOpen`/`FpRead`; потім прийнято `NV_ESC_SYS_PARAMS` |
 | `10de:1c82 @ 0000:01:00.0`, `minor=0`, BAR0 `0xee000000+0x1000000`, FB `0xd0000000+0x10000000` | **runtime** | `NV_ESC_CARD_INFO`, той самий результат, що й у C-пробі |
 | `NV_ESC_REGISTER_FD` на gpu fd з control fd як 4-байтовим аргументом | **runtime** | probe відкриває `/dev/nvidia0`, виконує ioctl; помилка друкується, але не приховується |
@@ -56,10 +58,33 @@ ELF без `DT_NEEDED`. Для конкретних `FpOpen`, `FpIOCtl`, `FpRead
 bash scripts/test-pascal-probe.sh
 ```
 
-Очікуваний фінальний рядок:
+Очікувані рядки:
 
 ```text
+HOST-PROFILE-OK bdf=0000:01:00.0 driver=580.196.11 block=8000000 bar0=0x00000000ee000000
+BINARY-PROOF-OK elf-static=yes no-dynamic-deps=yes libc-dynamic=no
 PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven
+```
+
+**Розділені бінарні твердження.** Раніше `static=yes no-libc=yes` було одним
+рядком перевірки. Тепер окремо перевіряються: (1) STATIC ELF без `PT_INTERP`;
+(2) відсутність `.dynamic`, `PT_DYNAMIC` і `DT_NEEDED`; (3) відсутність
+`libc.so`, `GLIBC_*`, `__libc_start_main` у символах і тілі бінарника.
+Статичний бінарник зі вбудованим libc провалив би саме третю перевірку,
+тож `no-libc=yes` означає **відсутність libc-залежності**, а не відсутність
+будь-якого бібліотечного коду FPC RTL.
+
+**Environment gate.** Перед будь-яким runtime-викликом гейт перевіряє
+FPC 3.2.2/x86_64/linux, наявність інструментів, унікальну картку
+`10de:1c82`, BDF `0000:01:00.0`, драйвер `580.196.11`, `block_size_bytes`,
+BAR0 з sysfs і `/dev/nvidiactl`. Несумісне середовище дає
+`PASCAL-PROBE-UNSUPPORTED reason=...` і код виходу **3**. Це не зелений
+результат: гейт лишається fail-closed, але не видає хибний `FAIL` там, де
+змінилася конфігурація хоста. Негативний приклад:
+
+```bash
+FPC_EXPECTED=9.9.9 bash scripts/test-pascal-probe.sh
+# PASCAL-PROBE-UNSUPPORTED reason=fpc-version=3.2.2 expected=9.9.9 ; exit 3
 ```
 
 Гейт передає три стани окремо: збірка (compile-time ABI-доказ), runtime

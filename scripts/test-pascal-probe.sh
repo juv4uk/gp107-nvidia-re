@@ -10,6 +10,12 @@ cd "$ROOT"
 
 FPC_BIN=${FPC:-fpc}
 FPC_EXPECTED=${FPC_EXPECTED:-3.2.2}
+EXPECTED_VENDOR=0x10de
+EXPECTED_DEVICE=0x1c82
+EXPECTED_BDF=0000:01:00.0
+EXPECTED_DRIVER=580.196.11
+EXPECTED_BLOCK=8000000
+EXPECTED_BAR0=0x00000000ee000000
 BIN="pascal/01_min_cuinit"
 BAR_BIN="pascal/02_bar_identity"
 RM_BIN="pascal/03_rm_arch_info"
@@ -17,12 +23,18 @@ WORK=$(mktemp -d)
 OUT="$WORK/out"
 BAR_OUT="$WORK/bar.out"
 RM_OUT="$WORK/rm.out"
+UNSUPPORTED_EXIT=0
 
-trap '_rc=$?; rm -rf "$WORK"; if [ "$_rc" -ne 0 ]; then
+trap '_rc=$?; rm -rf "$WORK"; if [ "$_rc" -ne 0 ] && [ "$UNSUPPORTED_EXIT" -eq 0 ]; then
          echo "PASCAL-PROBE-FAIL крок=\"$BASH_COMMAND\" код=$_rc" >&2
        fi' EXIT
 
 fail() { echo "PASCAL-PROBE-FAIL: $*" >&2; exit 1; }
+unsupported() {
+  UNSUPPORTED_EXIT=1
+  echo "PASCAL-PROBE-UNSUPPORTED reason=$*" >&2
+  exit 3
+}
 step() { printf '== %s\n' "$*"; }
 
 # Firewalls must inspect CODE, not prose in Pascal { } / // comments.
@@ -45,11 +57,52 @@ strip_pascal_comments() {
 
 # 1) Toolchain pin. wsm-lazarus records 3.2.2 as the baseline and 3.2.4 as
 #    an unmeasured source-tag candidate; mixing them would invalidate
-#    byte-level evidence.
+#    byte-level evidence. A different toolchain/host is UNSUPPORTED (exit 3),
+#    never a green gate and never a silent relaxation of the pin.
 step "FPC pin ($FPC_EXPECTED)"
-command -v "$FPC_BIN" >/dev/null 2>&1 || fail "нема $FPC_BIN"
+command -v "$FPC_BIN" >/dev/null 2>&1 || unsupported "fpc-missing:$FPC_BIN"
 got="$("$FPC_BIN" -iV)"
-[ "$got" = "$FPC_EXPECTED" ] || fail "FPC pin: очікували $FPC_EXPECTED, маємо $got"
+[ "$got" = "$FPC_EXPECTED" ] || unsupported "fpc-version=$got expected=$FPC_EXPECTED"
+[ "$("$FPC_BIN" -iTP)" = 'x86_64' ] || unsupported "fpc-target=$("$FPC_BIN" -iTP) expected=x86_64"
+[ "$("$FPC_BIN" -iTO)" = 'linux' ] || unsupported "fpc-os=$("$FPC_BIN" -iTO) expected=linux"
+[ "$(uname -m)" = 'x86_64' ] || unsupported "host-arch=$(uname -m) expected=x86_64"
+for tool in make readelf file nm mktemp awk grep sed tr head readlink; do
+  command -v "$tool" >/dev/null 2>&1 || unsupported "tool-missing:$tool"
+done
+
+# 1b) Host profile. This repository is pinned to the measured R580/GP107 box.
+#     A different GPU, BDF, BAR0, driver or memory block is reported as an
+#     incompatible host BEFORE any runtime assertion; it is not promoted to
+#     a passing witness.
+step 'host profile (R580 / GP107 / 10de:1c82)'
+bdf_count=0
+target_bdf=''
+for cfg in /sys/bus/pci/devices/*/config; do
+  [ -e "$cfg" ] || continue
+  devdir=${cfg%/config}
+  [ -r "$devdir/vendor" ] && [ -r "$devdir/device" ] || continue
+  pci_v=$(tr -d '[:space:]' <"$devdir/vendor")
+  pci_d=$(tr -d '[:space:]' <"$devdir/device")
+  if [ "$pci_v" = "$EXPECTED_VENDOR" ] && [ "$pci_d" = "$EXPECTED_DEVICE" ]; then
+    bdf_count=$((bdf_count + 1))
+    target_bdf=${devdir##*/}
+  fi
+done
+[ "$bdf_count" -eq 1 ] || unsupported "gpu-count=$bdf_count target=$EXPECTED_VENDOR:$EXPECTED_DEVICE"
+[ "$target_bdf" = "$EXPECTED_BDF" ] || unsupported "gpu-bdf=$target_bdf expected=$EXPECTED_BDF"
+target_dir="/sys/bus/pci/devices/$target_bdf"
+[ -e "$target_dir/resource0" ] || unsupported 'resource0-missing'
+[ -r /proc/driver/nvidia/version ] || unsupported 'nvidia-version-missing'
+drv=$(sed -n 's/.*Kernel Module  \([0-9.]*\).*/\1/p' /proc/driver/nvidia/version | head -1)
+[ "$drv" = "$EXPECTED_DRIVER" ] || unsupported "driver=$drv expected=$EXPECTED_DRIVER"
+[ "$(readlink -f "$target_dir/driver")" = '/sys/bus/pci/drivers/nvidia' ]   || unsupported 'driver-bind-not-nvidia'
+[ -r /sys/devices/system/memory/block_size_bytes ] || unsupported 'block-size-missing'
+blk=$(tr -d '[:space:]' < /sys/devices/system/memory/block_size_bytes)
+[ "$blk" = "$EXPECTED_BLOCK" ] || unsupported "block-size=$blk expected=$EXPECTED_BLOCK"
+bar0=$(awk 'NR == 1 { print $1 }' "$target_dir/resource")
+[ "$bar0" = "$EXPECTED_BAR0" ] || unsupported "bar0=$bar0 expected=$EXPECTED_BAR0"
+[ -c /dev/nvidiactl ] || unsupported 'nvidiactl-missing'
+echo "HOST-PROFILE-OK bdf=$target_bdf driver=$drv block=$blk bar0=$bar0"
 
 # 2) Firewall: no GUI, no libc link directive, no thread manager dependency.
 #    BaseUnix wrappers are syscall imports only where FPC_SYSC_* exists;
@@ -208,13 +261,43 @@ for spec in after_alloc_client:1 after_alloc_device:2 after_alloc_subdev:3; do
   fi
 done
 
-# 9) Binary proof for ALL probes: static ELF, no DT_NEEDED entries.
-step 'binary proof'
+# 9) Binary proof for ALL probes. Three distinct claims are checked apart:
+#    (a) static ELF: no PT_INTERP dynamic loader;
+#    (b) no dynamic dependencies: no dynamic section / DT_NEEDED;
+#    (c) no libc: no libc.so / GLIBC_* / __libc_start_main strings or symbols.
+#    A static binary that embeds libc would pass (a)+(b) but fail (c).
+step 'binary proof 1/3 (static ELF, no PT_INTERP)'
 for b in "$BIN" "$BAR_BIN" "$RM_BIN"; do
-  file "$b" | grep -q 'statically linked' || fail "$b не статичний"
-  if readelf -d "$b" 2>/dev/null | grep -q 'NEEDED'; then
-    fail "$b має динамічні залежності (DT_NEEDED)"
+  file "$b" | grep -Fq 'statically linked' || fail "$b не статичний"
+  readelf -h "$b" | grep -Fq 'Advanced Micro Devices X86-64'     || fail "$b не x86-64 ELF"
+  if readelf -lW "$b" | grep -q 'INTERP'; then
+    fail "$b має PT_INTERP (динамічний завантажник)"
   fi
 done
 
+step 'binary proof 2/3 (no dynamic dependencies)'
+for b in "$BIN" "$BAR_BIN" "$RM_BIN"; do
+  if readelf -SW "$b" | grep -q '\.dynamic'; then
+    fail "$b має розділ .dynamic"
+  fi
+  if readelf -lW "$b" | grep -q 'DYNAMIC'; then
+    fail "$b має сегмент PT_DYNAMIC"
+  fi
+  if readelf -d "$b" 2>/dev/null | grep -q 'NEEDED'; then
+    fail "$b має DT_NEEDED"
+  fi
+done
+
+step 'binary proof 3/3 (no libc)'
+for b in "$BIN" "$BAR_BIN" "$RM_BIN"; do
+  if readelf --dyn-syms "$b" 2>/dev/null \
+     | grep -Eq 'GLIBC_|__libc_start_main|libc\.so'; then
+    fail "$b містить libc-символи"
+  fi
+  if grep -aEq 'libc\.so(\.[0-9]+)*|GLIBC_[0-9.]+|__libc_start_main' "$b"; then
+    fail "$b містить libc-рядки"
+  fi
+done
+
+echo 'BINARY-PROOF-OK elf-static=yes no-dynamic-deps=yes libc-dynamic=no'
 echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven'
