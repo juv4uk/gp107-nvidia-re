@@ -81,7 +81,7 @@ int gp107_mmio_read32(const char *sysfs_root,
     if (sysfs_root == NULL || provided == NULL || value == NULL ||
         err == NULL || errsz == 0 ||
         strnlen(provided->bdf, sizeof(provided->bdf)) == sizeof(provided->bdf) ||
-        provided->bdf[0] == '\\0') {
+        provided->bdf[0] == 0) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bad-argument code=%d",
                                GP107_ERR_USAGE);
