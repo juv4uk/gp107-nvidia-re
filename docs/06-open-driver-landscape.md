@@ -711,3 +711,55 @@ bring-up. Не переносити загальне заголовне форм
 
 Джерело:
 - [Mesa pinned source — per-device NVK API version and conformance predicates](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+
+
+## 15. CUDA SM61 та незалежний Pascal eGPU reference
+
+### 15.1. CUDA Toolkit 13.x більше не збирає нові binaries для Pascal SM61
+
+NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CUDA; у CUDA Toolkit 13.0 прибрано offline compilation і library support для цих архітектур. Toolkit 12.x залишається останньою серією для створення застосунків під SM61.
+
+Практичні наслідки для GP107:
+- якщо потрібна нова CUDA-компіляція для `sm_61`, залишатися на CUDA Toolkit 12.x;
+- не налаштовувати CUDA Toolkit 13.x/13.5 як компілятор для цілі SM61;
+- не робити висновок, що всі вже зібрані CUDA binaries перестають запускатися: джерело описує вилучення offline compilation і library support для старих архітектур;
+- CUDA залишається vendor/proprietary шляхом, не частиною відкритого Nouveau stack.
+
+Джерела:
+- [NVIDIA CUDA Features Archive — Maxwell/Pascal/Volta support](https://docs.nvidia.com/cuda/cuda-features-archive/index.html)
+- [CUDA Toolkit 13.2.2 release notes](https://docs.nvidia.com/cuda/archive/13.2.2/cuda-toolkit-release-notes/index.html)
+- [CUDA Toolkit Archive — version 13.5.0, November 2026](https://developer.nvidia.com/cuda-toolkit-archive/)
+
+### 15.2. TheTom/pascal-egpu — корисна reference база, але не доказ GP107 compute
+
+[TheTom/pascal-egpu](https://github.com/TheTom/pascal-egpu) досліджує driverless userspace access до Pascal **GP106/GTX 1060** через Thunderbolt eGPU на macOS Apple Silicon. Це інше середовище й інший GPU ID; проєкт не є Nouveau і не доводить runtime на нашому GP107.
+
+Після перевірки `hw/compute_dispatch.py`:
+- у гілці `FECS not running` сума `C=A+B` обчислюється на CPU;
+- у гілці `FECS alive` FIFO + QMD submission прямо залишені як TODO, а сума знову обчислюється на CPU;
+- тому `vector_add_test() = PASS` підтверджує CPU арифметику та буферний readback, а не GPU dispatch.
+
+Проєкт містить виконувані MMIO write/reset/devinit helper-и. Це не read-only probes. Не запускати його write/reset/devinit/Falcon-код на робочій GTX 1050 Ti; використовувати лише документацію та безпечний статичний аналіз.
+
+### 15.3. Точний Pascal compute class для GP107 уже відомий з Nouveau source
+
+Публічні NVIDIA headers визначають:
+- `PASCAL_COMPUTE_A = 0xC0C0`;
+- `PASCAL_COMPUTE_B = 0xC1C0`;
+- `MAXWELL_COMPUTE_B = 0xB1C0`.
+
+Для GP107 це не припущення: перевірений Linux Nouveau `gp107.c` у class table явно вибирає `PASCAL_B` для 3D і `PASCAL_COMPUTE_B` для compute. Отже source-proven target mapping для GP107 — **`PASCAL_COMPUTE_B (0xC1C0)`**, не Maxwell `0xB1C0`.
+
+Це важлива помилка суміжного `TheTom/pascal-egpu/PLAN.md`: у рядках 521/528 він називає `MAXWELL_COMPUTE_B (0xB1C0)` для Pascal, тоді як його ж `RESEARCH.md` правильно вказує для GP106 `PASCAL_COMPUTE_B (0xC1C0)`. Для GP107 клас додатково підтверджений безпосередньо upstream Nouveau source. Не переносити помилковий Maxwell class ID у власні probes.
+
+Цей факт **не доводить GPU execution**. Для реального compute dispatch усе ще потрібні доведені channel/context lifecycle, signed FECS/GPCCS firmware, GPFIFO/QMD submission та синхронізація GPU. Ці етапи лишаються окремими відміченими доказами; CPU vector-add не може їх замінити.
+
+Джерела:
+- [Linux GP107 GR class selection — Pascal 3D and Compute B](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
+- [TheTom/pascal-egpu source](https://github.com/TheTom/pascal-egpu)
+- [compute_dispatch.py — CPU fallback and TODO dispatch](https://github.com/TheTom/pascal-egpu/blob/main/hw/compute_dispatch.py)
+- [TheTom Pascal PLAN.md](https://github.com/TheTom/pascal-egpu/blob/main/PLAN.md)
+- [TheTom Pascal RESEARCH.md](https://github.com/TheTom/pascal-egpu/blob/main/RESEARCH.md)
+- [Pascal Compute A header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc0c0.h)
+- [Pascal Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc1c0.h)
+- [Maxwell Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clb1c0.h)
