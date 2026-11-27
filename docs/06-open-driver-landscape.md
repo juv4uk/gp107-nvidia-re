@@ -1368,7 +1368,7 @@ Point Access API доступний починаючи з CUDA 11.3; окрем�
 
 Локальна перевірка лише читання:
 ```sh
-LIBCUDA=$(readlink -f "$(ldconfig -p | awk '/libcuda\\.so\\.1 / {print $NF; exit}')")
+LIBCUDA=$(readlink -f "$(ldconfig -p | awk '/libcuda\.so\.1 / {print $NF; exit}')")
 readelf -Ws "$LIBCUDA" | grep -E 'cu(GetProcAddress(_v2)?|DriverGetVersion)'
 objdump -T "$LIBCUDA" | grep -E 'cu(GetProcAddress(_v2)?|DriverGetVersion)'
 ```
@@ -1385,39 +1385,6 @@ R580 і не встановлювати CUDA Toolkit у системний prefi
 - [CUDA 13.0.3 minimum driver version](https://docs.nvidia.com/cuda/archive/13.0.3/cuda-toolkit-release-notes/index.html)
 - [CUDA Driver Entry Point Access, introduced in CUDA 11.3](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/driver-entry-point-access.html)
 - [XDC NOCL slides](https://indico.freedesktop.org/event/12/contributions/542/attachments/350/507/nocl.html)
-
-**Критичний SM61 gate за останнім доступним review MR (08.09.2026):**
-детальний розбір !37831 повідомляє, що reviewed snapshot мав hardcoded
-SM86 (Ampere) у hardware/test target profile, а NIR→PTX генератор ще
-не враховував рівень SM. Це не підтверджує Pascal support. GP107 має
-compute capability 6.1 (SM61), тому не можна вважати цей snapshot
-сумісним із нашою картою, доки source audit не доведе target-aware
-lowering і коректний PTX для SM61. За правилом NVIDIA PTX JIT target
-сумісний із пристроями тієї самої або вищої compute capability; PTX,
-націлений на sm_86, не компілюється назад для SM61. Не замінювати
-константу SM86 на SM61 механічно: треба перевірити всі NIR opcodes,
-feature gates, PTX `.version`, `.target`, і відсутність SM86-only
-інструкцій. R580 JIT також має підтвердити прийняття фактичної PTX ISA
-версії. До завершення цього аудиту NOCL має статус
-`NOT_SUPPORTED_BY_REVIEWED_SOURCE_SNAPSHOT / SM61_UNPROVEN`, а не
-«підтримує всі CUDA GPU».
-
-Огляд !37831 від 08.09.2026 наводить 12 commits, 34 files, 102 comments,
-останню зміну коду 09.11.2025, 3886 CTS pass / 4 fail / 0 crash та
-LuxMark 57,702 проти 64,009 на RTX A6000. Це Ampere/SM86 test evidence,
-не тест нашої GTX 1050 Ti; failures були пов'язані з denorm/fp16,
-а image support і `cl_gl_sharing` тоді ще були відсутні. XDC-слайди
-28.09.2026 також прямо казали, що MR ще не merged. GitLab anti-bot
-challenge не дозволив підтвердити live state на 27.11.2026, тому ці
-дати слід трактувати як останній перевірений публічний snapshot.
-
-Джерела:
-- [ITN: технічний розбір MR !37831, 2026-09-08](https://itn.lv/programmatura/mesa-draiveris-nocl-dod-opencl-uz-nvidia-cuda-luxmark-57-702-pret-64-009/)
-- [NVIDIA: PTX targets and forward JIT compatibility](https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-gpu-computing/)
-- [NVIDIA PTX ISA 8.7: `.target` semantics](https://docs.nvidia.com/cuda/pdf/ptx_isa_8.7.pdf)
-- [Mesa MR !37831](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/37831)
-
-
 
 **Якщо MR merged або є придатний тестовий branch**, локальний агент має:
 1. В окремому worktree/prefix зафіксувати Mesa commit і MR head.
