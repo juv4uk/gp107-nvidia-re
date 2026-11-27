@@ -40,6 +40,26 @@ sudo bash scripts/install-grub-open-driver-choice.sh        # створить �
 додається в кінці через `/etc/grub.d/40_custom`. Скрипт не викликає
 `update-initramfs` і не редагує `/etc/modprobe.d`.
 
+### Інсталяція: `runtime-proven` (2026-11-27)
+
+```text
+GRUB-ENTRY-ADDED
+Created symlink multi-user.target.wants/wsm-open-driver.service
+Generating grub configuration file ... done
+GRUB-CHOICE-INSTALL-OK default=nvidia open-entry='WSM open driver: nouveau + NVK trace' kver=7.2.15+kali-amd64 bdf=0000:01:00.0
+```
+
+Непривілейована перевірка після інсталяції: маркери `WSM-OPEN-DRIVER-BEGIN/END`,
+`nouveau.debug=TOP=trace,FIFO=debug` і `wsm_open_driver=1` присутні в
+`/etc/grub.d/40_custom`; `GRUB_DEFAULT=0`; юніт `enabled` з
+`ConditionKernelCommandLine=wsm_open_driver=1` і `ExecStart=/sbin/modprobe nouveau`;
+бекап `40_custom.bak.20261127070900` існує; `/etc/modprobe.d` не змінено
+(`blacklist nouveau` лишився в тих самих двох файлах). Інсталятор окремо
+перевірив наявність маркера в `/boot/grub/grub.cfg`.
+
+Це **`runtime-proven` для стану bootloader**, але не для GPU: вибір пункту menu,
+завантаження Nouveau і NVK лишаються `NOT_RUN` до reboot.
+
 ## 2. Одноразовий збір
 
 ```bash
