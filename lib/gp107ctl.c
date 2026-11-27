@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     }
 
     if (!have_offset) {
-        fprintf(stderr, "USAGE-FAIL step=offset-required code=%d\\n",
+        fprintf(stderr, "USAGE-FAIL step=offset-required code=%d\n",
                 GP107_ERR_USAGE);
         return GP107_ERR_USAGE;
     }
