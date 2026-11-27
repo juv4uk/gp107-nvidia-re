@@ -218,15 +218,6 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -D_POSIX_C_SOURCE=200809L \
 "$WORK/mmio-api-test" "$FIX"
 
 
-step 'MMIO refuses an unaligned 32-bit offset'
-if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
-  fail 'MMIO accepted unaligned offset'
-fi
-grep -Fq 'MMIO-FAIL step=offset-unaligned' "$WORK/unaligned.err" \
-  || fail 'missing unaligned-offset failure marker'
-echo 'NEGATIVE-MMIO-ALIGNMENT-OK offset=0x2 denied'
-
 step 'negative witness (undersized resource0 is refused)'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/resource0" <<'PY'
@@ -247,6 +238,16 @@ p = sys.argv[1]
 open(p, 'wb').write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 echo 'NEGATIVE-BAR0-SIZE-OK marker=step=bar0-size-too-small'
+
+step 'MMIO refuses an unaligned 32-bit offset'
+if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
+  fail 'MMIO accepted unaligned offset'
+fi
+grep -Fq 'MMIO-FAIL step=offset-unaligned' "$WORK/unaligned.err" \
+  || fail 'missing unaligned-offset failure marker'
+echo 'NEGATIVE-MMIO-ALIGNMENT-OK offset=0x2 denied'
+
 
 step 'BAR0 offset outside the 4 KiB aperture is refused'
 if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
