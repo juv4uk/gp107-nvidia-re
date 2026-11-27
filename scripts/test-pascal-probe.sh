@@ -37,6 +37,14 @@ unsupported() {
 }
 step() { printf '== %s\n' "$*"; }
 
+# The valid_cards gate must exist in CODE, not in the header comment.
+check_valid_cards_gate() {
+  local body
+  body=$(strip_pascal_comments "$1")
+  printf '%s\n' "$body" | grep -Fq 'valid_cards <> 1' || return 1
+  printf '%s\n' "$body" | grep -Fq 'ambiguous valid_cards=' || return 1
+}
+
 # Firewalls must inspect CODE, not prose in Pascal { } / // comments.
 strip_pascal_comments() {
   awk '
@@ -134,10 +142,17 @@ if strip_pascal_comments pascal/03_rm_arch_info.pas \
 fi
 grep -Fq 'SelectTargetCard(card, matches, valid_cards)' \
   pascal/03_rm_arch_info.pas || fail 'нема вибору цільової картки через nv_device'
-grep -Fq 'valid_cards <> 1' pascal/03_rm_arch_info.pas \
-  || fail 'нема статичного fail-closed gate valid_cards <> 1'
-grep -Fq 'ambiguous valid_cards=' pascal/03_rm_arch_info.pas \
-  || fail 'нема маркера ambiguous valid_cards=N'
+check_valid_cards_gate pascal/03_rm_arch_info.pas \
+  || fail 'нема статичного fail-closed gate valid_cards <> 1 або маркера ambiguous valid_cards=N'
+
+step 'negative witness (valid_cards static gate is not vacuous)'
+mut_src="$WORK/03_rm_arch_info.no-gate.pas"
+sed -e '/valid_cards <> 1/d' -e '/ambiguous valid_cards=/d' \
+  pascal/03_rm_arch_info.pas >"$mut_src"
+if check_valid_cards_gate "$mut_src"; then
+  fail 'мутований source без gate пройшов статичну перевірку'
+fi
+echo 'VALID-CARDS-GATE-NEGATIVE-OK removed-gate-detected=yes'
 grep -Fq 'GpuDevicePath(card)' pascal/03_rm_arch_info.pas \
   || fail 'шлях GPU-пристрою не похідний від minor_number'
 
