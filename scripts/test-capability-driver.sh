@@ -34,7 +34,12 @@ fi
 if grep -R -F -q 'b5ec3211f6bd07fb7c4a5f704875892eff145b91' lib pascal; then
   fail 'authoritative ABI pin present in library code'
 fi
-echo 'DRIVER-FIREWALL-OK banned-ops=absent pin-in-code=absent boot0-value=absent'
+if grep -nHE '\\b(mmap|munmap|openat|FpMMap|FpMunmap|FpOpen)\\s*\\(' \
+     lib/gp107_mmio.c pascal/gp107_mmio.pas >>"$WORK/fw-mmio.txt"; then
+  cat "$WORK/fw-mmio.txt" >&2
+  fail 'production MMIO API must not open resource0 or map an aperture'
+fi
+echo 'DRIVER-FIREWALL-OK banned-ops=absent pin-in-code=absent boot0-value=absent mapping-api=absent'
 
 step 'compile C11 gate with warnings as errors'
 make -C "$ROOT/lib" clean all >/dev/null
@@ -272,6 +277,47 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -D_POSIX_C_SOURCE=200809L \
   "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-api-test"
 "$WORK/mmio-api-test" "$FIX"
 
+step 'public C API defers unbound reads without a source-proven safe offset'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+cat > "$WORK/mmio-safe-offset-api-test.c" <<'EOF'
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include "gp107_identity.h"
+#include "gp107_mmio.h"
+
+int main(int argc, char **argv)
+{
+    char err[256] = {0};
+    uint32_t value = 0xdeadbeefu;
+    int rc;
+
+    if (argc != 2)
+        return 64;
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 1, 0,
+                           &value, err, sizeof(err));
+    if (rc != GP107_ERR_SAFE_OFFSET_UNPROVEN ||
+        strstr(err, "read-safe-offset-unproven") == NULL || value != 0) {
+        fprintf(stderr, "API-SAFE-OFFSET-FAIL rc=%d value=0x%x err=%s\\n",
+                rc, value, err);
+        return 1;
+    }
+    puts("MMIO-API-SAFE-OFFSET-OK direct-call=deferred map=absent");
+    return 0;
+}
+EOF
+cc -std=c11 -Wall -Wextra -Werror -pedantic -D_POSIX_C_SOURCE=200809L \
+  -I"$ROOT/lib" "$WORK/mmio-safe-offset-api-test.c" "$ROOT/lib/gp107_identity.c" \
+  "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-safe-offset-api-test"
+"$WORK/mmio-safe-offset-api-test" "$FIX"
+if "$PASBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/safe-offset-pas.out" 2>"$WORK/safe-offset-pas.err"; then
+  fail 'Pascal API allowed an unproven BAR0 read'
+fi
+grep -Fq 'MMIO-FAIL step=read-safe-offset-unproven code=21 offset=0x0' \
+  "$WORK/safe-offset-pas.err" || fail 'Pascal safe-offset gate missing'
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+echo 'MMIO-API-SAFE-OFFSET-OK C-and-Pascal direct API deferred'
 
 step 'negative witness (undersized resource0 is refused)'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
@@ -300,19 +346,12 @@ open(p, 'wb').write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 echo 'NEGATIVE-BAR0-SIZE-OK marker=step=bar0-size-too-small'
 
-step 'resource0 symlink substitution is refused'
-RESOURCE="$FIX/bus/pci/devices/0000:01:00.0/resource0"
-mv "$RESOURCE" "$WORK/resource0-target"
-ln -s "$WORK/resource0-target" "$RESOURCE"
-if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/resource-symlink.out" 2>"$WORK/resource-symlink.err"; then
-  fail 'MMIO followed a symlink substituted for resource0'
-fi
-grep -Fq 'MMIO-FAIL step=resource0-open' "$WORK/resource-symlink.err" \
-  || fail 'resource0 symlink rejection did not report an open failure'
-rm "$RESOURCE"
-mv "$WORK/resource0-target" "$RESOURCE"
-echo 'NEGATIVE-RESOURCE0-SYMLINK-OK nofollow=yes'
+step 'safe-offset gate precedes all possible BAR access'
+grep -Fq 'read-safe-offset-unproven' "$ROOT/lib/gp107_mmio.c" \
+  || fail 'C safe-offset refusal missing'
+grep -Fq 'read-safe-offset-unproven' "$ROOT/pascal/gp107_mmio.pas" \
+  || fail 'Pascal safe-offset refusal missing'
+echo 'MMIO-RESOURCE0-ACCESS-ABSENT-OK'
 
 
 step 'MMIO refuses an unaligned 32-bit offset'
@@ -347,30 +386,20 @@ cmp -s "$WORK/offset.err" "$WORK/offset-pas.err" \
 echo 'NEGATIVE-MMIO-OFFSET-OK offset=0x1000 denied pascal=C'
 
 
-step 'MMIO read-only witness on synthetic resource0 (not hardware)'
-"$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
-for marker in \
-  '(kind . gp107-mmio-read)' \
-  '(offset . 0x0)' \
-  '(value . 0x1c8210de)' \
-  '(right . read-only)' \
-  '(boot0 . unproven)' \
-  '(summary . MMIO-READ-OK)'; do
-  grep -Fq "$marker" "$WORK/mmio.out" || fail "нема маркера: $marker"
-done
-"$PASBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-pas.out"
-cmp -s "$WORK/mmio.out" "$WORK/mmio-pas.out" \
-  || fail 'Pascal mmio-read відрізняється від C'
-if command -v objdump >/dev/null 2>&1; then
-  objdump -d "$PASBIN" >"$WORK/pas-asm-dis.txt"
-  grep -q 'lfence' "$WORK/pas-asm-dis.txt" \
-    || fail 'у Pascal asm-примітиві немає lfence'
-  echo 'PASCAL-ASM-STATIC-OK primitive=movl+lfence sysv-amd64'
-else
-  echo 'PASCAL-ASM-STATIC-SKIP reason=objdump-absent'
+step 'MMIO refuses every valid-looking offset until safe register semantics are proven'
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/mmio.out" 2>"$WORK/mmio.err"; then
+  fail 'C API returned a BAR0 value without a proven safe register'
 fi
-echo 'PASCAL-MMIO-PARITY-OK fixture-read identical-to-C hardware=NOT-RUN'
-echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN pascal=C'
+grep -Fq 'MMIO-FAIL step=read-safe-offset-unproven code=21 offset=0x0' \
+  "$WORK/mmio.err" || fail 'C safe-offset refusal marker missing'
+if "$PASBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/mmio-pas.out" 2>"$WORK/mmio-pas.err"; then
+  fail 'Pascal API returned a BAR0 value without a proven safe register'
+fi
+cmp -s "$WORK/mmio.err" "$WORK/mmio-pas.err" \
+  || fail 'Pascal safe-offset ERROR differs from C'
+echo 'NEGATIVE-SAFE-OFFSET-UNPROVEN-OK pascal=C'
 
 step 'negative witness (offset past one-page window is refused)'
 if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
@@ -381,26 +410,23 @@ grep -Fq 'MMIO-FAIL step=offset-out-of-window code=17 offset=0x1000' "$WORK/offs
   || fail 'нема названого negative-маркера offset-out-of-window'
 echo 'NEGATIVE-MMIO-OFFSET-OK marker=step=offset-out-of-window'
 
-step 'assembly read-only path equivalence (x86-64 only)'
+step 'assembly leaf is inspected statically only; public API never calls it'
 if [ -x "$ASMBIN" ]; then
-  "$ASMBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-asm.out"
-  cmp -s "$WORK/mmio.out" "$WORK/mmio-asm.out" \
-    || fail 'асемблерний read-only шлях відрізняється від C'
   "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-c.out"
   "$ASMBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-asm.out"
   cmp -s "$WORK/ledger-c.out" "$WORK/ledger-asm.out" \
-    || fail 'ledger відрізняється між C і assembly builds'
+    || fail 'ledger differs between C and assembly-linked builds'
   if command -v objdump >/dev/null 2>&1; then
     objdump -d "$ASMBIN" >"$WORK/asm-dis.txt"
-    grep -q 'lfence' "$WORK/asm-dis.txt" \
-      || fail 'у asm-примітиві немає lfence'
-    echo 'ASM-STATIC-OK primitive=movl+lfence calling-convention=sysv-amd64'
+    grep -A8 '<gp107_mmio_load32_asm>:' "$WORK/asm-dis.txt" | grep -q 'lfence' \
+      || fail 'isolated asm leaf has no lfence'
+    echo 'ASM-STATIC-OK primitive=movl+lfence api-call=absent'
   else
     echo 'ASM-STATIC-SKIP reason=objdump-absent'
   fi
-  echo 'ASM-EQUIV-OK fixture-read-and-ledger identical-to-C hardware=NOT-RUN'
+  echo 'ASM-NO-HARDWARE-PATH-OK ledger-only=yes'
 else
-  echo 'ASM-EQUIV-SKIP reason=non-x86_64-host'
+  echo 'ASM-STATIC-SKIP reason=non-x86_64-host'
 fi
 
 step 'capability ledger (unbound + no opt-in stays deferred)'
@@ -412,16 +438,20 @@ cmp -s "$WORK/ledger-deferred.out" "$WORK/ledger-deferred-pas.out" \
   || fail 'Pascal deferred-ledger відрізняється від C'
 echo 'LEDGER-DEFERRED-OK marker=step=opt-in-required pascal=C'
 
-step 'capability ledger (unbound + opt-in grants read-only only)'
-"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted.out"
-grep -Fq '(mmio-read-software-gate . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
-  || fail 'ledger не надав read-only MMIO після opt-in'
-grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
-  || fail 'ledger розширив права поза read-only'
-"$PASBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted-pas.out"
-cmp -s "$WORK/ledger-granted.out" "$WORK/ledger-granted-pas.out" \
-  || fail 'Pascal granted-ledger відрізняється від C'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none pascal=C'
+step 'capability ledger (unbound + opt-in remains deferred until safe offset proof)'
+"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-safe-offset.out"
+grep -Fq '(mmio-read-software-gate . deferred) (reason . read-safe-offset-unproven)' "$WORK/ledger-safe-offset.out" \
+  || fail 'ledger granted MMIO without a source-proven safe register'
+grep -Fq '(owner-approval . not-inferred)' "$WORK/ledger-safe-offset.out" \
+  || fail 'ledger inferred owner approval'
+grep -Fq '(physical-mmio . not-authorized)' "$WORK/ledger-safe-offset.out" \
+  || fail 'ledger authorized physical MMIO'
+grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-safe-offset.out" \
+  || fail 'ledger expanded rights'
+"$PASBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-safe-offset-pas.out"
+cmp -s "$WORK/ledger-safe-offset.out" "$WORK/ledger-safe-offset-pas.out" \
+  || fail 'Pascal safe-offset ledger differs from C'
+echo 'LEDGER-SAFE-OFFSET-DEFERRED-OK owner-approval=not-inferred pascal=C'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
@@ -473,4 +503,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 pascal=equiv hardware-mmio=NOT-AUTHORIZED/NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed mmio=deferred safe-offset=unproven pascal=C-parity hardware-mmio=NOT-AUTHORIZED/NOT-RUN"
