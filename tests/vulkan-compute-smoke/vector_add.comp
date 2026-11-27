@@ -1,0 +1,20 @@
+#version 450
+
+// Conservative first Pascal compute test: no subgroups, fp16, images,
+// atomics, or optional shader extensions.
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA { uint a[]; };
+layout(set = 0, binding = 1, std430) readonly buffer InputB { uint b[]; };
+layout(set = 0, binding = 2, std430) writeonly buffer OutputC { uint c[]; };
+
+layout(push_constant) uniform Parameters {
+    uint count;
+} params;
+
+void main()
+{
+    uint i = gl_GlobalInvocationID.x;
+    if (i < params.count)
+        c[i] = a[i] + b[i];
+}
