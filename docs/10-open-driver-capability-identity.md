@@ -89,6 +89,44 @@ GATE_LOG=/tmp/opencode/valid-cards-gate2.log \
 - Наступний зріз (`GPFIFO channel`) не починати до #18 trace witness і явної
   owner-санкції на фізичний запуск.
 
+## 5. Варіант для відкритого boot (адитивно)
+
+Після переходу системи в `wsm_open_driver=1` базовий
+`scripts/test-pascal-probe.sh` **коректно відмовляє** з
+`PASCAL-PROBE-UNSUPPORTED reason=nvidia-version-missing`: він прив’язаний до
+заміряного пропрієтарного boot R580 і не має права видавати green-результат
+без `/proc/driver/nvidia/version`. Це не регресія й не привід послаблювати
+базовий gate.
+
+Додано окремий `scripts/test-open-driver-capability.sh` — **адитивний**
+research-ledgeр, який не змінює базовий gate і не запускає драйвер:
+
+1. перевіряє вже закомічені сирі свідки: cmdline, `lspci`, `lsmod`,
+   kernel log, `vulkaninfo`, DRM-ioctl trace;
+2. вимагає `nouveau` як `Kernel driver in use`, відсутність активного
+   `nvidia*`, `DRIVER_ID_MESA_NVK` і GPU `10de:1c82 @ 0000:01:00.0`;
+3. використовує `PHYSICAL_COMPUTE_TEST=PASS` лише як
+   `runtime-proven-from-committed-artifacts`, не перезапускаючи harness;
+4. явно лишає `BOOT0`, `NONSTALL_EVENT_SUBSCRIPTION_OBSERVED` і
+   `CHANNEL_RUNLIST_CORRELATED` у стані `UNPROVEN`;
+5. має три мутаційні негативи: пропрієтарний ICD, `nvidia` binding і
+   `NOT_RUN` замість `PASS` — кожен відхиляється з названим маркером;
+6. друкує S-вираз `(kind . wsm-open-driver-capability-research)` і
+   `OPEN-DRIVER-GATE-OK ... boot0=unproven mmio=none pr21=NOT-RUN negative=3`.
+
+Межа: це **проєкція вже здобутих свідків**, а не новий логічний висновок і не
+ABI. Стан.compute не підвищується до «драйвер працює»; PR #21 executable,
+MMIO і transfer коду не запускались.
+
+### Спостереження під час аудиту
+
+`test-capability-identity.sh` шукає authoritative pin рядом у каталогах
+`pascal scripts tests`; каталогу `tests` у цьому зрізі немає, тому `grep -R`
+повертає код 2, і перевірка помилково вважається пройденою. Новий gate
+перевіряє **`git ls-files` на наявність pin-файла**, а не рядок-детектор у
+власних gate-скриптах. Базовий gate не змінено навмисно — це питання
+окремого owner-рішення, а не частина цього додатку.
+
 ## Українською одном реченням
 
 Спершу фіксуємо, що лісп-машина вже може **перевірено знати** про GP107, і
