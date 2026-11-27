@@ -78,6 +78,15 @@ sudo ./pascal/02_bar_identity              # root-свідок: EINVAL, BOOT0 un
 PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed boot0=unproven
 ```
 
+## Фаза 03 — RM arch info (не запущена)
+
+Кандидат `NV2080_CTRL_CMD_MC_GET_ARCH_INFO` (клас `0x2080`) поки **не підтверджений**:
+
+- literal-назви немає в `/usr/src/nvidia-580.196.11` (публічні headers R580); знайдено лише коментарі `NV2080_CTRL_MC_ARCH_INFO_ARCHITECTURE_*` у `common/inc/nv_uvm_types.h`;
+- REA-інвентар рядків `libcuda.so.580.196.11` не містить `NV2080_CTRL_CMD` (`ev_514422e5d7733e0417243209387c8ed82d57d912dbc2734ef42a70c4b64773ac`).
+
+Тому `03_rm_arch_info.pas` **не створюємо як «доведений шлях»**. Фаза 03 — окреме research-завдання: знайти cmd id і struct layout або чесно зафіксувати `UNPROVEN`. Навіть позитивний RM-результат дає arch/implementation і лишається окремим каналом — він не перетворює BOOT0 на прочитаний регістр.
+
 ## Інструментарій, на якому це перевірено
 
 FPC 3.2.2 (`3.2.2+dfsg-51`), Ghidra 12.2 + OpenJDK 25, REA MCP,
