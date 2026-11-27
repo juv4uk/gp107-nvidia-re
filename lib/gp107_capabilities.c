@@ -39,20 +39,20 @@ int gp107_capability_report(const struct gp107_inventory *inv,
     (void)allow_mmio;
     reason = inv->driver.bound ? "driver-bound" : "owner-authorization-required";
 
-    append_line(out, cap, "((kind . gp107-capability-ledger)\\n");
-    append_line(out, cap, " (authority . gp107-research-not-abi)\\n");
-    append_line(out, cap, " (abi-pin . untouched)\\n");
+    append_line(out, cap, "((kind . gp107-capability-ledger)\n");
+    append_line(out, cap, " (authority . gp107-research-not-abi)\n");
+    append_line(out, cap, " (abi-pin . untouched)\n");
     append_line(out, cap, " (pci-inventory . granted)"
-                          " (evidence . runtime-proven)\\n");
+                          " (evidence . runtime-proven)\n");
     append_line(out, cap, " (bar0-decode . %s)"
-                          " (evidence . statically-proven-layout)\\n",
+                          " (evidence . statically-proven-layout)\n",
                 inv->pci.cfg_bytes == GP107_CONFIG_BYTES ? "complete" : "partial");
     append_line(out, cap, " (rm-identity . deferred)"
-                          " (reason . not-in-this-slice)\\n");
-    append_line(out, cap, " (mmio-read . denied) (reason . %s)\\n", reason);
-    append_line(out, cap, " (boot0 . unproven) (evidence . unproven)\\n");
+                          " (reason . not-in-this-slice)\n");
+    append_line(out, cap, " (mmio-read . denied) (reason . %s)\n", reason);
+    append_line(out, cap, " (boot0 . unproven) (evidence . unproven)\n");
     append_line(out, cap, " (rights (write . none) (dispatch . none)"
-                          " (rm . none))\\n");
-    append_line(out, cap, " (summary . CAPABILITY-LEDGER-OK))\\n");
+                          " (rm . none))\n");
+    append_line(out, cap, " (summary . CAPABILITY-LEDGER-OK))\n");
     return GP107_OK;
 }
