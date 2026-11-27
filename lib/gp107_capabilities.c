@@ -57,7 +57,6 @@ int gp107_capability_report(const struct gp107_inventory *inv,
                 state, reason);
     append_line(out, cap, " (owner-approval . not-inferred)\n");
     append_line(out, cap, " (physical-mmio . not-authorized)\n");
-    append_line(out, cap, " (boot0 . unproven) (evidence . unproven)\\n");
     append_line(out, cap, " (boot0 . unproven) (evidence . unproven)\n");
     append_line(out, cap, " (rights (write . none) (dispatch . none)"
                           " (rm . none))\n");
