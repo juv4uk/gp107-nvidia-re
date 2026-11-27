@@ -1,114 +1,114 @@
-# 01 — `cuInit` flow on GP107 / R580
+# 01 — Послідовність `cuInit` на GP107 / R580
 
-## Environment
+## Середовище
 
-Driver `580.196.11`, kernel `7.2.15+kali-amd64`, GPU `GP107 [GeForce GTX 1050 Ti]` (`10de:1c82`), SM 6.1. Target library: `/usr/lib/x86_64-linux-gnu/libcuda.so.1` → `libcuda.so.580.196.11`.
+Драйвер `580.196.11`, ядро `7.2.15+kali-amd64`, GPU `GP107 [GeForce GTX 1050 Ti]` (`10de:1c82`), SM 6.1. Цільова бібліотека: `/usr/lib/x86_64-linux-gnu/libcuda.so.1` → `libcuda.so.580.196.11`.
 
-## Summary
+## Стислий висновок
 
-`cuInit` is a thin public wrapper. It guards against an already-initialized driver, delegates to an internal initializer through an indirect pointer resolved at load time, and maps return codes to a readable error name. **All device and ioctl work happens below it**, in the internal initializer and device-manager layer.
+`cuInit` — тонка публічна обгортка. Вона перевіряє, чи не ініціалізовано драйвер раніше, передає керування внутрішньому ініціалізатору через непрямий покажчик, визначений під час завантаження, і перетворює коди повернення на зрозумілі назви помилок. **Уся робота з пристроями та `ioctl` виконується нижче** — у внутрішньому ініціалізаторі та шарі керування пристроями.
 
-A minimal `dlopen("libcuda.so.1") + dlsym("cuInit") + cuInit(0)` returned `0` on this system.
+Мінімальний виклик `dlopen("libcuda.so.1") + dlsym("cuInit") + cuInit(0)` на цій системі повернув `0`.
 
-## Observed call flow
+## Спостережуваний ланцюжок викликів
 
 ```mermaid
 flowchart TD
-    A["public cuInit(flags = 0)"] --> B{"library already initialized?"}
-    B -- yes --> Z["return early with CUDA_ERROR_NOT_INITIALIZED (4)"]
-    B -- no --> C["internal cuInit via resolved function pointer"]
-    C --> D["TLS / calling-context acquisition"]
-    D --> E["event dispatcher: cuInit event (class 6, id 1)"]
-    E --> F["driver-wide initialization routine"]
-    F --> G["device manager: construct /dev/nvidia* paths"]
-    G --> H["open /dev/nvidiactl"]
+    A["публічний cuInit(flags = 0)"] --> B{"бібліотеку вже ініціалізовано?"}
+    B -- так --> Z["негайно повернути CUDA_ERROR_NOT_INITIALIZED (4)"]
+    B -- ні --> C["внутрішній cuInit через визначений покажчик функції"]
+    C --> D["отримання TLS / контексту виклику"]
+    D --> E["диспетчер подій: cuInit (клас 6, id 1)"]
+    E --> F["процедура глобальної ініціалізації драйвера"]
+    F --> G["менеджер пристроїв: побудова шляхів /dev/nvidia*"]
+    G --> H["відкриття /dev/nvidiactl"]
     H --> I["NV_ESC_SYS_PARAMS (nr 214)"]
     H --> J["NV_ESC_CARD_INFO (nr 200)"]
     H --> K["NV_ESC_REGISTER_FD (nr 201)"]
-    J --> L["open /dev/nvidia%d -> /dev/nvidia0"]
-    L --> M["open /dev/nvidia-uvm (two fds observed)"]
-    M --> N["init ready; return 0 to caller"]
+    J --> L["відкриття /dev/nvidia%d -> /dev/nvidia0"]
+    L --> M["відкриття /dev/nvidia-uvm (спостерігалися два fd)"]
+    M --> N["ініціалізацію завершено; повернути 0"]
 ```
 
-The dispatcher passes a small event descriptor tagged `6 / 1` and the literal label `cuInit`; the same dispatcher is reused later by allocation and launch with different event ids.
+Диспетчер передає невеликий дескриптор події з міткою `6 / 1` і буквальним ім'ям `cuInit`; пізніше той самий диспетчер використовується під час виділення пам'яті та запуску ядра з іншими ідентифікаторами подій.
 
-## Device nodes
+## Вузли пристроїв
 
-| Node | Role in this path | Evidence |
+| Вузол | Призначення в цьому шляху | Доказ |
 |---|---|---|
-| `/dev/nvidiactl` | Global Resource Manager control channel. Opened `O_RDWR`; all global escape ioctls go through it. | static path construction + `openat("/dev/nvidiactl", O_RDWR)` |
-| `/dev/nvidia%d` → `/dev/nvidia0` | Per-GPU node for the physical GP107 chip. Template comes from `minor_number` in `NV_ESC_CARD_INFO`. | `snprintf("/dev/nvidia%d", ...)` + `openat("/dev/nvidia0", O_RDWR\|O_CLOEXEC)` |
-| `/dev/nvidia-uvm` | Unified Memory device; two fds opened, then `UVM_INITIALIZE` and related setup. | `openat("/dev/nvidia-uvm", O_RDWR\|O_CLOEXEC)` x2 |
-| `/proc/driver/nvidia/params` | Not a `/dev` node; read for driver parameters / node metadata. | `openat` under `cuInit` |
+| `/dev/nvidiactl` | Глобальний канал керування Resource Manager. Відкривається з `O_RDWR`; усі глобальні escape-`ioctl` проходять через нього. | Статична побудова шляху + `openat("/dev/nvidiactl", O_RDWR)` |
+| `/dev/nvidia%d` → `/dev/nvidia0` | Вузол окремого GPU для фізичного чипа GP107. Шаблон береться з `minor_number` у `NV_ESC_CARD_INFO`. | `snprintf("/dev/nvidia%d", ...)` + `openat("/dev/nvidia0", O_RDWR\|O_CLOEXEC)` |
+| `/dev/nvidia-uvm` | Пристрій Unified Memory; відкриваються два fd, після чого виконуються `UVM_INITIALIZE` та пов'язані операції налаштування. | `openat("/dev/nvidia-uvm", O_RDWR\|O_CLOEXEC)` ×2 |
+| `/proc/driver/nvidia/params` | Це не вузол `/dev`; файл читається для отримання параметрів драйвера та метаданих вузлів. | `openat` під час `cuInit` |
 
-Strings also present in the library but **not opened by plain `cuInit(0)`** on this system: `/dev/nvidia-modeset`, `/dev/nvidia-uvm-tools`, `/dev/nvidia-caps/nvidia-cap%d`, `/dev/nvidia-caps-imex-channels/channel%d`, `/dev/nvidia-nvlink`, `/dev/nvidia-nvswitch%d`, `/dev/nvidia-vgpu%d`. Their presence alone does not imply use in this path.
+У бібліотеці також присутні рядки, але під час звичайного `cuInit(0)` у цій системі **не відкривалися** такі вузли: `/dev/nvidia-modeset`, `/dev/nvidia-uvm-tools`, `/dev/nvidia-caps/nvidia-cap%d`, `/dev/nvidia-caps-imex-channels/channel%d`, `/dev/nvidia-nvlink`, `/dev/nvidia-nvswitch%d`, `/dev/nvidia-vgpu%d`. Сама наявність рядка не доводить, що вузол використовується в цьому шляху.
 
-## ioctl sequence
+## Послідовність ioctl
 
-Magic is `'F'` (`0x46`), from `nv-ioctl-numbers.h`.
+Magic — `'F'` (`0x46`), із `nv-ioctl-numbers.h`.
 
-| ioctl request | nr | Direction / size | Name | Purpose |
+| Запит ioctl | nr | Напрямок / розмір | Назва | Призначення |
 |---|---:|---|---|---|
-| `0xc00846d6` | 214 (`0xd6`) | RD/WR, 8 | `NV_ESC_SYS_PARAMS` | Query system parameters (`uint64_t memblock_size`) |
-| `0xc90046c8` | 200 (`0xc8`) | RD/WR, 2304 | `NV_ESC_CARD_INFO` | Enumerate up to 32 GPUs (72-byte entries) |
-| `0xc00446c9` | 201 (`0xc9`) | RD/WR, 4 | `NV_ESC_REGISTER_FD` | Register GPU fd with the control fd |
-| `0xc020462a` | 42 (`0x2a`) | RD/WR, 32 | `NV_ESC_RM_CONTROL` | Transport for RM commands (`NVOS54_PARAMETERS`) |
-| `0xc0104629` | 41 (`0x29`) | RD/WR, 16 | `NV_ESC_RM_FREE` | Release RM objects |
-| `0xc030462b` | 43 (`0x2b`) | RD/WR, 48 | `NV_ESC_RM_ALLOC` | Create RM objects (`NVOS64_PARAMETERS`) |
-| `0xc23046d7` | 215 (`0xd7`) | RD/WR, 560 | internal | Further RM/status query |
-| `0xc00c46d1` | 209 (`0xd1`) | RD/WR, 12 | `NV_ESC_STATUS_CODE` | Error path when GPU open fails with `EACCES` |
-| `0xc00846d5` | 213 (`0xd5`) | RD/WR, 8 | `NV_ESC_QUERY_DEVICE_INTR` | Open-completion wait helper |
-| `0xc00846da` | 218 (`0xda`) | RD/WR, 8 | `NV_ESC_WAIT_OPEN_COMPLETE` | Wait for GPU open to finish |
-| `0xca3046d9` | 217 (`0xd9`) | RD/WR, 2608 | `NV_ESC_EXPORT_TO_DMABUF_FD` | DMABUF export branch |
+| `0xc00846d6` | 214 (`0xd6`) | RD/WR, 8 | `NV_ESC_SYS_PARAMS` | Запит системних параметрів (`uint64_t memblock_size`) |
+| `0xc90046c8` | 200 (`0xc8`) | RD/WR, 2304 | `NV_ESC_CARD_INFO` | Перелік до 32 GPU (записи по 72 байти) |
+| `0xc00446c9` | 201 (`0xc9`) | RD/WR, 4 | `NV_ESC_REGISTER_FD` | Реєстрація GPU fd через control fd |
+| `0xc020462a` | 42 (`0x2a`) | RD/WR, 32 | `NV_ESC_RM_CONTROL` | Транспорт для команд RM (`NVOS54_PARAMETERS`) |
+| `0xc0104629` | 41 (`0x29`) | RD/WR, 16 | `NV_ESC_RM_FREE` | Звільнення об'єктів RM |
+| `0xc030462b` | 43 (`0x2b`) | RD/WR, 48 | `NV_ESC_RM_ALLOC` | Створення об'єктів RM (`NVOS64_PARAMETERS`) |
+| `0xc23046d7` | 215 (`0xd7`) | RD/WR, 560 | внутрішній | Додатковий запит RM/стану |
+| `0xc00c46d1` | 209 (`0xd1`) | RD/WR, 12 | `NV_ESC_STATUS_CODE` | Шлях обробки помилки, коли відкриття GPU завершується `EACCES` |
+| `0xc00846d5` | 213 (`0xd5`) | RD/WR, 8 | `NV_ESC_QUERY_DEVICE_INTR` | Допоміжна процедура очікування завершення відкриття |
+| `0xc00846da` | 218 (`0xda`) | RD/WR, 8 | `NV_ESC_WAIT_OPEN_COMPLETE` | Очікування завершення відкриття GPU |
+| `0xca3046d9` | 217 (`0xd9`) | RD/WR, 2608 | `NV_ESC_EXPORT_TO_DMABUF_FD` | Гілка експорту DMABUF |
 
-Numbers below 200 come from `nv_escape.h`, not from the public `nv-ioctl-numbers.h`; that is why `0x2a` initially looked "unmapped".
+Номери нижче 200 походять із `nv_escape.h`, а не з публічного `nv-ioctl-numbers.h`; саме тому `0x2a` спочатку виглядав як такий, що не має зіставлення.
 
-## RM command map (`NVOS54_PARAMETERS.cmd`)
+## Карта команд RM (`NVOS54_PARAMETERS.cmd`)
 
-`NVOS54_PARAMETERS` layout used by `NV_ESC_RM_CONTROL`:
+Структура `NVOS54_PARAMETERS`, яку використовує `NV_ESC_RM_CONTROL`:
 
-| Offset | Field | Width |
+| Зсув | Поле | Ширина |
 |---:|---|---:|
 | 0 | `hClient` | 32 |
 | 4 | `hObject` | 32 |
 | 8 | `cmd` | 32 |
 | 12 | `flags` | 32 |
-| 16 | `params` | 64 (pointer) |
+| 16 | `params` | 64 (покажчик) |
 | 24 | `paramsSize` | 32 |
 | 28 | `status` | 32 |
 
-Commands observed during initialization, resolved with matching `ctrl2080*.h`:
+Команди, спостережені під час ініціалізації та зіставлені з відповідними `ctrl2080*.h`:
 
-| `cmd` | Symbol | Meaning |
+| `cmd` | Символ | Значення |
 |---|---|---|
-| `0x20803801` | `NV2080_CTRL_CMD_GRMGR_GET_GR_FS_INFO` | Graphics-manager framebuffer/engine info |
-| `0x20801346` | `NV2080_CTRL_CMD_FB_GET_FS_INFO` | Framebuffer info for subdevice 0 |
-| `0x00000101` | `NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES` | Client capabilities |
+| `0x20803801` | `NV2080_CTRL_CMD_GRMGR_GET_GR_FS_INFO` | Інформація про framebuffer/engine graphics-manager |
+| `0x20801346` | `NV2080_CTRL_CMD_FB_GET_FS_INFO` | Інформація про framebuffer для subdevice 0 |
+| `0x00000101` | `NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES` | Можливості клієнта |
 
-The `0x2080` prefix is class `NV20_SUBDEVICE_0`; the low byte is the command within that class's interface.
+Префікс `0x2080` позначає клас `NV20_SUBDEVICE_0`; молодший байт — команду в інтерфейсі цього класу.
 
-## Return-code semantics (behavioural, not source)
+## Семантика кодів повернення (поведінка, не вихідний код)
 
-- Codes `0` (success), `3`, `4` and `600` are returned directly without a log lookup.
-- Other codes are searched in an internal error table; the resolved name (or a fallback) is emitted in a diagnostic before returning.
-- A guard value in a global state word causes an early `4` if the library believes it was never initialized.
+- Коди `0` (успіх), `3`, `4` і `600` повертаються безпосередньо, без пошуку в журналі помилок.
+- Для інших кодів виконується пошук у внутрішній таблиці помилок; знайдене ім'я (або резервне значення) виводиться в діагностику перед поверненням.
+- Якщо глобальне слово стану має захисне значення, виконується раннє повернення `4`, коли бібліотека вважає, що її ще не ініціалізовано.
 
-## Verification method
+## Методика перевірки
 
-1. Static analysis with REA/Ghidra 12.2 over `libcuda.so.580.196.11` (SHA-256 `20ad440390dad2c5fd06c14e518990512a8e7b31f8b6add7bb1581832fd4d331`). Only control flow, call graphs, constants and ABI layouts were recorded.
-2. `strace -f -e trace=openat,ioctl` of a minimal `dlopen`/`dlsym` probe.
-3. ABI constants cross-checked against `/usr/src/nvidia-580.196.11/common/inc/` and matching `ctrl2080*.h` from `NVIDIA/open-gpu-kernel-modules` tag `580.196.11`.
+1. Статичний аналіз `libcuda.so.580.196.11` за допомогою REA/Ghidra 12.2 (SHA-256 `20ad440390dad2c5fd06c14e518990512a8e7b31f8b6add7bb1581832fd4d331`). Зафіксовано лише потоки керування, графи викликів, константи та розкладки ABI.
+2. `strace -f -e trace=openat,ioctl` для мінімального пробника `dlopen`/`dlsym`.
+3. Константи ABI звірено з `/usr/src/nvidia-580.196.11/common/inc/` і відповідними `ctrl2080*.h` із дерева `NVIDIA/open-gpu-kernel-modules` з тегом `580.196.11`.
 
-## Clean-room probe notes (`probes/01_min_cuinit.c`)
+## Примітки щодо clean-room пробника (`probes/01_min_cuinit.c`)
 
-Two non-obvious requirements were found while making the no-`libcuda` probe work:
+Під час створення пробника без `libcuda` виявлено дві неочевидні вимоги:
 
-1. **`NV_ESC_SYS_PARAMS` is set-once.** The kernel stores the first `memblock_size` it receives and returns `EBUSY` for any later, different value (`nv.c`: `if (nvl->numa_memblock_size == 0) ... else status = ... -EBUSY`). The driver's own initialization therefore reads `/sys/devices/system/memory/block_size_bytes` first — on this machine `8000000` hex = `134217728` bytes — and passes that exact value. The clean-room probe does the same.
-2. **`_IOWR()` takes a type/expression, not a size literal.** With glibc's `_IOC_TYPECHECK`, passing `sizeof(cards)` makes the encoded size `sizeof(size_t) == 8`, not `2304`; the kernel then sees only 8 bytes and returns `EINVAL`. Pass the variable itself: `_IOWR('F', 200, cards)`, `_IOWR('F', 201, ctl_fd)`, `_IOWR('F', 214, memblock_size)`.
+1. **`NV_ESC_SYS_PARAMS` задається лише один раз.** Ядро зберігає перший отриманий `memblock_size` і повертає `EBUSY` для будь-якого наступного відмінного значення (`nv.c`: `if (nvl->numa_memblock_size == 0) ... else status = ... -EBUSY`). Тому сам драйвер перед ініціалізацією читає `/sys/devices/system/memory/block_size_bytes` — на цій машині `8000000` у hex = `134217728` байтів — і передає саме це значення. Clean-room пробник робить так само.
+2. **`_IOWR()` приймає тип/вираз, а не числовий розмір.** Через `_IOC_TYPECHECK` у glibc передавання `sizeof(cards)` кодує розмір `sizeof(size_t) == 8`, а не `2304`; ядро бачить лише 8 байтів і повертає `EINVAL`. Треба передавати саму змінну: `_IOWR('F', 200, cards)`, `_IOWR('F', 201, ctl_fd)`, `_IOWR('F', 214, memblock_size)`.
 
-Also note the direction of `NV_ESC_REGISTER_FD`: the ioctl is issued on the **GPU** fd (`/dev/nvidia0`) with the **control** fd as its 4-byte argument, not the other way around.
+Також зверніть увагу на напрямок `NV_ESC_REGISTER_FD`: `ioctl` викликається для **GPU** fd (`/dev/nvidia0`) з **control** fd як 4-байтовим аргументом, а не навпаки.
 
-Verified ioctls from the finished probe:
+Підтверджені `ioctl` із завершеного пробника:
 
 ```text
 ioctl(3, _IOC(RD/WR, 0x46, 0xd6, 0x8), ...)    = 0   NV_ESC_SYS_PARAMS
@@ -116,8 +116,8 @@ ioctl(3, _IOC(RD/WR, 0x46, 0xc8, 0x900), ...)  = 0   NV_ESC_CARD_INFO (32 x 72)
 ioctl(4, _IOC(RD/WR, 0x46, 0xc9, 0x4), ...)    = 0   NV_ESC_REGISTER_FD
 ```
 
-## Limitations
+## Обмеження
 
-- Ghidra resolves the indirect initializer pointer statically, but runtime relocation was confirmed by observation; a different driver build may change addresses.
-- Some internal escape numbers (e.g. nr 215 with size 560) have no public name; they are listed as observed, not named speculatively.
-- Results are specific to R580 + GP107; do not assume layout stability across major branches.
+- Ghidra статично визначає непрямий покажчик ініціалізатора, але його runtime-релокацію підтверджено спостереженням; інша збірка драйвера може змінити адреси.
+- Деякі внутрішні номери escape-команд (наприклад, nr 215 із розміром 560) не мають публічної назви; вони наведені як спостережені, без спекулятивного найменування.
+- Результати стосуються R580 + GP107; не слід припускати, що розкладки залишаються незмінними між основними гілками драйвера.
