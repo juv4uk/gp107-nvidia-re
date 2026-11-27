@@ -87,6 +87,17 @@ for marker in \
 done
 echo 'FIXTURE-IDENTITY-OK source=synthetic-sysfs'
 
+step 'negative witness (malformed driver link is not unbound)'
+mv "$FIX/bus/pci/devices/0000:01:00.0/driver" "$WORK/driver.saved"
+printf 'not-a-symlink\n' >"$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/driver.out" 2>"$WORK/driver.err"; then
+  fail 'inventory accepted malformed driver link'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-link-read' "$WORK/driver.err" || fail 'driver-link fail-closed marker missing'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+mv "$WORK/driver.saved" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+echo 'NEGATIVE-DRIVER-LINK-UNKNOWN-OK'
+
 step 'capability ledger (bound driver denies MMIO, RM deferred)'
 "$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-bound.out"
 for marker in \
@@ -152,39 +163,47 @@ grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
   || fail 'нема названого negative-маркера driver-bound'
 echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
 
-step 'MMIO read-only witness on synthetic resource0 (not hardware)'
-rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
-"$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
-for marker in \
-  '(kind . gp107-mmio-read)' \
-  '(offset . 0x0)' \
-  '(value . 0x1c8210de)' \
-  '(right . read-only)' \
-  '(boot0 . unproven)' \
-  '(summary . MMIO-READ-OK)'; do
-  grep -Fq "$marker" "$WORK/mmio.out" || fail "нема маркера: $marker"
-done
-echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
+step 'MMIO API requires an explicit offset'
+if "$BIN" mmio-read --allow-mmio --sysfs-root="$FIX" >"$WORK/nooffset.out" 2>"$WORK/nooffset.err"; then
+  fail 'MMIO accepted implicit offset'
+fi
+grep -Fq 'USAGE-FAIL step=offset-required' "$WORK/nooffset.err" || fail 'explicit offset marker missing'
+echo 'NEGATIVE-MMIO-OFFSET-REQUIRED-OK'
 
-step 'assembly read-only path equivalence (x86-64 only)'
-if [ -x "$ASMBIN" ]; then
-  "$ASMBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-asm.out"
-  cmp -s "$WORK/mmio.out" "$WORK/mmio-asm.out" \
-    || fail 'асемблерний read-only шлях відрізняється від C'
-  "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-c.out"
-  "$ASMBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-asm.out"
-  cmp -s "$WORK/ledger-c.out" "$WORK/ledger-asm.out" \
-    || fail 'ledger відрізняється між C і assembly builds'
-  if command -v objdump >/dev/null 2>&1; then
-    objdump -d "$ASMBIN" | grep -q 'lfence' \
-      || fail 'у asm-примітиві немає lfence'
-    echo 'ASM-STATIC-OK primitive=movl+lfence calling-convention=sysv-amd64'
-  else
-    echo 'ASM-STATIC-SKIP reason=objdump-absent'
+step 'MMIO checks alignment and resource size'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" mmio-read --offset=0x1 --allow-mmio --sysfs-root="$FIX" >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
+  fail 'MMIO accepted unaligned offset'
+fi
+grep -Fq 'MMIO-FAIL step=offset-unaligned' "$WORK/unaligned.err" || fail 'unaligned marker missing'
+if "$BIN" mmio-read --offset=0x40 --allow-mmio --sysfs-root="$FIX" >"$WORK/beyond.out" 2>"$WORK/beyond.err"; then
+  fail 'MMIO accepted offset beyond resource0'
+fi
+grep -Fq 'MMIO-FAIL step=offset-out-of-resource' "$WORK/beyond.err" || fail 'resource bounds marker missing'
+echo 'NEGATIVE-MMIO-ALIGNMENT-RESOURCE-OK'
+
+step 'MMIO remains deferred without a proven safe register'
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/safe.out" 2>"$WORK/safe.err"; then
+  fail 'MMIO read succeeded without safe-register evidence'
+fi
+grep -Fq 'MMIO-FAIL step=read-safe-offset-unproven' "$WORK/safe.err" || fail 'safe-register marker missing'
+echo 'NEGATIVE-MMIO-SAFE-OFFSET-OK physical-read=deferred'
+
+if grep -nE '(^|[^[:alnum:]_])(open|mmap|munmap)[[:space:]]*\(|O_RDONLY|PROT_READ' lib/gp107_mmio.c; then
+  fail 'production MMIO code still contains an aperture syscall'
+fi
+echo 'MMIO-SOURCE-FIREWALL-OK open=absent map=absent'
+
+step 'isolated assembly leaf is inspected but never invoked'
+if [ -x "$ASMBIN" ] && command -v objdump >/dev/null 2>&1; then
+  objdump -d "$ASMBIN" | grep -A4 '<gp107_mmio_load32_asm>' >"$WORK/asm-leaf.out" || fail 'assembly leaf missing'
+  grep -Fq 'lfence' "$WORK/asm-leaf.out" || fail 'assembly leaf lacks lfence'
+  if grep -R -F 'gp107_mmio_load32_asm(' lib/*.c; then
+    fail 'assembly leaf is invoked by production C path'
   fi
-  echo 'ASM-EQUIV-OK fixture-read-and-ledger identical-to-C hardware=NOT-RUN'
+  echo 'ASM-STATIC-OK primitive=movl+lfence caller=none hardware-mmio=NOT-RUN'
 else
-  echo 'ASM-EQUIV-SKIP reason=non-x86_64-host'
+  echo 'ASM-STATIC-SKIP reason=non-x86_64-or-objdump-absent'
 fi
 
 step 'capability ledger (unbound + no opt-in stays deferred)'
@@ -193,13 +212,13 @@ grep -Fq '(mmio-read . deferred) (reason . opt-in-required)' "$WORK/ledger-defer
   || fail 'ledger не лишив MMIO у deferred без opt-in'
 echo 'LEDGER-DEFERRED-OK marker=step=opt-in-required'
 
-step 'capability ledger (unbound + opt-in grants read-only only)'
-"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted.out"
-grep -Fq '(mmio-read . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
-  || fail 'ledger не надав read-only MMIO після opt-in'
-grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
-  || fail 'ledger розширив права поза read-only'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+step 'capability ledger (unbound + opt-in remains deferred)'
+"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-safe.out"
+grep -Fq '(mmio-read . deferred) (reason . read-safe-offset-unproven)' "$WORK/ledger-safe.out" \
+  || fail 'ledger granted MMIO without safe-register evidence'
+grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-safe.out" \
+  || fail 'ledger expanded rights beyond read-only'
+echo 'LEDGER-OPTIN-STILL-DEFERRED-OK safe-offset=unproven'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
@@ -232,4 +251,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=10 mmio=physical-read-deferred asm=static-only hardware-mmio=NOT-RUN"
