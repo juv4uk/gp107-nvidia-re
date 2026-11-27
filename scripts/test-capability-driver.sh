@@ -196,7 +196,7 @@ int main(int argc, char **argv)
     }
 
     err[0] = '\0';
-    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 0, 1,
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 1, 0,
                            &value, err, sizeof(err));
     if (rc != GP107_ERR_DRIVER_BOUND || strstr(err, "driver-bound") == NULL) {
         fprintf(stderr, "API-GATE-FAIL driver rc=%d err=%s\n", rc, err);
@@ -316,6 +316,13 @@ PY
 "$BIN" inventory --sysfs-root="$FIX" >"$WORK/io-bar.out"
 grep -Fq '(bar0 (raw . 0xee000001) (space . io) (width . 32-bit) (prefetch . no)' "$WORK/io-bar.out" \
   || fail 'I/O-прапорець BAR0 не декодовано'
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/io-mmio.out" 2>"$WORK/io-mmio.err"; then
+  fail 'MMIO accepted an I/O-space BAR0'
+fi
+grep -Fq 'MMIO-FAIL step=bar0-not-memory' "$WORK/io-mmio.err" \
+  || fail 'missing I/O-space BAR0 denial'
+echo 'NEGATIVE-BAR0-SPACE-OK io-space=denied'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
 import sys
 p = sys.argv[1]
