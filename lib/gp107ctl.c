@@ -78,6 +78,7 @@ int main(int argc, char **argv)
     uint32_t offset = 0;
     uint32_t value = 0;
     int allow = 0;
+    int have_offset = 0;
     int i;
     int rc;
 
@@ -108,6 +109,7 @@ int main(int argc, char **argv)
                         GP107_ERR_USAGE, argv[i] + 9);
                 return GP107_ERR_USAGE;
             }
+            have_offset = 1;
         } else if (strcmp(argv[i], "--allow-mmio") == 0) {
             allow = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
@@ -145,6 +147,11 @@ int main(int argc, char **argv)
         return GP107_OK;
     }
 
+    if (!have_offset) {
+        fprintf(stderr, "USAGE-FAIL step=offset-required code=%d\n",
+                GP107_ERR_USAGE);
+        return GP107_ERR_USAGE;
+    }
     rc = gp107_mmio_read32(root, expect, allow, offset,
                            &value, err, sizeof(err));
     if (rc != GP107_OK) {
