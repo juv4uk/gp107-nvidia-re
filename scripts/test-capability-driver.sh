@@ -80,6 +80,18 @@ for marker in \
 done
 echo 'FIXTURE-IDENTITY-OK source=synthetic-sysfs'
 
+step 'negative witness (unreadable or malformed driver link is not unbound)'
+mv "$FIX/bus/pci/devices/0000:01:00.0/driver" "$WORK/driver.saved"
+printf 'not-a-symlink\\n' >"$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/driver.out" 2>"$WORK/driver.err"; then
+  fail 'inventory treated a malformed driver entry as unbound'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-link-read' "$WORK/driver.err" \\
+  || fail 'нема fail-closed marker для malformed driver entry'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+mv "$WORK/driver.saved" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+echo 'NEGATIVE-DRIVER-LINK-UNKNOWN-OK marker=step=driver-link-read'
+
 step 'negative witness (second matching card is ambiguous)'
 mkdir -p "$FIX/bus/pci/devices/0000:02:00.0"
 cp "$FIX/bus/pci/devices/0000:01:00.0"/{config,vendor,device,resource0} \
@@ -129,6 +141,34 @@ grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
   || fail 'нема названого negative-маркера driver-bound'
 echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
 
+step 'MMIO requires an explicit offset'
+if "$BIN" mmio-read --allow-mmio --sysfs-root="$FIX" \\
+    >"$WORK/nooffset.out" 2>"$WORK/nooffset.err"; then
+  fail 'MMIO accepted an implicit default offset'
+fi
+grep -Fq 'USAGE-FAIL step=offset-required' "$WORK/nooffset.err" \\
+  || fail 'нема маркера required offset'
+echo 'NEGATIVE-MMIO-OFFSET-REQUIRED-OK'
+
+step 'MMIO rejects unaligned offsets'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" mmio-read --offset=0x1 --allow-mmio --sysfs-root="$FIX" \\
+    >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
+  fail 'MMIO accepted an unaligned 32-bit offset'
+fi
+grep -Fq 'MMIO-FAIL step=offset-unaligned' "$WORK/unaligned.err" \\
+  || fail 'нема маркера unaligned offset'
+echo 'NEGATIVE-MMIO-ALIGNMENT-OK'
+
+step 'MMIO rejects reads beyond resource0 size'
+if "$BIN" mmio-read --offset=0x40 --allow-mmio --sysfs-root="$FIX" \\
+    >"$WORK/beyond.out" 2>"$WORK/beyond.err"; then
+  fail 'MMIO accepted an offset beyond resource0 size'
+fi
+grep -Fq 'MMIO-FAIL step=offset-out-of-resource' "$WORK/beyond.err" \\
+  || fail 'нема маркера offset beyond resource0'
+echo 'NEGATIVE-MMIO-RESOURCE-BOUNDS-OK'
+
 step 'MMIO read-only witness on synthetic resource0 (not hardware)'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
 "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
@@ -154,4 +194,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=5 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=9 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
