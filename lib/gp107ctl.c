@@ -43,8 +43,8 @@ static void print_inventory(const struct gp107_inventory *inv)
     printf(" (driver (bound . %s) (name . \"%s\"))\n",
            inv->driver.bound ? "yes" : "no", inv->driver.name);
     printf(" (rights (pci . inventory-only) (rm-control . none) (mmio . none))\n");
-    printf(" (evidence (pci . runtime-proven) (driver . runtime-proven)"
-           " (boot0 . unproven))\n");
+    printf(" (evidence (pci . observation-only) (driver . observation-only)"
+           " (scope . caller-supplied-sysfs) (boot0 . unproven))\n");
     printf(" (summary . IDENTITY-OK))\n");
 }
 
@@ -153,7 +153,8 @@ int main(int argc, char **argv)
     }
     printf("((kind . gp107-mmio-read)\n");
     printf(" (offset . 0x%x) (value . 0x%08x)\n", offset, value);
-    printf(" (right . read-only) (evidence . runtime-proven)\n");
+    printf(" (right . read-only) (evidence . unclassified)"
+           " (scope . caller-supplied-sysfs)\n");
     printf(" (boot0 . unproven) (summary . MMIO-READ-OK))\n");
     return GP107_OK;
 }
