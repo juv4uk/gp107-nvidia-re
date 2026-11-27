@@ -262,6 +262,40 @@ backend вимагає Vulkan extension/feature, якої GP107 не рекла�
 
 Джерело: [Linux kernel — Nova NVIDIA GPU drivers](https://docs.kernel.org/gpu/nova/index.html).
 
+### 5.1. `nouveau-dkms` від Twilight0 — watchlist, не кандидат для GTX 1050 Ti
+
+[`Twilight0/nouveau-dkms`](https://github.com/Twilight0/nouveau-dkms) —
+сторонній out-of-tree DKMS patch stack, а не офіційний upstream Nouveau.
+Його README прямо називає проєкт experimental і фіксує hardware-tested
+конфігурацію як Dell XPS 17 L702X із GeForce GT 555M / **GF106M (Fermi)**,
+PCI `10de:0dcd`, DDR3. Заявлені reclocking/Falcon, voltage, PCIe і
+memory features перевірені саме на цій платформі; автор попереджає, що
+інші board variants, memory types і chipsets можуть поводитися інакше.
+
+Найважливіше для нашої карти: у його TODO generation matrix
+**Maxwell 2 & Pascal (`NV120–NV138`, включно з GP107/NV137)** позначені
+як **HS RSA-Signed ACR/PMU**; roadmap обмежується дослідженням signed
+PMU/ACR extraction, а не готовою Pascal реалізацією. Завершений код і
+параметри `NvFermiMemReclock` / `NvFermiOC` — Fermi-specific; їх не можна
+переносити на GP107 і не слід завантажувати цей DKMS module або його
+clock/governor scripts на GTX 1050 Ti.
+
+Стан репозиторію також потребує уважного version check: git history має
+release commit v2.4.2 від 2026-11-25 і CHANGELOG містить v2.4.2, але
+README заголовок усе ще показує v2.4.0. Орієнтуватися на конкретний
+commit/tag, а не лише на README banner.
+
+Висновок: це корисне джерело історичних Fermi/Kepler/Maxwell1
+reclocking-досліджень і питань щодо старого Falcon/ACR коду, але
+**не драйвер для GP107** і не заміна upstream Nouveau/NVK. Для GTX 1050 Ti
+продовжувати окремий upstream Nouveau/Mesa трек.
+
+Джерела:
+- [nouveau-dkms README — tested GF106M hardware and experimental warning](https://github.com/Twilight0/nouveau-dkms/blob/master/README.md)
+- [nouveau-dkms TODO — NV120–NV138 signed ACR/PMU roadmap](https://github.com/Twilight0/nouveau-dkms/blob/master/docs/TODO.md)
+- [nouveau-dkms CHANGELOG — release v2.4.2](https://github.com/Twilight0/nouveau-dkms/blob/master/docs/CHANGELOG.md)
+- [nouveau-dkms release commit v2.4.2](https://github.com/Twilight0/nouveau-dkms/commit/9c88ed3624e9b4d1d3edfb3ee5035b59f11b7a84)
+
 ## 6. Інструменти для дослідження GP107
 
 ### Envytools — апаратна довідка (не повний Pascal SASS decoder)
