@@ -127,7 +127,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    printf 'EVIDENCE_DIR=%s\n' "$OUT"
    ```
 
-   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи; `CLIENT`-рядки не очікуються, бо в NVKM layout немає CLIENT subdevice.
+   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи. `CLIENT=debug` є окремим підтримуваним selector для client-aware NVIF logging, але не окремим NVKM subdevice; його додаткові рядки — best-effort, а їх відсутність нічого не доводить про channel/event subscription.
 
    Шукати decoded записи у `relevant-lines.log`, але всі висновки звіряти з повним `kernel.log`:
 
