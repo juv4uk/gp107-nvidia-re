@@ -47,7 +47,7 @@ ret
 - gp107 #33 лишається Draft без повного exact-head `make test`.
 
 Фінальний маркер гейту тепер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=11 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
 ## 4. Питання без відповіді й найменший крок
 
