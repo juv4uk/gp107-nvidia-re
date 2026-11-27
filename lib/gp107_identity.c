@@ -145,15 +145,23 @@ static int read_driver_link(const char *devdir,
     size_t len;
     int dirfd;
     int saved;
+    struct stat st;
 
     memset(out, 0, sizeof(*out));
 
     /* Anchor the lookup to an already-open device directory. ENOENT from
      * readlinkat then means the driver entry itself is absent, not that an
      * intermediate parent directory vanished. */
-    dirfd = open(devdir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    dirfd = open(devdir, O_RDONLY | O_CLOEXEC);
     if (dirfd < 0) {
         saved = errno;
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-binding-open code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, saved);
+    }
+    if (fstat(dirfd, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        saved = (errno != 0) ? errno : ENOTDIR;
+        (void)close(dirfd);
         return gp107_set_error(err, errsz,
                                "IDENTITY-FAIL step=driver-binding-open code=%d errno=%d",
                                GP107_ERR_DRIVER_BINDING, saved);
