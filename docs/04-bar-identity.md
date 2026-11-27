@@ -85,14 +85,43 @@ Root-свідок перевіряє іншу гілку: `open` OK → `mmap` `
 PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed boot0=unproven
 ```
 
-## Фаза 03 — RM arch info (не запущена)
+## Фаза 03 — RM arch info: протокол статично доведено, виклик UNPROVEN
 
-Кандидат `NV2080_CTRL_CMD_MC_GET_ARCH_INFO` (клас `0x2080`) поки **не підтверджений**:
+**Statically proven (публічний ABI, не з libcuda):**
 
-- literal-назви немає в `/usr/src/nvidia-580.196.11` (публічні headers R580); знайдено лише коментарі `NV2080_CTRL_MC_ARCH_INFO_ARCHITECTURE_*` у `common/inc/nv_uvm_types.h`;
-- REA-інвентар рядків `libcuda.so.580.196.11` не містить `NV2080_CTRL_CMD` (`ev_514422e5d7733e0417243209387c8ed82d57d912dbc2734ef42a70c4b64773ac`).
+- `NV2080_CTRL_CMD_MC_GET_ARCH_INFO = 0x20801701` — публічний SDK-заголовок
+  `src/common/sdk/nvidia/inc/ctrl/ctrl2080/ctrl2080mc.h` у
+  `NVIDIA/open-gpu-kernel-modules`; незалежно збігається з
+  `gvisor/pkg/abi/nvgpu/ctrl.go:822` (Apache-2.0/BSD-3-Clause/MIT).
+- `NV2080_CTRL_MC_GET_ARCH_INFO_PARAMS`: `NvU32 architecture`,
+  `NvU32 implementation`, `NvU32 revision`, `NvU8 subRevision`; C-розмір 16
+  через вирівнювання.
+- Локальний `/usr/src/nvidia-580.196.11/nvidia-uvm/ctrl2080mc.h` дає лише
+  константи архітектур (`GM000=0x110`, `GM200=0x120`, `GP100=0x130`, …).
+  Це ABI-таблиця, **не виміряне значення** цієї машини.
+- REA-негатив лишається чинним: в інвентарі рядків libcuda немає
+  `NV2080_CTRL_CMD` (`ev_514422e5d7733e0417243209387c8ed82d57d912dbc2734ef42a70c4b64773ac`).
+  Тобто шлях у цій збірці йде через числові константи, а не через імена, —
+  **`interpretation`**, не доведена поведінка.
 
-Тому `03_rm_arch_info.pas` **не створюємо як «доведений шлях»**. Фаза 03 — окреме research-завдання: знайти cmd id і struct layout або чесно зафіксувати `UNPROVEN`. Навіть позитивний RM-результат дає arch/implementation і лишається окремим каналом — він не перетворює BOOT0 на прочитаний регістр.
+**Runtime-proven частково** (власний exploratory Python-зонд у `/tmp`, до репо не входить):
+
+| Крок | Результат | Стан |
+|---|---|---|
+| `NV_ESC_RM_ALLOC`, клас `NV01_ROOT_CLIENT` (`0x41`) | `status=0`, handle отримано | runtime-proven |
+| `NV_ESC_RM_ALLOC`, клас `NV01_DEVICE_0` (`0x80`) | `status=31` за коректного батька; `status=27` за `hRoot=0` | UNPROVEN |
+| `NV_ESC_RM_ALLOC`, клас `NV20_SUBDEVICE_0` (`0x2080`) | handle не отримано, `status=87` | UNPROVEN |
+| `NV_ESC_RM_CONTROL`, `cmd=0x20801701` | `status=0x57`, поля нульові | UNPROVEN |
+
+Кодування `31 → NV_ERR_INVALID_ARGUMENT`, `27 → NV_ERR_INSUFFICIENT_PERMISSIONS`
+— **`interpretation`** за `gvisor/pkg/abi/nvgpu/status.go`. Причину відмови
+alloc з ядра ми не довели й не вигадуємо.
+
+Тому `03_rm_arch_info.pas` **не створюємо**. Cmd id і struct layout тепер
+відомі з публічного ABI, але ланцюжок handle-ів `client → device → subdevice`
+і саме значення `architecture`/`implementation` на GP107 залишаються
+**UNPROVEN**. Навіть позитивний RM-результат дає arch/implementation окремим
+каналом і не перетворює BOOT0 на прочитаний регістр.
 
 ## Інструментарій, на якому це перевірено
 
