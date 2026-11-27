@@ -221,7 +221,7 @@ Mesa документує корисні прапорці:
 
 ### Координація із окремим RM lifecycle / command-submission планом
 
-Паралельний документ [`docs/06-next-research-direction.md`](06-next-research-direction.md)
+Паралельний документ [`docs/07-next-research-direction.md`](07-next-research-direction.md)
 веде vendor R580 ABI напрям E1–E6: read-only ioctl trace, channel/context
 lifecycle, pushbuffer, GPU sync, ізольований MMIO seam та DMA/GVA/kernel launch.
 Він належить до proprietary RM reverse engineering і лишається окремою
@@ -763,3 +763,88 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 - [Pascal Compute A header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc0c0.h)
 - [Pascal Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc1c0.h)
 - [Maxwell Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clb1c0.h)
+
+## 17. NVENC/NVDEC: silicon capability ≠ відкритий Nouveau codec API
+
+### Що підтримує сама GTX 1050 Ti
+
+Офіційна NVIDIA Video Encode/Decode Support Matrix перелічує GeForce GTX
+1050 / 1050 Ti як Pascal із **NVENC 6th Gen**, одним NVENC engine, та
+**NVDEC 3rd Gen**, одним NVDEC engine. Це апаратна capability-матриця
+виробника, не гарантія наявності userspace API у відкритому драйвері.
+
+Для NVDEC сторінка показує два рядки з однаковою маркетинговою назвою
+GTX 1050 / 1050 Ti, але з різними значеннями кількох codec columns.
+Тому не переносити всі профілі/бітності одного рядка на нашу плату без
+точного зіставлення VBIOS/SKU. У нас є owner-observed subsystem
+`1462:3351`, але точний board variant ще потребує фізичної наклейки
+або перевірки VBIOS identity.
+
+### Що насправді реалізовано в Linux Nouveau для GP107
+
+На pinned Linux source snapshot
+[`9437ee8b6cf607e883b36e44bd755968daaebd48`](https://github.com/torvalds/linux/commit/9437ee8b6cf607e883b36e44bd755968daaebd48)
+GP107 chipset profile реєструє constructors `gm107_nvenc_new` та
+`gm107_nvdec_new`. Але самі engine files демонструють межу:
+
+- [`nvenc/gm107.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c):
+  `gm107_nvenc_flcn` порожній; firmware interface містить лише
+  `gm107_nvenc_nofw()`, який повертає 0, без firmware loading або
+  реалізації encoder command path.
+- [`nvdec/gm107.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c):
+  є базові Falcon control callbacks, але firmware interface також
+  використовує лише `gm107_nvdec_nofw()`. Це не декодерний firmware
+  stack і не доказ codec execution.
+
+Отже реєстрація NVENC/NVDEC object у `nv137_chipset` означає, що kernel
+знає про апаратний engine, але **не** доводить роботу відкритого
+NVENCODE/NVDECODE API. Nouveau Feature Matrix для NV130 залишає video
+decoding TODO; VideoAcceleration не наводить GP107/NV130 у таблиці
+користувацьких VP decode engine paths. NVK Vulkan Video H.264 у Mesa 26.3
+є окремою GSP-залежною реалізацією для Turing+, тому також не підходить
+GP107.
+
+### Пропрієтарний контрольний шлях — окремо від Nouveau
+
+NVIDIA Video Codec SDK 13.1 FFmpeg integration guide формулює
+fully-accelerated NVENC/NVDEC support як Turing і новіші. Попередній
+SDK 13.0 guide формулює підтримку Kepler і новіших. Це зміна межі
+підтримки конкретної версії SDK/FFmpeg integration, а не доказ
+відсутності фізичного Pascal encoder/decoder: поточна NVIDIA support
+matrix усе ще перелічує GTX 1050 / 1050 Ti як NVENC 6th Gen / NVDEC
+3rd Gen.
+
+Для FFmpeg 9.0 джерельна перевірка мінімального driver version показує:
+- NVENC API 13.1 → мінімум driver 610.00;
+- NVENC API 13.0 → мінімум driver 570.0.
+
+Тому R580 580.x не відповідає вимозі FFmpeg 9 build, який використовує
+NVENC API 13.1, але за номером драйвера проходить мінімум API 13.0.
+Це не гарантує роботу кожного codec/profile чи конкретного FFmpeg binary.
+Якщо потрібен vendor control test — використовувати окремий FFmpeg build
+із NVENC API 13.0 headers, окремий prefix і точний лог. Не downgrade
+системний FFmpeg і не переносити цей proprietary результат у Nouveau
+capability matrix.
+
+### Стани доказу для GP107
+
+| Рівень | Що відомо | Статус |
+|---|---|---|
+| Кремній NVENC | NVIDIA matrix: Pascal, 6th Gen, 1 engine | vendor source-proven |
+| Кремній NVDEC | NVIDIA matrix: Pascal, 3rd Gen, 1 engine | vendor source-proven; exact codec row needs board/SKU resolution |
+| Nouveau NVENC kernel object | Constructor є, firmware/command path — nofw placeholder | source-proven placeholder, не готовий userspace encode |
+| Nouveau NVDEC kernel object | Constructor є, nofw firmware interface | source-proven placeholder, не готовий userspace decode |
+| Nouveau FFmpeg/VA-API/VDPAU на GP107 | Готового GP107 codec path не знайдено | не заявляти; runtime/API UNPROVEN |
+| Proprietary R580 legacy codec API | Окремий vendor control path | перевіряти тільки на R580 у власній сесії |
+
+Джерела:
+- [NVIDIA Video Encode and Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-support-matrix)
+- [Linux GP107 NVENC placeholder](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
+- [Linux GP107 NVDEC placeholder](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c)
+- [Linux GP107 chipset registration](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
+- [Nouveau VideoAcceleration](https://nouveau.freedesktop.org/VideoAcceleration.html)
+- [Nouveau Feature Matrix](https://nouveau.freedesktop.org/FeatureMatrix.html)
+- [NVIDIA Video Codec SDK 13.1 FFmpeg guide — Turing+](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/)
+- [NVIDIA Video Codec SDK 13.0 FFmpeg guide — Kepler+](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.0/ffmpeg-with-nvidia-gpu/)
+- [FFmpeg 9.0 NVENC source — API minimum driver versions](https://www.ffmpeg.org/doxygen/9.0/nvenc_8c_source.html)
+
