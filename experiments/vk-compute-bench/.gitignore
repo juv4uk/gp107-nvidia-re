@@ -1,4 +1,6 @@
 vk_compute_bench
+vk_compute_matrix
+matrix-shaders/
 
 # Кореневий .gitignore виключає *.log; лог власного прогону є артефактом.
 !artifacts-*/08-run.log

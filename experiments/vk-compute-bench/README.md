@@ -46,7 +46,26 @@ BENCH_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json bash run.sh
 `BENCH_OUT=$PWD/artifacts-nouveau-repN BENCH_ICD=... bash run.sh`.
 
 Змінні: `BENCH_BDF` (типово `0000:01:00.0`), `BENCH_ICD`, `BENCH_OUT`,
-`BENCH_ELEMENTS` (один розмір), `BENCH_ITERS`.
+`BENCH_ELEMENTS` (один розмір), `BENCH_ITERS`, `BENCH_BIN` (типово
+`vk_compute_bench`; канонічний бінарник не перезаписується).
+
+## Матриця (дослідницький harness)
+
+Окремий бінарник `vk_compute_matrix` змінює `local_size` (32/64/128/256) і
+число команд в одному `vkQueueSubmit` (`BENCH_SUBMITS` = 1/4/16). Він не
+замінює канонічний вимір; усі параметри друкуються у `08-run.log`.
+
+```sh
+make vk_compute_matrix
+BENCH_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json \
+BENCH_LOCAL_SIZE=128 BENCH_SUBMITS=4 BENCH_ELEMENTS=4096 \
+BENCH_BIN=$PWD/vk_compute_matrix BENCH_OUT=$PWD/artifacts-matrix-example \
+bash run.sh
+
+BENCH_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json bash run_matrix_grid.sh
+```
+
+Повний результат і межі — `docs/21-proprietary-performance-matrix.md`.
 
 ## Межі
 

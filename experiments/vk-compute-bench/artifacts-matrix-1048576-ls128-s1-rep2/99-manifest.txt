@@ -1,0 +1,19 @@
+# clean-room Vulkan compute benchmark artifacts
+bdf=0000:01:00.0
+binding=nvidia
+icd=/usr/share/vulkan/icd.d/nvidia_icd.json
+bench_rc=0
+capture_utc=2026-11-27T18:31:53Z
+uname=Linux WSM 7.2.15+kali-amd64 #1 SMP PREEMPT_DYNAMIC Kali 7.2.15-1kali1 (2026-11-03) x86_64 GNU/Linux
+
+73f0e01288b644044a8d8caefdcd308ce38038038fa8a429ae5363f248feff7a  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/00-utc.txt
+a3657f661522c0072d51a47f9c233f20274f9729078787708a44386409d22fd2  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/01-cmdline.txt
+7c604dfba9ed3b52ca8ff09b0fc4cbbb1ee5fc9908c5c0ea787ea65c102fd398  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/02-lspci.txt
+558bd27cf0f4b578436ca0ef9f86b77c9b38e3ce8b11f5dfdf15bd1514c03534  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/03-lsmod.txt
+3c4e97c1a405d62cc867e0ddc2ff9da84bc11758015e466bba1ee66777f252a0  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/04-binding.txt
+9c25ccf0cf19b0ee0c2d27d070d0058b52ea99a254c79c4619f379382b05ec12  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/05-icd.txt
+ae33a3e4913f4d7cdceb3265de94c5cd9bf2893373202efd250f696277ef5f90  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/06-vulkaninfo.txt
+a4477b21d89975527ea502b3b2460337782dab6055e1a219dc4c0d967af7a4cf  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/07-kernel-before.txt
+7fa43cbc1e3a7ef091b23549f10ff6a1c119b1fc0fa243707652774ad3e4e4a2  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/08-run.log
+a4477b21d89975527ea502b3b2460337782dab6055e1a219dc4c0d967af7a4cf  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/09-kernel-after.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-matrix-1048576-ls128-s1-rep2/10-kernel-delta.txt

@@ -7,6 +7,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BDF=${BENCH_BDF:-0000:01:00.0}
 BINDING=$(basename "$(readlink -f "/sys/bus/pci/devices/$BDF/driver" 2>/dev/null || echo unknown)")
 OUT=${BENCH_OUT:-$HERE/artifacts-$BINDING}
+BIN=${BENCH_BIN:-$HERE/vk_compute_bench}
 
 mkdir -p "$OUT"
 
@@ -45,7 +46,7 @@ BEFORE=$(wc -l <"$OUT/07-kernel-before.txt")
 
 echo "== benchmark (no strace inside the timed loop)"
 set +e
-"$HERE/vk_compute_bench" 2>&1 | tee "$OUT/08-run.log"
+"$BIN" 2>&1 | tee "$OUT/08-run.log"
 RC=${PIPESTATUS[0]}
 set -e
 echo "BENCH_RC=$RC" | tee -a "$OUT/08-run.log"

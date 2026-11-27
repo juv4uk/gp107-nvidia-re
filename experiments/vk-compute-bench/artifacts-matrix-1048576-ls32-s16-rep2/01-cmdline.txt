@@ -1,0 +1,1 @@
+BOOT_IMAGE=/boot/vmlinuz-7.2.15+kali-amd64 root=UUID=66070137-2ae6-419f-89aa-526564d28d40 ro quiet splash
