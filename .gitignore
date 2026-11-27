@@ -5,5 +5,6 @@
 *.log
 probes/01_min_cuinit
 pascal/01_min_cuinit
+pascal/02_bar_identity
 __pycache__/
 *.pyc

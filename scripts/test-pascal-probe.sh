@@ -11,8 +11,10 @@ cd "$ROOT"
 FPC_BIN=${FPC:-fpc}
 FPC_EXPECTED=${FPC_EXPECTED:-3.2.2}
 BIN="pascal/01_min_cuinit"
+BAR_BIN="pascal/02_bar_identity"
 WORK=$(mktemp -d)
 OUT="$WORK/out"
+BAR_OUT="$WORK/bar.out"
 
 trap '_rc=$?; rm -rf "$WORK"; if [ "$_rc" -ne 0 ]; then
          echo "PASCAL-PROBE-FAIL крок=\"$BASH_COMMAND\" код=$_rc" >&2
@@ -20,6 +22,24 @@ trap '_rc=$?; rm -rf "$WORK"; if [ "$_rc" -ne 0 ]; then
 
 fail() { echo "PASCAL-PROBE-FAIL: $*" >&2; exit 1; }
 step() { printf '== %s\n' "$*"; }
+
+# Firewalls must inspect CODE, not prose in Pascal { } / // comments.
+strip_pascal_comments() {
+  awk '
+  {
+    line = $0
+    while (match(line, /\{[^\}]*\}/))
+      line = substr(line, 1, RSTART-1) substr(line, RSTART+RLENGTH)
+    if (inblock) {
+      i = index(line, "}")
+      if (i > 0) { inblock = 0; line = substr(line, i+1) } else next
+    }
+    i = index(line, "{")
+    if (i > 0) { inblock = 1; line = substr(line, 1, i-1) }
+    sub(/\/\/.*/, "", line)
+    print line
+  }' "$1"
+}
 
 # 1) Toolchain pin. wsm-lazarus records 3.2.2 as the baseline and 3.2.4 as
 #    an unmeasured source-tag candidate; mixing them would invalidate
@@ -38,12 +58,25 @@ if grep -nHEn '(Forms|Controls|LCL|Interfaces|cthreads)|\{\$linklib[[:space:]]+c
   fail 'заборонена залежність у Pascal-дисках'
 fi
 
-# 3) Clean build: compile-time SizeOf asserts live in nv_abi.pas.
+# 3) BAR firewall. The BAR probe must not contain a writable mapping or a
+#    writable fd. PROT_WRITE / MAP_FIXED / O_RDWR are compile-time crimes here,
+#    exactly like LCL in wsm-lazarus's no-LCL firewall.
+step 'BAR firewall (PROT_READ|MAP_SHARED, O_RDONLY only)'
+if strip_pascal_comments pascal/02_bar_identity.pas \
+   | grep -nE 'PROT_WRITE|MAP_FIXED|O_RDWR|FpWrite|pwrite'; then
+  fail 'BAR-пробник містить writable шлях'
+fi
+grep -Fq 'FpMMap(nil, MMIO_PAGE_BYTES, PROT_READ, MAP_SHARED, fd, 0)' \
+  pascal/02_bar_identity.pas || fail 'нема явного PROT_READ|MAP_SHARED FpMMap'
+grep -Fq 'FpOpen(PChar(path), O_RDONLY or O_CLOEXEC, 0)' \
+  pascal/02_bar_identity.pas || fail 'resource0 відкрито не O_RDONLY'
+
+# 4) Clean build: compile-time SizeOf asserts live in nv_abi.pas.
 step 'clean build'
 make -C pascal clean >/dev/null
 make -C pascal all
 
-# 4) Negative witness: the SizeOf assertion must actually fail the build.
+# 5) Negative witness: the SizeOf assertion must actually fail the build.
 #    Without this, a vacuous assertion would look like a green gate.
 step 'negative witness (compile-time assert is not vacuous)'
 mkdir -p "$WORK/neg"
@@ -58,8 +91,8 @@ fi
 grep -Fq 'Upper bound of range is less than lower bound' "$WORK/neg.log" \
   || fail 'negative witness впав з іншої причини (див. лог)'
 
-# 5) Runtime witness.
-step 'runtime witness'
+# 6) Runtime witness: the no-libcuda probe.
+step 'runtime witness (01_min_cuinit)'
 timeout 20s "./$BIN" >"$OUT"
 cat "$OUT"
 for marker in \
@@ -73,11 +106,29 @@ for marker in \
   grep -Fq "$marker" "$OUT" || fail "нема маркера: $marker"
 done
 
-# 6) Binary proof: statically linked, no DT_NEEDED entries.
-step 'binary proof'
-file "$BIN" | grep -q 'statically linked' || fail 'бінарник не статичний'
-if readelf -d "$BIN" 2>/dev/null | grep -q 'NEEDED'; then
-  fail 'є динамічні залежності (DT_NEEDED)'
-fi
+# 7) Runtime witness: two independent identities must agree, and BAR0 must
+#    fail closed. Unprivileged run sees EACCES; root sees EINVAL because the
+#    bound nvidia driver claims the region exclusively. Both are green.
+step 'runtime witness (02_bar_identity)'
+timeout 20s "./$BAR_BIN" >"$BAR_OUT"
+cat "$BAR_OUT"
+for marker in \
+  'NV_ESC_CARD_INFO identity : 10DE:1C82 @ 0000:01:00.0' \
+  'PCI-CONFIG identity       : 10DE:1C82 BAR0=0xEE000000' \
+  'CROSS-CHECK-OK: pci-config == NV_ESC_CARD_INFO' \
+  'resource0 mmap PROT_READ|MAP_SHARED: DENIED errno=13 (EACCES)' \
+  'BOOT0: UNPROVEN (hosted driver owns BAR0 exclusively)' \
+  'G1-FAIL-CLOSED-OK'; do
+  grep -Fq "$marker" "$BAR_OUT" || fail "нема маркера: $marker"
+done
 
-echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-libc=yes gpu=10de:1c82'
+# 8) Binary proof for BOTH probes: static ELF, no DT_NEEDED entries.
+step 'binary proof'
+for b in "$BIN" "$BAR_BIN"; do
+  file "$b" | grep -q 'statically linked' || fail "$b не статичний"
+  if readelf -d "$b" 2>/dev/null | grep -q 'NEEDED'; then
+    fail "$b має динамічні залежності (DT_NEEDED)"
+  fi
+done
+
+echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed boot0=unproven'

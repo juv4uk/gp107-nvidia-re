@@ -27,13 +27,16 @@ docs/
   01-cuInit-flow.md            cuInit -> RM device discovery: flow, nodes, ioctls
   02-cuMemAlloc-and-launch.md  allocation (UVM) and kernel launch (no ioctl)
   03-fpc-clean-room-probe.md   FPC 3.2.2 substrate, evidence states, toolchain pin
+  04-bar-identity.md           G0/G1 witness: PCI identity vs NV_ESC_CARD_INFO, BAR0 fail-closed
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
   Makefile
 pascal/
   nv_abi.pas                   clean-room ioctl ABI, {$PACKRECORDS C}, compile-time SizeOf proof
+  nv_device.pas                shared discovery: NV_ESC_CARD_INFO + sysfs PCI config
   01_min_cuinit.pas            BaseUnix-only probe, static ELF
+  02_bar_identity.pas          read-only BAR0 attempt; BOOT0 stays UNPROVEN if driver owns BAR0
   Makefile
 scripts/
   decode_ioctl.py              decode raw ioctl request numbers / strace lines
@@ -47,7 +50,8 @@ make -C probes
 sudo ./probes/01_min_cuinit          # or run as a user in the `video` group
 echo 0xc90046c8 | python3 scripts/decode_ioctl.py
 
-bash scripts/test-pascal-probe.sh    # FPC 3.2.2 pin + static-ELF + runtime witness
+bash scripts/test-pascal-probe.sh    # FPC 3.2.2 pin + static-ELF + runtime witness (both probes)
+sudo ./pascal/02_bar_identity        # root witness: BAR0 mmap EINVAL, BOOT0 UNPROVEN
 ```
 
 ## Method and verification
@@ -55,6 +59,7 @@ bash scripts/test-pascal-probe.sh    # FPC 3.2.2 pin + static-ELF + runtime witn
 1. **Static**: REA/Ghidra 12.2 decompiled public exports of `libcuda.so.580.196.11`; only control flow, call graphs, constant numbers and structure layouts were recorded.
 2. **Dynamic**: minimal `dlopen`/`dlsym` programs called `cuInit`, `cuMemAlloc_v2`, `cuLaunchKernel`, and `cuMemFree_v2` under `strace`, plus an `LD_PRELOAD` interposer printing RM parameter words.
 3. **Cross-check**: constants resolved against the driver's public headers (`nv-ioctl-numbers.h`, `nv-ioctl.h`, `nv_escape.h`, `uvm_ioctl.h`, `ctrl2080*.h`) from the matching `580.196.11` source tree.
+4. **Evidence states**: every claim is tagged `statically proven`, `runtime-proven` or `string-only`; an unreadable register stays `UNPROVEN` rather than being inferred from a string.
 
 Nothing from step 1 is reproduced verbatim in this repository.
 

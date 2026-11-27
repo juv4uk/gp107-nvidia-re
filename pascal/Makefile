@@ -2,9 +2,9 @@ FPC       ?= fpc
 FPCFLAGS  ?= -O2 -Mobjfpc -Sh -XS -Fu.
 FPC_PIN   ?= 3.2.2
 
-TARGET := 01_min_cuinit
+TARGETS := 01_min_cuinit 02_bar_identity
 
-all: check-fpc $(TARGET)
+all: check-fpc $(TARGETS)
 
 check-fpc:
 	@got="$$($(FPC) -iV)"; \
@@ -13,16 +13,20 @@ check-fpc:
 	fi; \
 	echo "FPC-PIN-OK $$got"
 
-$(TARGET): 01_min_cuinit.pas nv_abi.pas
+01_min_cuinit: 01_min_cuinit.pas nv_abi.pas
+	$(FPC) $(FPCFLAGS) -o$@ $<
+
+02_bar_identity: 02_bar_identity.pas nv_abi.pas nv_device.pas
 	$(FPC) $(FPCFLAGS) -o$@ $<
 
 run: all
-	./$(TARGET)
+	./01_min_cuinit
+	./02_bar_identity
 
 test: all
 	bash ../scripts/test-pascal-probe.sh
 
 clean:
-	rm -f $(TARGET) *.o *.ppu
+	rm -f $(TARGETS) *.o *.ppu
 
 .PHONY: all check-fpc run test clean
