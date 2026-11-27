@@ -42,6 +42,7 @@
 | [`20-reliability-baseline-proprietary.md`](docs/20-reliability-baseline-proprietary.md) | Надійна NVIDIA R580 HOST_VISIBLE/HOST_COHERENT baseline після виправлень harness; не VRAM bandwidth і не NVK A/B |
 | [`21-proprietary-performance-matrix.md`](docs/21-proprietary-performance-matrix.md) | 108 proprietary NVIDIA HOST_VISIBLE/HOST_COHERENT points для workgroup × submit batching; не VRAM bandwidth і не NVK A/B |
 | [`22-device-local-transfer-and-compute-phases.md`](docs/22-device-local-transfer-and-compute-phases.md) | DEVICE_LOCAL staging/compute/readback; попередні результати NOT ACCEPTED, виправлений код очікує build, validation та physical rerun |
+| [`23-rea-p1-function-level-memory-channel-maps.md`](docs/23-rea-p1-function-level-memory-channel-maps.md) | Цільовий R580 UVM→RM RE: function-level memory/VA та channel/submit maps з Evidence ID; memory class, BAR1/VA, notifier/fence lifecycle лишаються UNPROVEN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
