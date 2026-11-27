@@ -939,3 +939,216 @@ DRI_PRIME="pci-$DRI_BDF!" vkcube
 - [GP102 framebuffer VPR scrubber hook, pinned](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/subdev/fb/gp102.c)
 - [Mesa DRI_PRIME — PCI selector for OpenGL/Vulkan and Vulkan device filtering](https://docs.mesa3d.org/envvars.html#dri_prime)
 - [Nouveau reclocking limitations](https://nouveau.freedesktop.org/)
+
+## 18. Pascal 3D command classes для GP107
+
+У [NVIDIA public class index](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/README.txt) GP107 прямо перелічений як GPU, що підтримує обидва Pascal 3D класи:
+
+- `PASCAL_A` — `clc097.h`, ID `0xC097`;
+- `PASCAL_B` — `clc197.h`, ID `0xC197`.
+
+Це опис відкритого command-class ABI й корисний орієнтир для аналізу методів/texture layout. Це не повна апаратна специфікація й не доказ, що будь-який окремий метод працює на нашій платі. Для GP107 фактичний class selection у Nouveau source окремо вказаний у розділі про `PASCAL_COMPUTE_B (0xC1C0)`.
+
+Джерела:
+- [NVIDIA Pascal 3D class mapping](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/README.txt)
+- [PASCAL_A class header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/clc097.h)
+- [PASCAL_B class header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/clc197.h)
+
+## 19. Пакет інструментів і послідовність для локального агента
+
+Нижче — порядок для локального native Linux свідка. Це не інструкція
+перебудовувати робочу систему; перший Nouveau тест — окремий Live USB
+або окремий boot entry з гарантованим поверненням до поточного R580.
+
+### A. Read-only паспорт під поточним драйвером
+
+Зберегти stdout/stderr і exit code кожної команди:
+```sh
+date -u --iso-8601=seconds
+uname -a
+cat /etc/os-release
+cat /proc/cmdline
+lspci -Dnnk -d 10de:1c82
+lspci -Dvv -d 10de:1c82
+```
+
+Для фактичного BDF із `lspci` зафіксувати
+`vendor`, `device`, `subsystem_vendor`, `subsystem_device`,
+`revision`, `power_state` (якщо доступний) і symlink `driver`
+у `/sys/bus/pci/devices/$BDF/`. Перевірити owner-observed
+`SUBSYS_33511462` (очікуване subsystem `1462:3351`), але не
+стверджувати точний MSI SKU без фізичної наклейки або VBIOS identity.
+
+Під R580, лише якщо `nvidia-smi` справді доступний:
+```sh
+nvidia-smi -q
+nvidia-smi --query-gpu=name,pci.bus_id,pci.device_id,pci.sub_device_id,vbios_version,memory.total,driver_version --format=csv
+```
+Якщо утиліта/драйвер недоступні — записати `NOT_AVAILABLE`, не
+встановлювати proprietary driver лише заради отримання цього виводу.
+
+### B. Native Nouveau boot — окреме тестове завантаження
+
+До запуску workloads:
+```sh
+uname -a
+cat /proc/cmdline
+modinfo nouveau
+modinfo -F firmware nouveau | sort -u
+lspci -Dnnk -d 10de:1c82
+ls -l /dev/dri /dev/dri/by-path
+sudo journalctl -b -k -o short-monotonic --no-pager > nouveau-kernel.log
+```
+
+Перевірити, що `Kernel driver in use: nouveau` прив'язаний саме
+до `10de:1c82` і відповідний `/dev/dri/renderD*` має symlink на
+той самий PCI BDF. Не плутати Intel iGPU із GP107. Не завантажувати
+Nouveau одночасно з proprietary NVIDIA KMD на цій карті.
+
+**Atomic KMS regression gate:** зафіксувати kernel source package/commit.
+Mainline fix `ed7fb901fce31588bd12ab95adc36ebcb51bc8ea` увійшов у
+v7.4-rc3; однак `Cc: stable` не гарантує backport у поточне distro
+ядро. У перевірених stable snapshots Linux 7.3.5 (`988117cc1bb17338c586a4e21ade88b5397eac33`) та 7.2.15 (`497791a0a96b866d90add64041c47acdff49cae6`) на 2026-11-27 backport ще не було. Для Kali `7.2.15+kali-amd64` перевірити саме source package/patch set; не робити припущень за номером.
+`nouveau.atomic=0` — лише тимчасовий діагностичний boot для ядра
+без fix, якщо atomic regression саме відтворюється; не постійний параметр.
+
+Read-only DRM enumeration:
+```sh
+drm_info
+modetest -M nouveau -c -p
+```
+`modetest -c -p` використовується лише для переліку connectors/CRTCs/
+planes; не додавати `-s` і не запускати modeset у первинному аудиті.
+
+### C. Окремі графічні та compute smoke tests
+
+Пакети за назвами дистрибутива: `pciutils`, `mesa-utils`,
+`vulkan-tools`, `drm-info`, `libdrm-tests`, `clinfo`,
+`glmark2` або `vkmark`. Відсутній пакет позначати
+`NOT_AVAILABLE`, не підміняти тест CPU renderer-ом.
+
+**OpenGL:**
+```sh
+glxinfo -B
+glmark2
+```
+Перевірити renderer/vendor/device; `llvmpipe` означає software path,
+а не GP107 acceleration. За headless/Wayland/remote session можливий
+інший результат — фіксувати session type.
+
+**Гібридна графіка Intel HD 530 + GP107.** На цій машині desktop може
+працювати через Intel GPU, тому звичайний `glxinfo` або перший Vulkan
+device не доводить, що тестується GTX 1050 Ti. Після отримання BDF з
+`lspci -Dnnk -d 10de:1c82` використовувати PCI selector Mesa
+(приклад для `0000:01:00.0`):
+```sh
+DRI_PRIME=pci-0000_01_00_0 glxinfo -B
+DRI_PRIME=pci-0000_01_00_0 glmark2
+DRI_PRIME=pci-0000_01_00_0! vulkaninfo --summary
+DRI_PRIME=pci-0000_01_00_0! vkcube
+```
+Замінити BDF у selector на фактично виявлений; не припускати, що він
+завжди `0000:01:00.0`. Для Vulkan суфікс `!` обмежує видимі застосунку
+пристрої вибраним GPU. У кожному виводі перевірити `deviceName`,
+`driverName` і PCI identity; якщо показано Intel або llvmpipe, це не
+GP107 runtime witness. Джерело: [Mesa `DRI_PRIME` documentation](https://docs.mesa3d.org/envvars.html).
+
+**Vulkan:**
+```sh
+vulkaninfo --summary
+vkcube
+```
+Зафіксувати `deviceName`, `driverName`, `driverInfo`,
+`apiVersion`, device extensions і exit status. Для GP107 за
+перевіреним per-device Mesa source очікується Vulkan 1.3, але значення
+з `vulkaninfo` є остаточним runtime witness.
+
+Для окремого детального проходу NVK debug flags запускати по одному:
+```sh
+NVK_DEBUG=vm vkmark
+NVK_DEBUG=push,push_sync vkmark
+NAK_DEBUG=print vkmark
+```
+Не змішувати ці журнали в один прогін; `NAK_DEBUG=print` може
+генерувати великий вивід.
+
+**OpenCL/Rusticl:**
+```sh
+RUSTICL_ENABLE=nouveau clinfo -l
+RUSTICL_ENABLE=nouveau clinfo
+```
+Переконатися, що OpenCL device — саме Nouveau/GP107, а не CPU/llvmpipe.
+Після enumeration запустити власний vector-add і незалежно перевірити
+кожен результат на CPU; лише потім — потрібний subset OpenCL CTS.
+Rusticl не є CUDA. Відсутність Rusticl у distro build фіксувати як
+`NOT_AVAILABLE`, не як доказ апаратної несумісності.
+
+**Video capability (лише запити):**
+```sh
+vainfo
+vdpauinfo
+```
+Для NV130 decode TODO або відсутній API — валідний результат
+`NOT_AVAILABLE`; не намагатися вмикати невідомі firmware paths.
+
+**Power/telemetry (тільки читання):**
+```sh
+sensors
+find /sys/class/drm -maxdepth 7 -path '*/device/hwmon/*' -type f
+```
+Якщо доступні debugfs pstate/hwmon counters, читати їх без запису.
+Відсутні частоти/температура/потужність позначати `NOT_MEASURED`;
+не виводити реальні clocks із VBIOS datasheet чи номіналу виробника.
+
+### D. Інструменти для статичного дослідження — що використовувати
+
+- **Linux source / NVKM:** `gp107.c`, `ctxgp107.c`, `gf100.c`,
+  chipset map у `device/base.c`, а також GP107-relevant FIFO/FB/MMU/
+  display code. Для кожного висновку фіксувати commit SHA.
+- **NVIDIA open-gpu-doc:** `classes/3d/README.txt`, `clc097.h`,
+  `clc197.h`, `clc0c0.h`, `clc1c0.h`, `clc1c0qmd.h`.
+  Це public class ABI/field layout, не повна hardware spec.
+- **Mesa source:** `src/nouveau/vulkan/nvk_physical_device.c`,
+  NVK/NAK shader paths і старий Nouveau Gallium path; зіставляти
+  pinned revisions.
+- **envytools:** `nvbios` для статичного декодування вже наявної копії
+  VBIOS; `rnn`/RNND для відомих register/FIFO fields; `demmt`
+  для парсингу вже отриманих command-stream captures. `envydis`
+  не вважати повним GP107 SASS decoder.
+- **Ghidra/REA:** статичний аналіз host-side R580 `libcuda.so`/ELF,
+  із чітким відділенням proprietary ABI facts від Nouveau.
+- **CUDA Binary Utilities 12.x:** `nvdisasm`/`cuobjdump` — закриті
+  контрольні утиліти для SM61 cubin/SASS, не частина відкритого драйвера.
+- **nva:** не запускати на першому bring-up. Це прямий register-access
+  інструмент; будь-які MMIO write/reset/devinit/Falcon scripts заборонені
+  на робочій карті в цій фазі.
+
+Не копіювати vendor source/decompiled code або firmware blobs у цей repo.
+Зберігати лише власні traces, ABI факти, посилання, hashes і мінімальні
+reproducers із відповідними ліцензіями.
+
+### F. GP107 reset/boot matrix та evidence bundle
+
+Якщо тестовий стенд стабільний, окремо виконати cold boot, warm reboot
+і suspend/resume з D3. Для кожного стану зберігати повний kernel log
+і шукати `nouveau|nvkm|SEC2|409800|PRI|FAULT|TIMEOUT`. Це окремий
+від atomic KMS регресії старий GP107/GP108 GR-init quirk; не писати
+в регістри для його діагностики.
+
+Повернути один evidence bundle з UTC timestamp, точним PCI BDF/subsystem,
+VBIOS version/hash (якщо безпечно доступний), kernel/Mesa/LLVM/libdrm/
+linux-firmware package versions, повними logs, командами, exit codes
+і SHA-256 кожного артефакту. Не публікувати serials, MAC addresses,
+usernames, повну конфігурацію хоста або firmware binaries.
+
+Під час перевірки Desktop Commander усі зареєстровані пристрої були Offline,
+тому фізичний test у цьому сеансі не виконаний. Цей розділ — runbook, не runtime
+результат. Evidence labels лишаються `NOT_AVAILABLE`, `NOT_MEASURED`,
+`FAILED`, `PASSED`, `UNPROVEN` — не зводити їх до одного PASS/FAIL.
+
+Джерела:
+- [Mesa Rusticl](https://docs.mesa3d.org/rusticl.html)
+- [Mesa environment variables / RUSTICL_ENABLE](https://docs.mesa3d.org/envvars.html)
+- [llama.cpp Vulkan build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
+- [Linux Nouveau GP107 compute class](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
+- [Mesa NVK Vulkan API version selection](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
