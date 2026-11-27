@@ -580,7 +580,7 @@ issues/bugs. Rusticl потребує явного ввімкнення: `RUSTIC
 |---|---|---|
 | Nouveau KMS / базова графіка | NV130 DONE | board runtime UNPROVEN |
 | Mesa Nouveau Gallium OpenGL | NV130 shader/3D features DONE | board runtime UNPROVEN |
-| Mesa NVK Vulkan | Pascal supported; per-device Mesa source snapshot exposes Vulkan 1.3 on pre-Turing; conformant flag includes Kepler–Ada | board runtime UNPROVEN |
+| Mesa NVK Vulkan | Pascal; Vulkan API 1.3 за перевіреним per-device source snapshot | board runtime UNPROVEN |
 | OpenCL через Rusticl/Nouveau | nouveau у Rusticl supported-driver list | board runtime UNPROVEN |
 | VDPAU/VA-API video decode | NV130 TODO; GP107 не listed у engine table | не підтверджено |
 | Engine/memory reclocking та automatic PM | NV130 TODO | не підтверджено; firmware limitation |
@@ -633,3 +633,113 @@ bring-up. Не переносити загальне заголовне форм
 
 Джерело:
 - [Mesa pinned source — per-device NVK API version and conformance predicates](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+
+
+## 14. Свіжі межі compute, відео та актуальних інструментів (2026-11-27)
+
+Цей розділ відділяє архітектурну підтримку Pascal від загальних заяв Mesa/NVIDIA та від реального runtime на конкретній GTX 1050 Ti.
+
+### 14.1. NVK Vulkan Video з Mesa 26.3 не поширюється на GP107
+
+У Mesa 26.3 з'явився початковий NVK Vulkan Video шлях із H.264 decode. Він залежить від NVIDIA GSP; H.265 у згаданому зрізі ще спричиняв зависання GSP. Через цю залежність Vulkan Video NVK підтримується лише на Turing і новіших GPU. GP107/Pascal не має GSP, тому нова функція Mesa 26.3 **не є** відеодекодером для GTX 1050 Ti.
+
+Не змішувати:
+1. наявність NVDEC/NVDEC-related компонентів у кремнії або NVKM chipset table;
+2. наявність firmware/SEC2/NVDEC компонентів у Linux;
+3. готовий userspace API (Vulkan Video, VDPAU, VA-API) для конкретного покоління.
+
+Для NV130 таблиця Nouveau досі позначає старий VDPAU/XvMC decode як TODO; наявність NVDEC реєстрації в ядрі сама по собі не доводить роботу userspace decoder.
+
+Джерела:
+- [NVK Vulkan Video merged for Mesa 26.3 — GSP dependency and Turing+ limitation (2026-08-22)](https://www.phoronix.com/news/NVK-Vulkan-Video-Mesa-26.3)
+- [Mesa 26.3 release notes](https://docs.mesa3d.org/relnotes/26.3.0.html)
+- [Nouveau Feature Matrix](https://nouveau.freedesktop.org/FeatureMatrix.html)
+- [Nouveau VideoAcceleration matrix](https://nouveau.freedesktop.org/VideoAcceleration.html)
+
+### 14.2. CUDA для SM 6.1: остання лінія збірки — Toolkit 12.x
+
+NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CUDA; починаючи з CUDA Toolkit 13.0 прибрано offline compilation і library support для цих архітектур. Toolkit 12.x залишається підтримуваною лінією для створення застосунків під ці GPU. Для GP107/SM61 це означає:
+
+- для нової компіляції CUDA-коду під SM61 використовувати CUDA Toolkit 12.x;
+- CUDA Toolkit 13.x/13.5 не використовувати як компілятор цілі SM61;
+- не робити висновок, що наявна CUDA-програма автоматично перестане запускатися: тут ідеться саме про вилучення offline compilation/library support для старих архітектур;
+- vendor CUDA лишається закритим fallback/контрольним шляхом, не відкритим драйвером.
+
+Це не змінює вибір Nouveau/NVK для відкритої графіки. Порівнювати CUDA та Vulkan/OpenCL workload слід окремо й не оголошувати сумісність API між ними.
+
+Джерела:
+- [NVIDIA CUDA Features Archive — deprecated Maxwell/Pascal/Volta architectures](https://docs.nvidia.com/cuda/cuda-features-archive/index.html)
+- [CUDA Toolkit 13.2.2 release notes](https://docs.nvidia.com/cuda/archive/13.2.2/cuda-toolkit-release-notes/index.html)
+- [CUDA Toolkit Archive — current release 13.5.0, November 2026](https://developer.nvidia.com/cuda-toolkit-archive/)
+
+### 14.3. Поточні Mesa bug-fix релізи і як читати їхні Nouveau fixes
+
+Станом на 2026-11-27:
+- Mesa 26.2.8 — bug-fix release від 25 листопада 2026;
+- Mesa 26.3.1 — bug-fix release від 18 листопада 2026;
+- Mesa 26.3.0 — новий feature/development release від 9 листопада; його release notes радять орієнтованим на стабільність користувачам залишатися на попередньому релізі або перейти на 26.3.1.
+
+У Mesa 26.2.8 є Nouveau виправлення для VP3 H.264 decoder (передача `chroma_format_idc` та MBAFF-прапорця), а також інші `nv50/nvc0/winsys` зміни. Це важливі upstream fixes, але **не слід трактувати їх як підтвердження H.264 decode на GP107**: decoder family/engine coverage у Nouveau FeatureMatrix для NV130 залишається окремою прогалиною.
+
+Для перших фізичних тестів варто брати наявний distro bug-fix Mesa package і записувати точну версію; для контрольного порівняння — 26.2.8 або 26.3.1. Не оновлювати Mesa на робочій системі лише заради версії, доки не визначений recovery path.
+
+Джерела:
+- [Mesa 26.2.8 release notes (2026-11-25)](https://docs.mesa3d.org/relnotes/26.2.8.html)
+- [Mesa 26.3.1 release notes (2026-11-18)](https://docs.mesa3d.org/relnotes/26.3.1.html)
+- [Mesa 26.3.0 release notes (2026-11-09)](https://docs.mesa3d.org/relnotes/26.3.0.html)
+- [Mesa release news](https://mesa3d.org/news/)
+
+### 14.4. Vulkan compute та llama.cpp — лише після базового NVK bring-up
+
+Успішний `vulkaninfo` доводить лише наявність Vulkan physical device/API properties; він не доводить виконання реального compute workload. Порядок перевірки:
+1. Vulkan enumeration / device properties;
+2. малий Vulkan compute smoke test із перевіркою результату;
+3. тестування кількох черг/синхронізації й пам'яті;
+4. лише потім application-level workload, наприклад [llama.cpp Vulkan backend](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
+
+llama.cpp документує CMake-параметр `-DGGML_VULKAN=ON`. Це загальний Vulkan backend і потенційний прикладний тест NVK, але підтримка конкретної GP107/NVK комбінації не доведена. Якщо базовий NVK API оголошує Vulkan 1.3, перевірити фактичні extension/feature requirements llama.cpp; не підміняти версію Vulkan і не обходити відмову драйвера.
+
+Для 4-GB GTX 1050 Ti починати з невеликої quantized GGUF моделі та 1–2 GPU layers; фіксувати явне обрання NVK device, модель/quantization, context, кількість offloaded layers, VRAM, температуру/частоти (якщо доступні) та tokens/s. CPU fallback не вважати GPU результатом.
+
+Джерело: [llama.cpp build guide — Vulkan backend](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
+
+### 14.5. Суміжний проєкт TheTom/pascal-egpu — reference, не драйвер для GP107
+
+[TheTom/pascal-egpu](https://github.com/TheTom/pascal-egpu) досліджує driverless userspace access до Pascal **GP106/GTX 1060** через Thunderbolt eGPU на macOS Apple Silicon. Це інше середовище й інший GPU ID; проект не є Nouveau і не доводить runtime на нашому GP107.
+
+Після перевірки `hw/compute_dispatch.py` виявлено важливу межу його тесту:
+- у гілці `FECS not running` результат `C=A+B` обчислюється на CPU;
+- у гілці `FECS alive` код прямо залишає FIFO + QMD submission як TODO, а результат також обчислює на CPU;
+- тому `vector_add_test() = PASS` підтверджує CPU арифметику та readback буфера, **не GPU dispatch**.
+
+У проєкті також присутні MMIO write/reset/devinit helper-и; його `RESEARCH.md` описує hardware lockup після експериментальних writes. Не запускати його write/reset/devinit/Falcon-код на робочій GTX 1050 Ti. Використовувати лише як джерело дослідницьких питань і перехресну документацію.
+
+Публічні NVIDIA class headers визначають:
+- `PASCAL_COMPUTE_A = 0xC0C0`;
+- `PASCAL_COMPUTE_B = 0xC1C0`;
+- `MAXWELL_COMPUTE_B = 0xB1C0`.
+
+Це доводить існування різних class IDs у документації, але **не визначає автоматично**, який compute class та які методи дозволені на конкретному GP107. Потрібен окремий доказ GPU→class mapping з upstream Nouveau або апаратного witness; не переносити GP106 assumption на GP107.
+
+Джерела:
+- [TheTom/pascal-egpu README and source](https://github.com/TheTom/pascal-egpu)
+- [compute_dispatch.py — CPU fallback and TODO dispatch](https://github.com/TheTom/pascal-egpu/blob/main/hw/compute_dispatch.py)
+- [Pascal Compute A header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc0c0.h)
+- [Pascal Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc1c0.h)
+- [Maxwell Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clb1c0.h)
+
+### 14.6. GP107 atomic KMS regression: перевіряти stable backport, не лише kernel version
+
+Окремий GP107 report описував NULL dereference під час atomic modesetting після commit `2652aca460dc`. Upstream fix `ed7fb901fce31588bd12ab95adc36ebcb51bc8ea` додає коректні atomic callbacks і входить у mainline з v7.4-rc3; fix позначений для stable. Проте `Cc: stable` не гарантує, що патч уже присутній у конкретній stable-гілці чи дистрибутивному ядрі.
+
+Перед першим фізичним boot:
+- перевірити наявність commit/backport у джерелах або пакеті конкретного ядра;
+- не радити `nouveau.atomic=0` як загальний параметр;
+- використовувати його лише як разовий діагностичний boot, якщо відтворюється саме цей Oops на ядрі без виправлення.
+
+Не плутати atomic KMS regression із давнім GP107/GP108 GR/PRI init workaround під час cold boot/D3: це різні проблеми й різні місця в коді.
+
+Джерела:
+- [GP107 atomic regression report (2026-11-02)](https://lists.openwall.net/linux-kernel/2026/11/02/1643)
+- [Upstream atomic callback fix, ed7fb901fce3 (2026-11-11)](https://github.com/torvalds/linux/commit/ed7fb901fce31588bd12ab95adc36ebcb51bc8ea)
+- [v7.4-rc3 DRM fixes pull](https://lists.openwall.net/linux-kernel/2026/11/14/172)
