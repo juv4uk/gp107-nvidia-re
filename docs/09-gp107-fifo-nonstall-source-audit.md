@@ -44,7 +44,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 `nouveau.debug=trace`, бо не піднімає level для всіх NVKM subdev-ів.
 
 `RUNL_DEBUG()` у `nvkm/engine/fifo/runl.h` друкує через `fifo` subdev рядки
-виду `fifo: 000000NN: ...`. Для них потрібен `nouveau.debug=PFIFO=debug`.
+виду `fifo: 000000NN: ...`. Для них потрібен `nouveau.debug=FIFO=debug`.
 `RUNL_TRACE()` додає `running`/`stopped`.
 
 Це читання вже існуючого kernel-logging шляху. Ми не викликаємо `nva`, не
@@ -73,7 +73,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
    ```bash
    # лише після перевірки CONFIG_NOUVEAU_DEBUG >= 5 у цільовому ядрі
-   printf 'options nouveau debug=TOP=trace,PFIFO=debug\n' \
+   printf 'options nouveau debug=TOP=trace,FIFO=debug\n' \
      | sudo tee /etc/modprobe.d/gp107-fifo-trace.conf
    sudo update-initramfs -u
    sudo reboot
