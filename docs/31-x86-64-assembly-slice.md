@@ -18,7 +18,8 @@ ret
 
 - один 32-бітний load і `lfence` після нього;
 - жодних констант регістрів, BOOT0-адрес, vendor-послідовностей чи write;
-- виклик і всі ворота лишаються в C: opt-in прапорець і відмова при bound driver;
+- assembly primitive виконує лише один read-only load + fence; opt-in, fresh inventory,
+  binding, BAR0-size та range gates перевіряє C API;
 - збірка `gp107ctl-asm` використовує `-DGP107_USE_ASM=1`, звичайний `gp107ctl`
   лишається C-версією для порівняння.
 
@@ -62,7 +63,7 @@ sysfs як `0x01000000`, але самий aperture-read не виконував
 - gp107 #33 лишається Draft без повного exact-head `make test`.
 
 Фінальний маркер гейту тепер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=8 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=12 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
 ## 5. Питання без відповіді й найменший крок
 
