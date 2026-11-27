@@ -48,9 +48,9 @@
 | [`26-rea-p1-uvm-alloc-enum-and-alignment.md`](docs/26-rea-p1-uvm-alloc-enum-and-alignment.md) | Enum-розгалуження `uvm_rm_mem_alloc` і виправлення disalignment у `channel_pool_add`; RM-семантика лишається UNPROVEN |
 | [`27-rea-p1-uvm-object-field-aliasing.md`](docs/27-rea-p1-uvm-object-field-aliasing.md) | Offset `+0x1e0` має різні базові об'єкти в `nvidia-uvm.ko`; RM-handle/feature-flag лишаються UNPROVEN |
 | [`28-rea-p1-uvm-channel-manager-callers.md`](docs/28-rea-p1-uvm-channel-manager-callers.md) | 5 call-site `uvm_channel_manager_create`: `rdi=parent`, `rsi=&parent+0x19f8`; RM-семантика лишається UNPROVEN |
-| [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | Перший C11-код: fail-closed sysfs identity + опційний read-only MMIO-сеам; фізичний MMIO NOT_RUN |
-| [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | Публічний PCI config-header і машиночитаний ledger; RM/boot0 лишаються UNPROVEN |
-| [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | Власний x86-64 read-only asm-примітив з еквівалентністю до C; не release, hardware MMIO NOT_RUN |
+| [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | C11 sysfs identity + gated C/ASM MMIO API; фізичний MMIO NOT AUTHORIZED / NOT RUN |
+| [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | PCI config-header і capability ledger; software gate ≠ owner approval, RM/BOOT0 UNPROVEN |
+| [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | x86-64 asm load лише за спільною C-gated API; фізичний MMIO NOT AUTHORIZED / NOT RUN |
 | [`tests/nvk-gp107-vector-add/README.md`](tests/nvk-gp107-vector-add/README.md) | NVK GP107 vector-add harness: compile-only CI, fail-closed gates; фізичний GPU тест NOT_RUN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
