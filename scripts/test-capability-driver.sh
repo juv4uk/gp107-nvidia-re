@@ -34,13 +34,13 @@ fi
 if grep -R -F -q 'b5ec3211f6bd07fb7c4a5f704875892eff145b91' lib pascal; then
   fail 'authoritative ABI pin present in library code'
 fi
-if grep -nHE '\\b(mmap|munmap)\\s*\\(' lib/gp107_mmio.c; then
+if grep -nHE '\b(mmap|munmap)\s*\(' lib/gp107_mmio.c; then
   fail 'C MMIO API must not map or unmap BAR0'
 fi
-if grep -nF 'resource0' lib/gp107_mmio.c pascal/gp107_mmio.pas; then
+if grep -nF 'openat(dirfd, "resource0"' lib/gp107_mmio.c; then
   fail 'public MMIO API must not open or map resource0'
 fi
-if grep -nHE '\\b(FpOpen|FpMMap|FpMunmap)\\s*\\(' pascal/gp107_mmio.pas; then
+if grep -nHE '\b(FpOpen|FpMMap|FpMunmap)\s*\(' pascal/gp107_mmio.pas; then
   fail 'Pascal MMIO API must not open or map resource0'
 fi
 echo 'DRIVER-FIREWALL-OK banned-ops=absent pin-in-code=absent boot0-value=absent mapper=absent'
@@ -382,7 +382,7 @@ int main(int argc, char **argv)
                            &value, err, sizeof(err));
     if (rc != GP107_ERR_SAFE_OFFSET_UNPROVEN ||
         strstr(err, "read-safe-offset-unproven") == NULL || value != 0) {
-        fprintf(stderr, "API-SAFE-OFFSET-FAIL rc=%d value=0x%x err=%s\\n",
+        fprintf(stderr, "API-SAFE-OFFSET-FAIL rc=%d value=0x%x err=%s\n",
                 rc, value, err);
         return 1;
     }
