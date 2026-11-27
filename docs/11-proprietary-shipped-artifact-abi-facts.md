@@ -12,7 +12,7 @@ REA читає артефакти як дані.
 | `/tmp/opencode/nvidia.ko` (розпакований DKMS `nvidia.ko.xz`) | `95c5fa5ab0546ee40842cda2ec20ea3ec1e196a5afee1580944ecae2ffc75bbe` | shipped-artifact, ELF64 ET_REL, not stripped |
 | `/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.196.11` | `fb5bcecf63a9cbb7bea6a419c497af5469e1221d3e9cce02acaf4b34af342e61` | shipped-artifact, ELF64 ET_DYN, Vulkan/GL ICD з `nvidia_icd.json` |
 
-## Statically proven (REA, без виконання коду)
+## Статично доведено (REA, без виконання коду)
 
 1. **`nvidia.ko` 580.196.11, `srcversion=65626331C62C6702B5D95C0`.**
    У `.modinfo` оголошено лише два firmware-файли:
@@ -37,13 +37,13 @@ REA читає артефакти як дані.
    Evidence: `ev_f87131de...` / `ev_7435049c...` (coverage complete: 7 needed,
    5 versions, 118 imports).
 
-## String-only (не ABI-доказ)
+## Лише текстовий рядок (не доказ ABI)
 
 - У `libnvidia-glcore.so` знайдено `nvDevice: INVALID CHANNEL PRIORITY %d\n` і
   `CE CHANNEL INDEX %d, is %s\n` (rizin `izz~CHANNEL`). Це лише наявність тексту;
   не доводить ані формат структури, ані алгоритм вибору prio/runlist.
 
-## UNPROVEN / coverage-межа
+## UNPROVEN / межі охоплення
 
 - Пошук `BOOT0`, `GPFIFO`, `RUNLIST`, `NV2080_CTRL`, `NV_ESC` у 138M `nvidia.ko`
   і 36M `libnvidia-glcore.so` **не дав результату через обмеження rizin**
@@ -66,7 +66,7 @@ REA читає артефакти як дані.
    `nouveau` і перевірити NVK на `10de:1c82`. REA тут лише зняв частину
    невизначеності щодо структури стека.
 
-## Ukrainian one-liner
+## Коротко українською
 
 REA показав, як пропрієтарний стек влаштований зовні, але не дав жодного права
 писати в апаратуру — відкритий драйвер і далі починається з перевіреного
