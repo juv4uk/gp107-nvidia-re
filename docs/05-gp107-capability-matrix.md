@@ -47,7 +47,7 @@ clean-room зондами справді виконано на цій машин
 | 24 | Display / GOP / framebuffer у Lisp-машині | **UNPROVEN, поза межею** | hosted DRM і compute-канал не ототожнюються |
 | 25 | Bare-metal/UEFI пряме читання BOOT0 | **UNPROVEN** | належить окремому seam; тут активний `nvidia.ko` |
 | 26 | Перенесення `PciConfig`/`Mmio`/`RmControl` у `wsm-os-lisp` | **UNPROVEN, не авторизовано** | ABI-pin v8 і v9 не змінювалися; потрібне owner-рішення |
-| 27 | `valid_cards == 1` перед RM-алокацією | **statically proven, source; static-checker mutation-negative executed; multi-GPU runtime negative NOT_RUN** | guard у `03_rm_arch_info.pas`; comment-stripped shell checker та його source-mutation negative доводять, що checker виявляє видалення маркерів, але не виконують Pascal-гілку на multi-GPU fixture; кореляцію `PCI BDF ↔ RM gpu_id` не доведено |
+| 27 | `valid_cards == 1` перед RM-алокацією | **guard implemented; static CI pending; multi-GPU runtime negative NOT_RUN** | guard у `03_rm_arch_info.pas`; окремий host-independent comment-stripped shell checker і source-mutation negative описують перевірку; до зеленого CI їх виконання не заявляється, а сам target не виконує Pascal-гілку на multi-GPU fixture; кореляцію `PCI BDF ↔ RM gpu_id` не доведено |
 
 ## Що реально дає репозиторій
 
