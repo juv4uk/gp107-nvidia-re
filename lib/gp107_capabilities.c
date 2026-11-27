@@ -32,15 +32,16 @@ int gp107_capability_report(const struct gp107_inventory *inv,
     }
     out[0] = '\0';
 
-    if (inv->driver.bound) {
+    if (inv->driver.bound != 0) {
         state = "denied";
-        reason = "driver-bound";
+        reason = "driver-bound-or-unknown";
     } else if (!allow_mmio) {
         state = "deferred";
         reason = "opt-in-required";
     } else {
-        state = "granted";
-        reason = "read-only-window";
+        /* Permission to attempt is not evidence that a read completed. */
+        state = "eligible";
+        reason = "explicit-read-only-attempt-required";
     }
 
     append_line(out, cap, "((kind . gp107-capability-ledger)\n");

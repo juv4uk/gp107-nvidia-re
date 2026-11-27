@@ -64,7 +64,7 @@ with open(os.path.join(dev, 'vendor'), 'w') as fh:
 with open(os.path.join(dev, 'device'), 'w') as fh:
     fh.write('0x1c82\n')
 with open(os.path.join(dev, 'resource0'), 'wb') as fh:
-    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(60))
+    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 
@@ -86,6 +86,17 @@ for marker in \
   grep -Fq "$marker" "$WORK/inv.out" || fail "нема маркера: $marker"
 done
 echo 'FIXTURE-IDENTITY-OK source=synthetic-sysfs'
+
+step 'negative witness (invalid driver link is not interpreted as unbound)'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+: > "$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/baddriver.out" 2>"$WORK/baddriver.err"; then
+  fail 'inventory accepted invalid driver entry as unbound'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-link-read code=20' "$WORK/baddriver.err" || fail 'missing driver-link-read fail-closed marker'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+echo 'NEGATIVE-DRIVER-LINK-OK unknown=not-unbound'
 
 step 'capability ledger (bound driver denies MMIO, RM deferred)'
 "$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-bound.out"
@@ -166,6 +177,23 @@ for marker in \
 done
 echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
 
+step 'negative witness (unaligned MMIO offset is refused)'
+if "$BIN" mmio-read --offset=0x1 --allow-mmio --sysfs-root="$FIX" >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
+  fail 'MMIO API accepted unaligned access'
+fi
+grep -Fq 'MMIO-FAIL step=unaligned-offset code=22' "$WORK/unaligned.err" || fail 'missing unaligned-offset marker'
+echo 'NEGATIVE-MMIO-ALIGNMENT-OK'
+
+step 'negative witness (short resource0 is refused before mmap)'
+cp "$FIX/bus/pci/devices/0000:01:00.0/resource0" "$WORK/resource0.full"
+truncate -s 64 "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/short.out" 2>"$WORK/short.err"; then
+  fail 'MMIO API mapped resource0 shorter than its window'
+fi
+grep -Fq 'MMIO-FAIL step=resource0-too-small code=21' "$WORK/short.err" || fail 'missing resource0-too-small marker'
+mv "$WORK/resource0.full" "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+echo 'NEGATIVE-MMIO-SIZE-OK'
+
 step 'assembly read-only path equivalence (x86-64 only)'
 if [ -x "$ASMBIN" ]; then
   "$ASMBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-asm.out"
@@ -199,7 +227,7 @@ grep -Fq '(mmio-read . granted) (reason . read-only-window)' "$WORK/ledger-grant
   || fail 'ledger не надав read-only MMIO після opt-in'
 grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
   || fail 'ledger розширив права поза read-only'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+echo 'LEDGER-ELIGIBLE-OK no-aperture-read-implied write=none dispatch=none'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
@@ -227,9 +255,9 @@ if [ -d /sys/bus/pci/devices/0000:01:00.0 ]; then
   grep -Fq '(vendor . 0x10de)' "$WORK/host.out" || fail 'host vendor mismatch'
   grep -Fq '(device . 0x1c82)' "$WORK/host.out" || fail 'host device mismatch'
   grep -Fq '(bdf . "0000:01:00.0")' "$WORK/host.out" || fail 'host BDF mismatch'
-  echo 'HOST-INVENTORY-PASS evidence=runtime-proven'
+  echo 'HOST-INVENTORY-PASS evidence=sysfs-observation'
 else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=9 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN"

@@ -7,9 +7,8 @@
 #include "gp107_identity.h"
 
 /*
- * Optional read-only aperture seam. Owner-authorized in the session that
- * created this slice, but deliberately inert unless the caller passes an
- * explicit opt-in flag AND no kernel driver is bound to the device.
+ * Optional read-only aperture seam. Explicit opt-in is necessary but is
+ * not owner authorization; the public API repeats inventory and driver checks.
  *
  * No write mapping, no RM requests, no FIFO, no doorbell, no firmware,
  * no BOOT0 constant and no register name is encoded here.
@@ -26,8 +25,9 @@ int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz);
 
-int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
-                      uint32_t offset, uint32_t *value,
+/* Gating is enforced here, not only in the CLI. */
+int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
+                      int allow, uint32_t offset, uint32_t *value,
                       char *err, size_t errsz);
 
 #endif

@@ -36,6 +36,9 @@ enum gp107_status {
     GP107_ERR_DRIVER_BOUND = 16,
     GP107_ERR_OFFSET       = 17,
     GP107_ERR_MAP          = 18,
+    GP107_ERR_DRIVER_LINK  = 20,
+    GP107_ERR_RESOURCE_SIZE = 21,
+    GP107_ERR_ALIGNMENT     = 22,
     GP107_ERR_USAGE        = 64
 };
 
@@ -68,7 +71,7 @@ struct gp107_pci_identity {
 
 struct gp107_driver_binding {
     char name[64];      /* offset  0 */
-    int  bound;         /* offset 64 */
+    int  bound;         /* offset 64: 1 bound, 0 confirmed-unbound */
 };
 
 struct gp107_inventory {
