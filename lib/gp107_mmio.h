@@ -26,9 +26,10 @@ int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz);
 
-int gp107_mmio_read32(const char *sysfs_root,
-                      const struct gp107_inventory *inv,
-                      uint32_t offset, uint32_t *value,
-                      char *err, size_t errsz);
+/* The public operation enforces opt-in, inventory identity and driver
+ * binding itself; callers cannot bypass the gates by skipping CLI checks. */
+int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
+                      uint32_t offset, int allow,
+                      uint32_t *value, char *err, size_t errsz);
 
 #endif
