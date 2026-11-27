@@ -461,7 +461,8 @@ begin
   candidateBdf := '';
   deviceFd := -1;
   chosenFd := -1;
-  devdir := IncludeTrailingPathDelimiter(root) + 'bus/pci/devices';
+  try
+    devdir := IncludeTrailingPathDelimiter(root) + 'bus/pci/devices';
 
   if FindFirst(devdir + '/*', faAnyFile, sr) <> 0 then
   begin
@@ -596,7 +597,12 @@ begin
   for rc := 1 to Length(foundBdf) do
     inv.bdf[rc - 1] := foundBdf[rc];
   deviceFd := chosenFd;
+  chosenFd := -1;
   Result := STATUS_OK;
+  finally
+    if chosenFd >= 0 then
+      FpClose(chosenFd);
+  end;
 end;
 
 function ScanInventory(const root, expectBdf: string;
