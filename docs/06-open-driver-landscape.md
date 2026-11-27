@@ -895,7 +895,7 @@ Read-only перевірка на окремому native Nouveau boot:
 modinfo -F firmware nouveau | grep -E '^nvidia/(gp107|gp102)/'
 FWROOT=/lib/firmware
 [ -d /usr/lib/firmware/nvidia/gp107 ] && FWROOT=/usr/lib/firmware
-find -L "$FWROOT/nvidia/gp107" "$FWROOT/nvidia/gp102" -type f -printf '%p %s bytes\\n' 2>/dev/null | sort
+find -L "$FWROOT/nvidia/gp107" "$FWROOT/nvidia/gp102" -type f -printf '%p %s bytes\n' 2>/dev/null | sort
 ls -l "$FWROOT/nvidia/gp107/gr" "$FWROOT/nvidia/gp107/sec2" "$FWROOT/nvidia/gp107/acr" 2>&1
 sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|sec2|acr'
 ```
