@@ -1057,20 +1057,13 @@ glmark2
 
 **Гібридна графіка Intel HD 530 + GP107.** На цій машині desktop може
 працювати через Intel GPU, тому звичайний `glxinfo` або перший Vulkan
-device не доводить, що тестується GTX 1050 Ti. Після отримання BDF з
-`lspci -Dnnk -d 10de:1c82` використовувати PCI selector Mesa
-(приклад для `0000:01:00.0`):
-```sh
-DRI_PRIME=pci-0000_01_00_0 glxinfo -B
-DRI_PRIME=pci-0000_01_00_0 glmark2
-DRI_PRIME=pci-0000_01_00_0! vulkaninfo --summary
-DRI_PRIME=pci-0000_01_00_0! vkcube
-```
-Замінити BDF у selector на фактично виявлений; не припускати, що він
-завжди `0000:01:00.0`. Для Vulkan суфікс `!` обмежує видимі застосунку
-пристрої вибраним GPU. У кожному виводі перевірити `deviceName`,
-`driverName` і PCI identity; якщо показано Intel або llvmpipe, це не
-GP107 runtime witness. Джерело: [Mesa `DRI_PRIME` documentation](https://docs.mesa3d.org/envvars.html).
+device не доводить, що тестується GTX 1050 Ti. Перед GL/Vulkan smoke
+tests застосувати динамічний PCI BDF selector із розділу 16.2 вище;
+не дублювати й не зашивати адресу `0000:01:00.0`. Перевірити, що
+`deviceName`, `driverName` і PCI identity відповідають GP107, а не Intel.
+Для Vulkan selector із суфіксом `!` обмежує видимі застосунку GPU
+лише вибраною картою. Якщо показано Intel або `llvmpipe`, це не GP107
+runtime witness. Джерело: [Mesa `DRI_PRIME` documentation](https://docs.mesa3d.org/envvars.html).
 
 **Vulkan:**
 ```sh
