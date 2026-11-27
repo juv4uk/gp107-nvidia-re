@@ -29,7 +29,6 @@ const
   EXPECTED_BDF        = '0000:01:00.0';
   DEFAULT_SYSFS       = '/sys';
   CONFIG_BYTES        = 32;
-  MMIO_WINDOW         = 4096;
 
   STATUS_OK             = 0;
   STATUS_OPEN           = 2;
@@ -45,6 +44,7 @@ const
   STATUS_MAP            = 18;
   STATUS_SIZE           = 19;
   STATUS_BINDING        = 20;
+  STATUS_NOT_AUTHORIZED = 21;
   STATUS_USAGE          = 64;
 
 type
