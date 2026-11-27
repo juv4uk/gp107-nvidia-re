@@ -686,6 +686,7 @@ GTX 1050 Ti та її subsystem/VBIOS варіанті.
 - [Mesa Rusticl environment variables — supported drivers and RUSTICL_ENABLE](https://docs.mesa3d.org/envvars.html#rusticl-environment-variables)
 - [Mesa NVK — current hardware and conformance status](https://docs.mesa3d.org/drivers/nvk.html)
 - [Collabora — historical Pascal Vulkan 1.3 milestone, 2025-04-22](https://www.collabora.com/news-and-blog/news-and-events/nvk-enabled-for-maxwell,-pascal,-and-volta-gpus.html)
+- [Linux GP102 VPR scrubber load path](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/subdev/fb/gp102.c)
 - [Linux GP107 chipset profile](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
 
 
@@ -865,10 +866,11 @@ matrix підтверджує наявність блоків.
 - ACR files `bl.bin`, `ucode_load.bin`, `ucode_unload.bin`,
   `unload_bl.bin` — GP102 symlinks;
 - SEC2 `desc/image/sig` та `*-1` variants — GP102 symlinks;
-- NVDEC `scrubber.bin` — GP102 symlink.
+- `nvidia/gp107/nvdec/scrubber.bin` — GP102 symlink. У Linux цей файл переданий у `gp102_fb_oneinit()` як VPR/framebuffer scrubber через NVDEC Falcon (`gp102_fb_vpr_scrub()`); його наявність не означає codec firmware або готовий decoder.
 
 Це підтверджує upstream firmware inventory для GR/ACR/SEC2/Falcon
-initialization і наявність scrubber blob у kernel firmware package.
+initialization. Scrubber — окрема VPR/framebuffer memory-scrubbing функція,
+а не відеокодек/decoder implementation.
 
 WHENCE для NVIDIA firmware вказує `LicenseRef-LICENCE.nvidia` та redistribution terms: це redistributable binary firmware, але не відкритий firmware source. Не включати ці blobs до репозиторію.
 Це не доводить, що ці файли встановлені на локальній системі або фактично
