@@ -8,7 +8,8 @@ program rm_arch_info;
 
   The GPU node is NOT hard-coded: it comes from the minor_number reported
   by NV_ESC_CARD_INFO for the unique PCI 10de:1c82 card. Ambiguity (0 or
-  more than 1 match) is a hard failure, never a guess.
+  more than 1 target match, or valid_cards <> 1 without a proven BDF <-> RM
+  gpu_id mapping) is a hard failure, never a guess.
 
   The cuInit LD_PRELOAD trace on this host showed the required sequence:
     open /dev/nvidia<N> (must stay open), NV_ESC_SYS_PARAMS,
@@ -179,6 +180,19 @@ begin
     fail_step := 'NV_ESC_CARD_INFO';
     Exit;
   end;
+
+  { Without a proven PCI BDF <-> RM gpu_id mapping, a second valid NVIDIA
+    card makes the single RM id ambiguous. Never promote it to a witness. }
+  if valid_cards <> 1 then
+  begin
+    WriteLn(StdErr,
+            'RM-ARCH-FAIL step=NV_ESC_CARD_INFO ambiguous valid_cards=',
+            IntToStr(valid_cards), ' matches=', IntToStr(matches));
+    failed := True;
+    fail_step := 'NV_ESC_CARD_INFO';
+    Exit;
+  end;
+
   WriteLn('NV_ESC_CARD_INFO target   : ',
           IntToHex(card.pci.vendor_id, 4), ':',
           IntToHex(card.pci.device_id, 4),
