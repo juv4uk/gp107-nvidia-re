@@ -1,26 +1,26 @@
 # 29 — Userspace capability-identity драйвер: перший зріз коду
 
-Це **перший виконуваний код** у напрямку «драйвер», обраний власником у цій
-сесії: userspace capability-identity бібліотека C з жорсткою fail-closed
+Це **перший виконуваний код** у напрямку «драйвер», визначений у цій
+сесії як безпечний source-only крок: userspace capability-identity бібліотека C з жорсткою fail-closed
 інвентаризацією sysfs. Це **не** ABI, не kernel-модуль, не RM/GPFIFO-шлях і не
 заміна `nvidia.ko`. SENS, CML, `wsm-os-lisp`, ADR, target contract і ABI-pin v8
 не змінено.
 
 ## 0. Межа owner-дозволу
 
-У цій сесії власник явно дозволив MMIO для першого коду. Дозвіл реалізовано
-**найвужче**:
+**Фізичний MMIO у цій координації НЕ АВТОРИЗОВАНИЙ і НЕ ВИКОНУВАВСЯ.**
+Попередній текст про нібито дозвіл у цій сесії був неточним і виправлений.
 
-- MMIO-сеам є окремим модулем і не активний за замовчуванням;
-- потрібен явний прапорець `--allow-mmio`;
-- відмова, якщо пристрій має bound kernel driver (зараз `nvidia`);
-- тільки read-only mapping одного вирівняного вікна й читання 32-бітового слова;
-- жодного write mapping, RM-запиту, FIFO, doorbell, firmware чи reboot.
+- `--allow-mmio` — лише CLI-прапорець, а не owner authorization;
+- `gp107_mmio_require_optin()` безумовно відмовляє до inventory або будь-якого доступу;
+- `gp107_mmio_read32()` безумовно повертає `NOT_AUTHORIZED`, зокрема для прямих C callers;
+- модуль більше не містить `open(resource0)`, `mmap` або фізичного читання BAR0;
+- невідомий, пошкоджений чи обрізаний driver symlink завершує inventory помилкою; лише відсутній link означає known-unbound;
+- жодного driver unbind, зміни boot-параметрів, RM/UVM ioctl, firmware, reboot чи GPU workload не виконується.
 
-Фізичний MMIO на цій платі **не виконувався**: поточний boot пропрієтарний,
-`Kernel driver in use: nvidia`, `/proc/cmdline` без `wsm_open_driver=1`.
-Перехід у `wsm_open_driver=1`, unbind/зміна драйвера або фізичний aperture-тест
-потребують **окремої owner-дії**.
+Будь-яке майбутнє фізичне MMIO вимагатиме **окремого явного owner-рішення**,
+незалежного review і source-backed whitelist конкретного безпечного регістру.
+Поточний CLI не має шляху, який може надати таке право.
 
 ## 1. Що додано
 
@@ -28,10 +28,10 @@
 |---|---|
 | `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
 | `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
-| `lib/gp107_mmio.h/.c` | Опційний read-only 32-бітний aperture seam з двома воротами (opt-in + driver-unbound) |
+| `lib/gp107_mmio.h/.c` | Fail-closed API boundary: фізичний MMIO завжди відхиляється; жодного resource0 open/mmap |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
-| `scripts/test-capability-driver.sh` | названі кроки, 5 негативних witness, firewall коду, best-effort host inventory |
+| `scripts/test-capability-driver.sh` | названі кроки, synthetic identity negatives, direct-API/CLI MMIO-denial checks, code firewall |
 | `docs/29-userspace-capability-driver.md` | цей звіт |
 
 Публічний контракт:
@@ -60,9 +60,9 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
 | 3 | Друга картка того самого vendor/device відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=card-count code=13 count=2` |
 | 4 | Відсутній `config` відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
 | 5 | Чужий BDF відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
-| 6 | MMIO без прапорця відхиляється до будь-якого mapping | **runtime-proven (fixture)** | `MMIO-FAIL step=opt-in-required code=15` |
-| 7 | MMIO з bound драйвером відхиляється | **runtime-proven (fixture)** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
-| 8 | Read-only 32-бітне читання з `resource0` | **runtime-proven (синтетичний файл), hardware NOT_RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом файлу |
+| 6 | MMIO без прапорця відхиляється через відсутність owner authorization | **runtime-proven (fixture)** | `MMIO-FAIL step=owner-authorization-required code=19` |
+| 7 | MMIO з `--allow-mmio` усе одно відхиляється | **runtime-proven (fixture)** | `owner-authorization-required`; CLI-прапорець не надає дозволу |
+| 8 | Прямий C API-виклик MMIO не відкриває і не мапить resource | **runtime-proven (synthetic direct caller)** | `NOT_AUTHORIZED`; шлях не містить `open/mmap` |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
@@ -86,29 +86,30 @@ make test-valid-cards-static   # старий базовий гейт не по�
    BOOT0-константа, атестація й authoritative pin;
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. три стани capability-ledger (`denied`/`deferred`/`granted`) і мутація
+5. стани capability-ledger залишають фізичний MMIO у `denied` і мутація
    I/O-прапорця BAR0;
-6. два MMIO-негативи й один read-only позитив на синтетичному `resource0`;
+6. CLI та прямий C API відмовляють у фізичному MMIO; mapping не виконується;
 7. best-effort реальний sysfs inventory (пропуск явно позначається, якщо
    пристрою немає).
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=10 mmio=physical-not-authorized hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.
 
 ## 4. Незавершене й найменший наступний крок
 
-- **Питання без відповіді:** який саме offset у BAR0 можна читати безпечно на
-  цій платі за відсутності bound драйвера? Поточний код не містить жодного
-  припущення про адресу регістру.
-- **Найменший крок:** після окремого owner-рішення про unbind/boot — повторити
-  той самий `mmio-read` на реальному пристрої з явним `--offset`, записавши
-  stdout/stderr як artifact з SHA-256 і позначивши результат як
-  `runtime-proven` або fail-closed. Без цього BOOT0 лишається `UNPROVEN`.
-- Окремо: мульти-GPU RM fixture для кореляції `PCI BDF ↔ RM gpu_id` не існує;
-  цей стан не можна вивести з одного пристрою.
+- Фізичний MMIO лишається **NOT AUTHORIZED / NOT RUN**. Поточна реалізація
+  навмисно не має способу відкрити або відобразити BAR0, навіть із
+  `--allow-mmio`.
+- `BOOT0), register semantics, MMIO-safe offsets та RM/channel correlation
+  лишаються `UNPROVEN). Не виводити їх із revision byte, capability ledger
+  або синтетичного fixture.
+- Наступна безпечна робота — source-only: уточнити PCI/Nouveau/NVK capability
+  evidence та package provenance. Фізичний тест розглядати лише після окремого
+  owner-рішення й незалежного підтвердження безпечного регістру.
+- Мульти-GPU RM fixture для кореляції `PCI BDF ↔ RM gpu_id` не існує.
 
 Межі: жодного transfer-коду, release/tag/publish, installer-змін, `Tested-by`,
-new harness чи запуску PR #21. Коміт і пуш виконуються завжди.
+RM-запитів, фізичного MMIO або запуску PR #21.
