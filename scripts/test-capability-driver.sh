@@ -329,10 +329,10 @@ echo 'NEGATIVE-RESOURCE0-SYMLINK-OK nofollow=yes'
 
 
 step 'BDF directory symlink substitution is rejected before resource0 open'
-DECOY="$FIX/devices/0000:02:00.0"
-mkdir -p "$DECOY"
-cp -a "$FIX/devices/0000:01:00.0/." "$DECOY/"
-python3 - "$DECOY" <<'PY'
+DECOY_BDF="$FIX/devices/0000:02:00.0"
+mkdir -p "$DECOY_BDF"
+cp -a "$FIX/devices/0000:01:00.0/." "$DECOY_BDF/"
+python3 - "$DECOY_BDF" <<'PY'
 import os
 import sys
 
@@ -397,7 +397,7 @@ int __wrap_open(const char *pathname, int flags, ...)
             replacement = getenv("GP107_SWAP_TARGET");
             if (replacement == NULL || unlink(pathname) != 0 ||
                 symlink(replacement, pathname) != 0) {
-                fprintf(stderr, "RACE-TEST-FAIL step=swap errno=%d\n", errno);
+                fprintf(stderr, "RACE-TEST-FAIL step=swap errno=%d\\n", errno);
                 return -1;
             }
         }
@@ -416,27 +416,67 @@ int main(int argc, char **argv)
 {
     char err[512] = {0};
     uint32_t value = 0;
+    int expected_code;
     int rc;
 
-    if (argc != 2) {
+    if (argc != 4) {
         return 64;
     }
+    expected_code = atoi(argv[3]);
     rc = gp107_mmio_read32(argv[1], GP107_EXPECTED_BDF, 1, 0,
                            &value, err, sizeof(err));
     if (device_directory_opens != 2 ||
-        rc != GP107_ERR_BDF ||
-        strstr(err, "pinned-bdf-mismatch") == NULL) {
+        rc != expected_code ||
+        strstr(err, argv[2]) == NULL) {
         fprintf(stderr,
-                "RACE-TEST-FAIL opens=%u rc=%d err=%s\n",
-                device_directory_opens, rc, err);
+                "RACE-TEST-FAIL opens=%u rc=%d expected=%d err=%s\\n",
+                device_directory_opens, rc, expected_code, err);
         return 1;
     }
-    puts("PINNED-DIR-IDENTITY-OK bdf-swap=denied resource0-open=not-reached");
+    printf("PINNED-DIR-IDENTITY-OK marker=%s resource0-open=not-reached\\n",
+           argv[2]);
     return 0;
 }
 EOF
 cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Werror -pedantic -Wl,--wrap=open -I"$ROOT/lib" "$WORK/mmio-bdf-swap-test.c" "$ROOT/lib/gp107_identity.c" "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-bdf-swap-test"
-GP107_SWAP_TARGET="$DECOY" "$WORK/mmio-bdf-swap-test" "$FIX"
+
+GP107_SWAP_TARGET="$DECOY_BDF" "$WORK/mmio-bdf-swap-test" "$FIX" pinned-bdf-mismatch 14
+rm "$FIX/bus/pci/devices/0000:01:00.0"
+ln -s "$FIX/devices/0000:01:00.0" "$FIX/bus/pci/devices/0000:01:00.0"
+
+step 'same-BDF device identity substitution is rejected before resource0 open'
+DECOY_ID="$FIX/devices/0000:03:00.0"
+mkdir -p "$DECOY_ID"
+cp -a "$FIX/devices/0000:01:00.0/." "$DECOY_ID/"
+python3 - "$DECOY_ID" <<'PY'
+import os
+import sys
+
+dev = sys.argv[1]
+cfg_path = os.path.join(dev, 'config')
+cfg = bytearray(open(cfg_path, 'rb').read())
+cfg[0:4] = bytes((0x86, 0x80, 0x35, 0x12))
+cfg[0x08] = 0x01
+with open(cfg_path, 'wb') as fh:
+    fh.write(cfg)
+for name, value in {
+    'vendor': '0x8086',
+    'device': '0x1235',
+    'revision': '0x01',
+    'subsystem_vendor': '0x0000',
+    'subsystem_device': '0x0000',
+}.items():
+    with open(os.path.join(dev, name), 'w') as fh:
+        fh.write(value + '\n')
+with open(os.path.join(dev, 'uevent'), 'w') as fh:
+    fh.write(
+        'PCI_CLASS=030000\n'
+        'PCI_ID=8086:1235\n'
+        'PCI_SUBSYS_ID=0000:0000\n'
+        'PCI_SLOT_NAME=0000:01:00.0\n'
+    )
+PY
+GP107_SWAP_TARGET="$DECOY_ID" "$WORK/mmio-bdf-swap-test" "$FIX" pinned-pci-identity 5
 rm "$FIX/bus/pci/devices/0000:01:00.0"
 ln -s "$FIX/devices/0000:01:00.0" "$FIX/bus/pci/devices/0000:01:00.0"
 
