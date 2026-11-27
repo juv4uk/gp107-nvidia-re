@@ -9,11 +9,36 @@ rollback-capable boot і повернув логи. Агент не змінює
 
 ```text
 modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm
+blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm
 nouveau.debug=TOP=trace,FIFO=debug
 ```
 
 `CONFIG_NOUVEAU_DEBUG >= 5` — попередньо перевірено на `7.2.15+kali-amd64`.
 Якщо цих рядків немає, сесія **не кваліфікується** як trace-witness.
+
+### Чому недостатньо самого `modprobe.blacklist=nvidia...`
+
+Read-only інспекція показала, що `/etc/modprobe.d/nvidia-blacklists-nouveau.conf`
+і `/etc/modprobe.d/nvidia.conf` містять `blacklist nouveau`. Тому блокування
+nvidia не змушує nouveau завантажитися автоматично — обидва драйвери
+лишаться у чорному списку. Вихід без торкання `/etc/modprobe.d`:
+
+1. окремий пункт GRUB із маркером `wsm_open_driver=1` + blacklist nvidia;
+2. умовний systemd-юніт, який робить **явний** `modprobe nouveau` тільки за
+   наявності цього маркера (`ConditionKernelCommandLine=wsm_open_driver=1`).
+   Explicit `modprobe` обходить `blacklist`; `modprobe -n -v nouveau` це
+   підтверджує. На звичайному boot (NVIDIA) умова хибна — юніт нічого не робить.
+
+Встановлення (виконує користувач, у якого є root):
+
+```bash
+DRY_RUN=1 bash scripts/install-grub-open-driver-choice.sh   # перегляд, без root
+sudo bash scripts/install-grub-open-driver-choice.sh        # створить бекапи, update-grub
+```
+
+`GRUB_DEFAULT=0` не змінюється: nvidia лишається першим пунктом; новий пункт
+додається в кінці через `/etc/grub.d/40_custom`. Скрипт не викликає
+`update-initramfs` і не редагує `/etc/modprobe.d`.
 
 ## 2. Одноразовий збір
 

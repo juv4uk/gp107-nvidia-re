@@ -51,6 +51,10 @@ pascal/
 scripts/
   decode_ioctl.py              decode raw ioctl request numbers / strace lines
   test-pascal-probe.sh         fail-closed gate: FPC pin, firewall, runtime, static ELF
+  check-no-driver-overreach.sh firewall research-контракту (код, не коментарі)
+  test-capability-identity.sh  gate еміттера capability identity + 2 мутаційні негативи
+  capture-nouveau-boot-witness.sh read-only збір свідків у сесії Nouveau
+  install-grub-open-driver-choice.sh GRUB-пункт nouveau, nvidia лишається дефолтом
 ```
 
 ## Quick start
