@@ -36,8 +36,11 @@
 3. **Точний BDF із Vulkan.** Увімкнено `VK_EXT_pci_bus_info`; додано власну
    ABI-структуру в `vk_min.h`. Пристрій приймається тільки за повним
    `domain:bus:device.function` із `BENCH_BDF`; у разі відсутності розширення
-   або невідповідності — fail-closed `pci-bdf` / `create-instance`. Це усуває
-   двозначність за наявності кількох однакових GPU.
+   або невідповідності — fail-closed `pci-bdf` / `create-device`. Це усуває
+   двозначність за наявності кількох однакових GPU. Перша спроба увімкнути
+   розширення на instance дала `vkResult=-7` (`EXTENSION_NOT_PRESENT`) — це
+   device-extension; три невдалі повтори збережено як
+   `artifacts-nvidia-failed-ext-rep1..3/` і не зараховуються як вимір.
 4. **SHA-256 замість текстового пошуку.** Новий
    `scripts/test-evidence-manifest.sh` звіряє кожен рядок
    `99-manifest.txt` із фактичним файлом; self-hash вихідного шляху

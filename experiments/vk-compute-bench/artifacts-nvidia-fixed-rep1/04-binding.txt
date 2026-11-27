@@ -1,0 +1,1 @@
+bdf=0000:01:00.0 binding=nvidia

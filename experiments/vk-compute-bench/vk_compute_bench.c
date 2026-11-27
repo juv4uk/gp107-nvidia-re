@@ -157,10 +157,8 @@ int main(void) {
     LOAD(createInstance, vkCreateInstance, NULL);
     VkApplicationInfo app = { VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL,
         "wsm-cleanroom-bench", 1, "clean-room", 1, VK_API_VERSION_1_3 };
-    /* BDF identity must come from Vulkan too; fail closed if unavailable. */
-    const char *instance_exts[] = { "VK_EXT_pci_bus_info" };
     VkInstanceCreateInfo ici = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL,
-        0, &app, 0, NULL, 1, instance_exts };
+        0, &app, 0, NULL, 0, NULL };
     VkInstance inst = NULL;
     VkResult r = createInstance(&ici, NULL, &inst);
     if (r != VK_SUCCESS) vkfail("create-instance", r);
@@ -250,8 +248,11 @@ int main(void) {
     float prio = 1.0f;
     VkDeviceQueueCreateInfo dqci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         NULL, 0, qfam, 1, &prio };
+    /* VK_EXT_pci_bus_info is a DEVICE extension: enable it here, fail closed
+     * on create-device if the ICD does not provide it. */
+    const char *device_exts[] = { "VK_EXT_pci_bus_info" };
     VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, NULL, 0,
-        1, &dqci, 0, NULL, 0, NULL, NULL };
+        1, &dqci, 0, NULL, 1, device_exts, NULL };
     VkDevice dev = NULL;
     r = createDevice(gpu, &dci, NULL, &dev);
     if (r != VK_SUCCESS) vkfail("create-device", r);

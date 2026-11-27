@@ -1,0 +1,987 @@
+лис 27 19:53:01 WSM kernel: Linux version 7.2.15+kali-amd64 (devel@kali.org) (x86_64-linux-gnu-gcc-16 (Debian 16.2.0-3) 16.2.0, GNU ld (GNU Binutils for Debian) 2.47.50.20261021) #1 SMP PREEMPT_DYNAMIC Kali 7.2.15-1kali1 (2026-11-03)
+лис 27 19:53:01 WSM kernel: Command line: BOOT_IMAGE=/boot/vmlinuz-7.2.15+kali-amd64 root=UUID=66070137-2ae6-419f-89aa-526564d28d40 ro quiet splash
+лис 27 19:53:01 WSM kernel: BIOS-provided physical RAM map:
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x0000000000000000-0x0000000000057fff]  System RAM
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x0000000000058000-0x0000000000058fff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x0000000000059000-0x000000000009efff]  System RAM
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x000000000009f000-0x00000000000fffff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x0000000000100000-0x00000000b57cdfff]  System RAM
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000b57ce000-0x00000000b57cefff]  ACPI NVS
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000b57cf000-0x00000000b57cffff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000b57d0000-0x00000000bdb1bfff]  System RAM
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000bdb1c000-0x00000000be865fff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000be866000-0x00000000be898fff]  ACPI data
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000be899000-0x00000000bf0cdfff]  ACPI NVS
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000bf0ce000-0x00000000bf6fefff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000bf6ff000-0x00000000bf6fffff]  System RAM
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000bf700000-0x00000000bfffffff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [gap 0x00000000c0000000-0x00000000efffffff]
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000f0000000-0x00000000f7ffffff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [gap 0x00000000f8000000-0x00000000fdffffff]
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000fe000000-0x00000000fe010fff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [gap 0x00000000fe011000-0x00000000febfffff]
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000fec00000-0x00000000fec00fff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [gap 0x00000000fec01000-0x00000000fedfffff]
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000fee00000-0x00000000fee00fff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [gap 0x00000000fee01000-0x00000000feffffff]
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x00000000ff000000-0x00000000ffffffff]  device reserved
+лис 27 19:53:01 WSM kernel: BIOS-e820: [mem 0x0000000100000000-0x000000043effffff]  System RAM
+лис 27 19:53:01 WSM kernel: NX (Execute Disable) protection: active
+лис 27 19:53:01 WSM kernel: APIC: Static calls initialized
+лис 27 19:53:01 WSM kernel: efi: EFI v2.5 by American Megatrends
+лис 27 19:53:01 WSM kernel: efi: ACPI 2.0=0xbed1f000 ACPI=0xbed1f000 SMBIOS=0xbf5a0000 SMBIOS 3.0=0xbf59f000 ESRT=0xbc804158 INITRD=0xb588af58 
+лис 27 19:53:01 WSM kernel: efi: Remove mem40: MMIO range=[0xf0000000-0xf7ffffff] (128MB) from e820 map
+лис 27 19:53:01 WSM kernel: e820: remove [mem 0xf0000000-0xf7ffffff] device reserved
+лис 27 19:53:01 WSM kernel: efi: Not removing mem41: MMIO range=[0xfe000000-0xfe010fff] (68KB) from e820 map
+лис 27 19:53:01 WSM kernel: efi: Not removing mem42: MMIO range=[0xfec00000-0xfec00fff] (4KB) from e820 map
+лис 27 19:53:01 WSM kernel: efi: Not removing mem43: MMIO range=[0xfee00000-0xfee00fff] (4KB) from e820 map
+лис 27 19:53:01 WSM kernel: efi: Remove mem44: MMIO range=[0xff000000-0xffffffff] (16MB) from e820 map
+лис 27 19:53:01 WSM kernel: e820: remove [mem 0xff000000-0xffffffff] device reserved
+лис 27 19:53:01 WSM kernel: secureboot: Secure boot disabled
+лис 27 19:53:01 WSM kernel: DMI: SMBIOS 3.0.0 present.
+лис 27 19:53:01 WSM kernel: DMI: Gigabyte Technology Co., Ltd. H170-Gaming 3/H170-Gaming 3, BIOS F22e 03/09/2018
+лис 27 19:53:01 WSM kernel: DMI: Memory slots populated: 2/4
+лис 27 19:53:01 WSM kernel: tsc: Detected 2700.000 MHz processor
+лис 27 19:53:01 WSM kernel: tsc: Detected 2699.909 MHz TSC
+лис 27 19:53:01 WSM kernel: e820: update [mem 0x00000000-0x00000fff] System RAM ==> device reserved
+лис 27 19:53:01 WSM kernel: e820: remove [mem 0x000a0000-0x000fffff] System RAM
+лис 27 19:53:01 WSM kernel: last_pfn = 0x43f000 max_arch_pfn = 0x400000000
+лис 27 19:53:01 WSM kernel: MTRR map: 4 entries (3 fixed + 1 variable; max 23), built from 10 variable MTRRs
+лис 27 19:53:01 WSM kernel: x86/PAT: Configuration [0-7]: WB  WC  UC- UC  WB  WP  UC- WT  
+лис 27 19:53:01 WSM kernel: last_pfn = 0xbf700 max_arch_pfn = 0x400000000
+лис 27 19:53:01 WSM kernel: found SMP MP-table at [mem 0x000fccd0-0x000fccdf]
+лис 27 19:53:01 WSM kernel: esrt: Reserving ESRT space from 0x00000000bc804158 to 0x00000000bc804190.
+лис 27 19:53:01 WSM kernel: e820: update [mem 0xbc804000-0xbc804fff] System RAM ==> device reserved
+лис 27 19:53:01 WSM kernel: Using GB pages for direct mapping
+лис 27 19:53:01 WSM kernel: RAMDISK: [mem 0x96883000-0xa3691fff]
+лис 27 19:53:01 WSM kernel: ACPI: Early table checksum verification disabled
+лис 27 19:53:01 WSM kernel: ACPI: RSDP 0x00000000BED1F000 000024 (v02 ALASKA)
+лис 27 19:53:01 WSM kernel: ACPI: XSDT 0x00000000BED1F0A0 0000C4 (v01 ALASKA A M I    01072009 AMI  00010013)
+лис 27 19:53:01 WSM kernel: ACPI: FACP 0x00000000BED47390 000114 (v06 ALASKA A M I    01072009 AMI  00010013)
+лис 27 19:53:01 WSM kernel: ACPI: DSDT 0x00000000BED1F200 02818C (v02 ALASKA A M I    01072009 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: FACS 0x00000000BF0CDC40 000040
+лис 27 19:53:01 WSM kernel: ACPI: APIC 0x00000000BED474A8 000084 (v03 ALASKA A M I    01072009 AMI  00010013)
+лис 27 19:53:01 WSM kernel: ACPI: FPDT 0x00000000BED47530 000044 (v01 ALASKA A M I    01072009 AMI  00010013)
+лис 27 19:53:01 WSM kernel: ACPI: MCFG 0x00000000BED47578 00003C (v01 ALASKA A M I    01072009 MSFT 00000097)
+лис 27 19:53:01 WSM kernel: ACPI: FIDT 0x00000000BED475B8 00009C (v01 ALASKA A M I    01072009 AMI  00010013)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED47658 003154 (v02 SaSsdt SaSsdt   00003000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED4A7B0 002544 (v02 PegSsd PegSsdt  00001000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: HPET 0x00000000BED4CCF8 000038 (v01 INTEL  SKL      00000001 MSFT 0000005F)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED4CD30 000E3B (v02 INTEL  Ther_Rvp 00001000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED4DB70 002AD7 (v02 INTEL  xh_rvp10 00000000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: UEFI 0x00000000BED50648 000042 (v01 INTEL  EDK2     00000002      01000013)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED50690 000EDE (v02 CpuRef CpuSsdt  00003000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: LPIT 0x00000000BED51570 000094 (v01 INTEL  SKL      00000000 MSFT 0000005F)
+лис 27 19:53:01 WSM kernel: ACPI: WSMT 0x00000000BED51608 000028 (v01 INTEL  SKL      00000000 MSFT 0000005F)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED51630 00029F (v02 INTEL  sensrhub 00000000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0x00000000BED518D0 003002 (v02 INTEL  PtidDevc 00001000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: DBGP 0x00000000BED548D8 000034 (v01 INTEL           00000002 MSFT 0000005F)
+лис 27 19:53:01 WSM kernel: ACPI: DBG2 0x00000000BED54910 000054 (v00 INTEL           00000002 MSFT 0000005F)
+лис 27 19:53:01 WSM kernel: ACPI: BGRT 0x00000000BED54968 000038 (v01 ALASKA A M I    01072009 AMI  00010013)
+лис 27 19:53:01 WSM kernel: ACPI: DMAR 0x00000000BED549A0 000070 (v01 INTEL  SKL      00000001 INTL 00000001)
+лис 27 19:53:01 WSM kernel: ACPI: Reserving FACP table memory at [mem 0xbed47390-0xbed474a3]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving DSDT table memory at [mem 0xbed1f200-0xbed4738b]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving FACS table memory at [mem 0xbf0cdc40-0xbf0cdc7f]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving APIC table memory at [mem 0xbed474a8-0xbed4752b]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving FPDT table memory at [mem 0xbed47530-0xbed47573]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving MCFG table memory at [mem 0xbed47578-0xbed475b3]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving FIDT table memory at [mem 0xbed475b8-0xbed47653]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed47658-0xbed4a7ab]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed4a7b0-0xbed4ccf3]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving HPET table memory at [mem 0xbed4ccf8-0xbed4cd2f]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed4cd30-0xbed4db6a]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed4db70-0xbed50646]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving UEFI table memory at [mem 0xbed50648-0xbed50689]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed50690-0xbed5156d]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving LPIT table memory at [mem 0xbed51570-0xbed51603]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving WSMT table memory at [mem 0xbed51608-0xbed5162f]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed51630-0xbed518ce]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving SSDT table memory at [mem 0xbed518d0-0xbed548d1]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving DBGP table memory at [mem 0xbed548d8-0xbed5490b]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving DBG2 table memory at [mem 0xbed54910-0xbed54963]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving BGRT table memory at [mem 0xbed54968-0xbed5499f]
+лис 27 19:53:01 WSM kernel: ACPI: Reserving DMAR table memory at [mem 0xbed549a0-0xbed54a0f]
+лис 27 19:53:01 WSM kernel: No NUMA configuration found
+лис 27 19:53:01 WSM kernel: Faking a node at [mem 0x0000000000000000-0x000000043effffff]
+лис 27 19:53:01 WSM kernel: NODE_DATA(0) allocated [mem 0x43efd4f80-0x43effffff]
+лис 27 19:53:01 WSM kernel: ACPI: PM-Timer IO Port: 0x1808
+лис 27 19:53:01 WSM kernel: ACPI: LAPIC_NMI (acpi_id[0x01] high edge lint[0x1])
+лис 27 19:53:01 WSM kernel: ACPI: LAPIC_NMI (acpi_id[0x02] high edge lint[0x1])
+лис 27 19:53:01 WSM kernel: ACPI: LAPIC_NMI (acpi_id[0x03] high edge lint[0x1])
+лис 27 19:53:01 WSM kernel: ACPI: LAPIC_NMI (acpi_id[0x04] high edge lint[0x1])
+лис 27 19:53:01 WSM kernel: IOAPIC[0]: apic_id 2, version 32, address 0xfec00000, GSI 0-119
+лис 27 19:53:01 WSM kernel: ACPI: INT_SRC_OVR (bus 0 bus_irq 0 global_irq 2 dfl dfl)
+лис 27 19:53:01 WSM kernel: ACPI: INT_SRC_OVR (bus 0 bus_irq 9 global_irq 9 high level)
+лис 27 19:53:01 WSM kernel: ACPI: Using ACPI (MADT) for SMP configuration information
+лис 27 19:53:01 WSM kernel: ACPI: HPET id: 0x8086a201 base: 0xfed00000
+лис 27 19:53:01 WSM kernel: e820: update [mem 0xba43f000-0xba483fff] System RAM ==> device reserved
+лис 27 19:53:01 WSM kernel: TSC deadline timer available
+лис 27 19:53:01 WSM kernel: CPU topo: Max. logical packages:   1
+лис 27 19:53:01 WSM kernel: CPU topo: Max. logical nodes:      1
+лис 27 19:53:01 WSM kernel: CPU topo: Num. nodes per package:  1
+лис 27 19:53:01 WSM kernel: CPU topo: Max. logical dies:       1
+лис 27 19:53:01 WSM kernel: CPU topo: Max. dies per package:   1
+лис 27 19:53:01 WSM kernel: CPU topo: Max. threads per core:   1
+лис 27 19:53:01 WSM kernel: CPU topo: Num. cores per package:     4
+лис 27 19:53:01 WSM kernel: CPU topo: Num. threads per package:   4
+лис 27 19:53:01 WSM kernel: CPU topo: Allowing 4 present CPUs plus 0 hotplug CPUs
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0x00000000-0x00000fff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0x00058000-0x00058fff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0x0009f000-0x000fffff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0xb57ce000-0xb57cffff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0xba43f000-0xba483fff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0xbc804000-0xbc804fff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0xbdb1c000-0xbf6fefff]
+лис 27 19:53:01 WSM kernel: PM: hibernation: Registered nosave memory: [mem 0xbf700000-0xffffffff]
+лис 27 19:53:01 WSM kernel: [gap 0xc0000000-0xfdffffff] available for PCI devices
+лис 27 19:53:01 WSM kernel: Booting paravirtualized kernel on bare hardware
+лис 27 19:53:01 WSM kernel: clocksource: refined-jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645519600211568 ns
+лис 27 19:53:01 WSM kernel: Zone ranges:
+лис 27 19:53:01 WSM kernel:   DMA      [mem 0x0000000000001000-0x0000000000ffffff]
+лис 27 19:53:01 WSM kernel:   DMA32    [mem 0x0000000001000000-0x00000000ffffffff]
+лис 27 19:53:01 WSM kernel:   Normal   [mem 0x0000000100000000-0x000000043effffff]
+лис 27 19:53:01 WSM kernel:   Device   empty
+лис 27 19:53:01 WSM kernel: Movable zone start for each node
+лис 27 19:53:01 WSM kernel: Early memory node ranges
+лис 27 19:53:01 WSM kernel:   node   0: [mem 0x0000000000001000-0x0000000000057fff]
+лис 27 19:53:01 WSM kernel:   node   0: [mem 0x0000000000059000-0x000000000009efff]
+лис 27 19:53:01 WSM kernel:   node   0: [mem 0x0000000000100000-0x00000000b57cdfff]
+лис 27 19:53:01 WSM kernel:   node   0: [mem 0x00000000b57d0000-0x00000000bdb1bfff]
+лис 27 19:53:01 WSM kernel:   node   0: [mem 0x00000000bf6ff000-0x00000000bf6fffff]
+лис 27 19:53:01 WSM kernel:   node   0: [mem 0x0000000100000000-0x000000043effffff]
+лис 27 19:53:01 WSM kernel: Initmem setup node 0 [mem 0x0000000000001000-0x000000043effffff]
+лис 27 19:53:01 WSM kernel: On node 0, zone DMA: 1 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: On node 0, zone DMA: 1 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: On node 0, zone DMA: 97 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: On node 0, zone DMA32: 2 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: On node 0, zone DMA32: 7139 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: On node 0, zone Normal: 2304 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: On node 0, zone Normal: 4096 pages in unavailable ranges
+лис 27 19:53:01 WSM kernel: setup_percpu: NR_CPUS:8192 nr_cpumask_bits:4 nr_cpu_ids:4 nr_node_ids:1
+лис 27 19:53:01 WSM kernel: percpu: Embedded 63 pages/cpu s221184 r8192 d28672 u524288
+лис 27 19:53:01 WSM kernel: pcpu-alloc: s221184 r8192 d28672 u524288 alloc=1*2097152
+лис 27 19:53:01 WSM kernel: pcpu-alloc: [0] 0 1 2 3 
+лис 27 19:53:01 WSM kernel: Kernel command line: BOOT_IMAGE=/boot/vmlinuz-7.2.15+kali-amd64 root=UUID=66070137-2ae6-419f-89aa-526564d28d40 ro quiet splash
+лис 27 19:53:01 WSM kernel: Unknown kernel command line parameters "splash", will be passed to user space.
+лис 27 19:53:01 WSM kernel: random: crng init done
+лис 27 19:53:01 WSM kernel: printk: log buffer data + meta data: 131072 + 557056 = 688128 bytes
+лис 27 19:53:01 WSM kernel: Dentry cache hash table entries: 2097152 (order: 12, 16777216 bytes, linear)
+лис 27 19:53:01 WSM kernel: Inode-cache hash table entries: 1048576 (order: 11, 8388608 bytes, linear)
+лис 27 19:53:01 WSM kernel: software IO TLB: area num 4.
+лис 27 19:53:01 WSM kernel: Fallback order for Node 0: 0 
+лис 27 19:53:01 WSM kernel: Built 1 zonelists, mobility grouping on.  Total pages: 4180664
+лис 27 19:53:01 WSM kernel: Policy zone: Normal
+лис 27 19:53:01 WSM kernel: mem auto-init: stack:all(zero), heap alloc:on, heap free:off
+лис 27 19:53:01 WSM kernel: SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+лис 27 19:53:01 WSM kernel: Kernel/User page tables isolation: enabled
+лис 27 19:53:01 WSM kernel: ftrace: allocating 49417 entries in 196 pages
+лис 27 19:53:01 WSM kernel: ftrace: allocated 196 pages with 3 groups
+лис 27 19:53:01 WSM kernel: Dynamic Preempt: lazy
+лис 27 19:53:01 WSM kernel: rcu: Preemptible hierarchical RCU implementation.
+лис 27 19:53:01 WSM kernel: rcu:         RCU restricting CPUs from NR_CPUS=8192 to nr_cpu_ids=4.
+лис 27 19:53:01 WSM kernel:         Trampoline variant of Tasks RCU enabled.
+лис 27 19:53:01 WSM kernel:         Rude variant of Tasks RCU enabled.
+лис 27 19:53:01 WSM kernel:         Tracing variant of Tasks RCU enabled.
+лис 27 19:53:01 WSM kernel: rcu: RCU calculated value of scheduler-enlistment delay is 25 jiffies.
+лис 27 19:53:01 WSM kernel: rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+лис 27 19:53:01 WSM kernel: RCU Tasks: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+лис 27 19:53:01 WSM kernel: RCU Tasks Rude: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+лис 27 19:53:01 WSM kernel: NR_IRQS: 524544, nr_irqs: 1024, preallocated irqs: 16
+лис 27 19:53:01 WSM kernel: rcu: srcu_init: Setting srcu_struct sizes based on contention.
+лис 27 19:53:01 WSM kernel: clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+лис 27 19:53:01 WSM kernel: Console: colour dummy device 80x25
+лис 27 19:53:01 WSM kernel: printk: legacy console [tty0] enabled
+лис 27 19:53:01 WSM kernel: ACPI: Core revision 20260408
+лис 27 19:53:01 WSM kernel: clocksource: hpet: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 79635855245 ns
+лис 27 19:53:01 WSM kernel: APIC: Switch to symmetric I/O mode setup
+лис 27 19:53:01 WSM kernel: DMAR: Host address width 39
+лис 27 19:53:01 WSM kernel: DMAR: DRHD base: 0x000000fed90000 flags: 0x1
+лис 27 19:53:01 WSM kernel: DMAR: dmar0: reg_base_addr fed90000 ver 1:0 cap d2008c40660462 ecap f050da
+лис 27 19:53:01 WSM kernel: DMAR: RMRR base: 0x000000be7e0000 end: 0x000000be7fffff
+лис 27 19:53:01 WSM kernel: DMAR-IR: IOAPIC id 2 under DRHD base  0xfed90000 IOMMU 0
+лис 27 19:53:01 WSM kernel: DMAR-IR: HPET id 0 under DRHD base 0xfed90000
+лис 27 19:53:01 WSM kernel: DMAR-IR: Queued invalidation will be enabled to support x2apic and Intr-remapping.
+лис 27 19:53:01 WSM kernel: DMAR-IR: Enabled IRQ remapping in x2apic mode
+лис 27 19:53:01 WSM kernel: x2apic enabled
+лис 27 19:53:01 WSM kernel: APIC: Switched APIC routing to: cluster x2apic
+лис 27 19:53:01 WSM kernel: ..TIMER: vector=0x30 apic1=0 pin1=2 apic2=-1 pin2=-1
+лис 27 19:53:01 WSM kernel: clocksource: tsc-early: mask: 0xffffffffffffffff max_cycles: 0x26eae8729ef, max_idle_ns: 440795235156 ns
+лис 27 19:53:01 WSM kernel: Calibrating delay loop (skipped), value calculated using timer frequency.. 5399.81 BogoMIPS (lpj=10799636)
+лис 27 19:53:01 WSM kernel: x86/cpu: SGX disabled or unsupported by BIOS.
+лис 27 19:53:01 WSM kernel: CPU0: Thermal monitoring enabled (TM1)
+лис 27 19:53:01 WSM kernel: Last level iTLB entries: 4KB 128, 2MB 8, 4MB 8
+лис 27 19:53:01 WSM kernel: Last level dTLB entries: 4KB 64, 2MB 32, 4MB 32, 1GB 4
+лис 27 19:53:01 WSM kernel: process: using mwait in idle threads
+лис 27 19:53:01 WSM kernel: mitigations: Enabled attack vectors: user_kernel, user_user, guest_host, guest_guest, SMT mitigations: auto
+лис 27 19:53:01 WSM kernel: Speculative Store Bypass: Mitigation: Speculative Store Bypass disabled via prctl
+лис 27 19:53:01 WSM kernel: SRBDS: Mitigation: Microcode
+лис 27 19:53:01 WSM kernel: Spectre V2 : Mitigation: IBRS
+лис 27 19:53:01 WSM kernel: RETBleed: Mitigation: IBRS
+лис 27 19:53:01 WSM kernel: MDS: Mitigation: Clear CPU buffers
+лис 27 19:53:01 WSM kernel: MMIO Stale Data: Mitigation: Clear CPU buffers
+лис 27 19:53:01 WSM kernel: VMSCAPE: Mitigation: IBPB before exit to userspace
+лис 27 19:53:01 WSM kernel: Spectre V1 : Mitigation: usercopy/swapgs barriers and __user pointer sanitization
+лис 27 19:53:01 WSM kernel: Spectre V2 : Spectre v2 / SpectreRSB: Filling RSB on context switch and VMEXIT
+лис 27 19:53:01 WSM kernel: Spectre V2 : Enabling IBPB for BPF
+лис 27 19:53:01 WSM kernel: Spectre V2 : mitigation: Enabling conditional Indirect Branch Prediction Barrier
+лис 27 19:53:01 WSM kernel: GDS: Vulnerable: No microcode
+лис 27 19:53:01 WSM kernel: x86/fpu: Supporting XSAVE feature 0x001: 'x87 floating point registers'
+лис 27 19:53:01 WSM kernel: x86/fpu: Supporting XSAVE feature 0x002: 'SSE registers'
+лис 27 19:53:01 WSM kernel: x86/fpu: Supporting XSAVE feature 0x004: 'AVX registers'
+лис 27 19:53:01 WSM kernel: x86/fpu: Supporting XSAVE feature 0x008: 'MPX bounds registers'
+лис 27 19:53:01 WSM kernel: x86/fpu: Supporting XSAVE feature 0x010: 'MPX CSR'
+лис 27 19:53:01 WSM kernel: x86/fpu: xstate_offset[2]:  576, xstate_sizes[2]:  256
+лис 27 19:53:01 WSM kernel: x86/fpu: xstate_offset[3]:  832, xstate_sizes[3]:   64
+лис 27 19:53:01 WSM kernel: x86/fpu: xstate_offset[4]:  896, xstate_sizes[4]:   64
+лис 27 19:53:01 WSM kernel: x86/fpu: Enabled xstate features 0x1f, context size is 960 bytes, using 'compacted' format.
+лис 27 19:53:01 WSM kernel: pid_max: default: 32768 minimum: 301
+лис 27 19:53:01 WSM kernel: landlock: Up and running.
+лис 27 19:53:01 WSM kernel: Yama: disabled by default; enable with sysctl kernel.yama.*
+лис 27 19:53:01 WSM kernel: AppArmor: AppArmor initialized
+лис 27 19:53:01 WSM kernel: TOMOYO Linux initialized
+лис 27 19:53:01 WSM kernel: LSM support for eBPF active
+лис 27 19:53:01 WSM kernel: Mount-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+лис 27 19:53:01 WSM kernel: Mountpoint-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+лис 27 19:53:01 WSM kernel: VFS: Finished mounting rootfs on nullfs
+лис 27 19:53:01 WSM kernel: smpboot: CPU0: Intel(R) Core(TM) i5-6400 CPU @ 2.70GHz (family: 0x6, model: 0x5e, stepping: 0x3)
+лис 27 19:53:01 WSM kernel: Performance Events: PEBS fmt3+, Skylake events, 32-deep LBR, full-width counters, Intel PMU driver.
+лис 27 19:53:01 WSM kernel: ... version:                   4
+лис 27 19:53:01 WSM kernel: ... bit width:                 48
+лис 27 19:53:01 WSM kernel: ... generic counters:          8
+лис 27 19:53:01 WSM kernel: ... generic bitmap:            00000000000000ff
+лис 27 19:53:01 WSM kernel: ... fixed-purpose counters:    3
+лис 27 19:53:01 WSM kernel: ... fixed-purpose bitmap:      0000000000000007
+лис 27 19:53:01 WSM kernel: ... value mask:                0000ffffffffffff
+лис 27 19:53:01 WSM kernel: ... max period:                00007fffffffffff
+лис 27 19:53:01 WSM kernel: ... global_ctrl mask:          00000007000000ff
+лис 27 19:53:01 WSM kernel: signal: max sigframe size: 2032
+лис 27 19:53:01 WSM kernel: Estimated ratio of average max frequency by base frequency (times 1024): 1175
+лис 27 19:53:01 WSM kernel: rcu: Hierarchical SRCU implementation.
+лис 27 19:53:01 WSM kernel: rcu:         Max phase no-delay instances is 1000.
+лис 27 19:53:01 WSM kernel: Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+лис 27 19:53:01 WSM kernel: NMI watchdog: Enabled. Permanently consumes one hw-PMU counter.
+лис 27 19:53:01 WSM kernel: smp: Bringing up secondary CPUs ...
+лис 27 19:53:01 WSM kernel: smpboot: x86: Booting SMP configuration:
+лис 27 19:53:01 WSM kernel: .... node  #0, CPUs:      #1 #2 #3
+лис 27 19:53:01 WSM kernel: smp: Brought up 1 node, 4 CPUs
+лис 27 19:53:01 WSM kernel: smpboot: Total of 4 processors activated (21599.27 BogoMIPS)
+лис 27 19:53:01 WSM kernel: node 0 deferred pages initialised in 28ms
+лис 27 19:53:01 WSM kernel: Memory: 15940604K/16722656K available (19246K kernel code, 3438K rwdata, 13708K rodata, 4652K init, 3768K bss, 772112K reserved, 0K cma-reserved)
+лис 27 19:53:01 WSM kernel: devtmpfs: initialized
+лис 27 19:53:01 WSM kernel: x86/mm: Memory block size: 128MB
+лис 27 19:53:01 WSM kernel: ACPI: PM: Registering ACPI NVS region [mem 0xb57ce000-0xb57cefff] (4096 bytes)
+лис 27 19:53:01 WSM kernel: ACPI: PM: Registering ACPI NVS region [mem 0xbe899000-0xbf0cdfff] (8605696 bytes)
+лис 27 19:53:01 WSM kernel: posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+лис 27 19:53:01 WSM kernel: futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+лис 27 19:53:01 WSM kernel: NET: Registered PF_NETLINK/PF_ROUTE protocol family
+лис 27 19:53:01 WSM kernel: DMA: preallocated 2048 KiB GFP_KERNEL pool for atomic allocations
+лис 27 19:53:01 WSM kernel: DMA: preallocated 2048 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+лис 27 19:53:01 WSM kernel: DMA: preallocated 2048 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+лис 27 19:53:01 WSM kernel: audit: initializing netlink subsys (disabled)
+лис 27 19:53:01 WSM kernel: audit: type=2000 audit(1795809178.092:1): state=initialized audit_enabled=0 res=1
+лис 27 19:53:01 WSM kernel: thermal_sys: Registered thermal governor 'fair_share'
+лис 27 19:53:01 WSM kernel: thermal_sys: Registered thermal governor 'bang_bang'
+лис 27 19:53:01 WSM kernel: thermal_sys: Registered thermal governor 'step_wise'
+лис 27 19:53:01 WSM kernel: thermal_sys: Registered thermal governor 'user_space'
+лис 27 19:53:01 WSM kernel: thermal_sys: Registered thermal governor 'power_allocator'
+лис 27 19:53:01 WSM kernel: cpuidle: using governor ladder
+лис 27 19:53:01 WSM kernel: cpuidle: using governor menu
+лис 27 19:53:01 WSM kernel: Freeing SMP alternatives memory: 48K
+лис 27 19:53:01 WSM kernel: efi: Freeing EFI boot services memory: 154420K
+лис 27 19:53:01 WSM kernel: ACPI FADT declares the system doesn't support PCIe ASPM, so disable it
+лис 27 19:53:01 WSM kernel: acpiphp: ACPI Hot Plug PCI Controller Driver version: 0.5
+лис 27 19:53:01 WSM kernel: PCI: ECAM [mem 0xf0000000-0xf7ffffff] (base 0xf0000000) for domain 0000 [bus 00-7f]
+лис 27 19:53:01 WSM kernel: PCI: Using configuration type 1 for base access
+лис 27 19:53:01 WSM kernel: kprobes: kprobe jump-optimization is enabled. All kprobes are optimized if possible.
+лис 27 19:53:01 WSM kernel: HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+лис 27 19:53:01 WSM kernel: HugeTLB: 16380 KiB vmemmap can be freed for a 1.00 GiB page
+лис 27 19:53:01 WSM kernel: HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+лис 27 19:53:01 WSM kernel: HugeTLB: 28 KiB vmemmap can be freed for a 2.00 MiB page
+лис 27 19:53:01 WSM kernel: ACPI: Added _OSI(Module Device)
+лис 27 19:53:01 WSM kernel: ACPI: Added _OSI(Processor Device)
+лис 27 19:53:01 WSM kernel: ACPI: Added _OSI(Processor Aggregator Device)
+лис 27 19:53:01 WSM kernel: ACPI: 8 ACPI AML tables successfully acquired and loaded
+лис 27 19:53:01 WSM kernel: ACPI: [Firmware Bug]: BIOS _OSI(Linux) query ignored
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_: platform _OSC: OS support mask [002e7eff]
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_: platform _OSC: OS control mask [0000003b]
+лис 27 19:53:01 WSM kernel: ACPI: Dynamic OEM Table Load:
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0xFFFF8D13C0D7EC00 0003FF (v02 PmRef  Cpu0Cst  00003001 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: Dynamic OEM Table Load:
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0xFFFF8D13C1203800 000630 (v02 PmRef  Cpu0Ist  00003000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: Dynamic OEM Table Load:
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0xFFFF8D13C1202000 00065C (v02 PmRef  ApIst    00003000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: Dynamic OEM Table Load:
+лис 27 19:53:01 WSM kernel: ACPI: SSDT 0xFFFF8D13C0DA7A00 00018A (v02 PmRef  ApCst    00003000 INTL 20160422)
+лис 27 19:53:01 WSM kernel: ACPI: Interpreter enabled
+лис 27 19:53:01 WSM kernel: ACPI: PM: (supports S0 S3 S4 S5)
+лис 27 19:53:01 WSM kernel: ACPI: Using IOAPIC for interrupt routing
+лис 27 19:53:01 WSM kernel: PCI: Using host bridge windows from ACPI; if necessary, use "pci=nocrs" and report a bug
+лис 27 19:53:01 WSM kernel: PCI: Using E820 reservations for host bridge windows
+лис 27 19:53:01 WSM kernel: ACPI: Enabled 6 GPEs in block 00 to 7F
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.PEG0.PG00: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.PEG1.PG01: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.PEG2.PG02: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP09.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP10.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP11.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP12.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP13.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP01.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP02.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP03.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP04.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP05.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP06.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP07.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP08.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP17.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP18.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP19.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP20.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP14.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP15.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_SB_.PCI0.RP16.PXSX.WRST: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_TZ_.FN00: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_TZ_.FN01: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_TZ_.FN02: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_TZ_.FN03: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: \_TZ_.FN04: New power resource
+лис 27 19:53:01 WSM kernel: ACPI: PCI Root Bridge [PCI0] (domain 0000 [bus 00-7e])
+лис 27 19:53:01 WSM kernel: acpi PNP0A08:00: _OSC: OS supports [ExtendedConfig ASPM ClockPM Segments MSI HPX-Type3]
+лис 27 19:53:01 WSM kernel: acpi PNP0A08:00: _OSC: OS requested [PCIeHotplug SHPCHotplug PME AER PCIeCapability LTR]
+лис 27 19:53:01 WSM kernel: acpi PNP0A08:00: _OSC: platform willing to grant [PCIeHotplug SHPCHotplug PME AER PCIeCapability LTR]
+лис 27 19:53:01 WSM kernel: acpi PNP0A08:00: _OSC: platform retains control of PCIe features (AE_ERROR)
+лис 27 19:53:01 WSM kernel: PCI host bridge to bus 0000:00
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: root bus resource [io  0x0000-0x0cf7 window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: root bus resource [io  0x0d00-0xffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: root bus resource [mem 0x000a0000-0x000bffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: root bus resource [mem 0xc0000000-0xefffffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: root bus resource [mem 0xfd000000-0xfe7fffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: root bus resource [bus 00-7e]
+лис 27 19:53:01 WSM kernel: pci 0000:00:00.0: [8086:191f] type 00 class 0x060000 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0: [8086:1901] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0: PCI bridge to [bus 01]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0:   bridge window [io  0xe000-0xefff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0:   bridge window [mem 0xee000000-0xef0fffff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0:   bridge window [mem 0xd0000000-0xe1ffffff 64bit pref]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:14.0: [8086:a12f] type 00 class 0x0c0330 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:14.0: BAR 0 [mem 0xef310000-0xef31ffff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:00:14.0: PME# supported from D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:16.0: [8086:a13a] type 00 class 0x078000 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:16.0: BAR 0 [mem 0xef32d000-0xef32dfff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:00:16.0: PME# supported from D3hot
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: [8086:a102] type 00 class 0x010601 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: BAR 0 [mem 0xef328000-0xef329fff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: BAR 1 [mem 0xef32c000-0xef32c0ff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: BAR 2 [io  0xf050-0xf057]
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: BAR 3 [io  0xf040-0xf043]
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: BAR 4 [io  0xf020-0xf03f]
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: BAR 5 [mem 0xef32b000-0xef32b7ff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: PME# supported from D3hot
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: [8086:a169] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: PCI bridge to [bus 02-03]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: [8086:a16a] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: PCI bridge to [bus 04]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: [8086:a112] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: PCI bridge to [bus 05]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: [8086:a113] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: PCI bridge to [bus 06]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3:   bridge window [io  0xd000-0xdfff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3:   bridge window [mem 0xef200000-0xef2fffff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: [8086:a114] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: PCI bridge to [bus 07]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: [8086:a118] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: PCI bridge to [bus 08]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: [8086:a11c] type 01 class 0x060400 PCIe Root Port
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: PCI bridge to [bus 09]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4:   bridge window [mem 0xef100000-0xef1fffff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: PME# supported from D0 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.0: [8086:a144] type 00 class 0x060100 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.2: [8086:a121] type 00 class 0x058000 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.2: BAR 0 [mem 0xef324000-0xef327fff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.3: [8086:a170] type 00 class 0x040300 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.3: BAR 0 [mem 0xef320000-0xef323fff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.3: BAR 4 [mem 0xef300000-0xef30ffff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.3: PME# supported from D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.4: [8086:a123] type 00 class 0x0c0500 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.4: BAR 0 [mem 0xef32a000-0xef32a0ff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.4: BAR 4 [io  0xf000-0xf01f]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: [10de:1c82] type 00 class 0x030000 PCIe Legacy Endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: BAR 0 [mem 0xee000000-0xeeffffff]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: BAR 1 [mem 0xd0000000-0xdfffffff 64bit pref]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: BAR 3 [mem 0xe0000000-0xe1ffffff 64bit pref]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: BAR 5 [io  0xe000-0xe07f]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: ROM [mem 0xef000000-0xef07ffff pref]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: Video device with shadowed ROM at [mem 0x000c0000-0x000dffff]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: 32.000 Gb/s available PCIe bandwidth, limited by 2.5 GT/s PCIe x16 link at 0000:00:01.0 (capable of 126.016 Gb/s with 8.0 GT/s PCIe x16 link)
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.1: [10de:0fb9] type 00 class 0x040300 PCIe Endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.1: BAR 0 [mem 0xef080000-0xef083fff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0: PCI bridge to [bus 01]
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: [1b21:1080] type 01 class 0x060400 PCIe to PCI/PCI-X bridge
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: PCI bridge to [bus 03]
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: ASPM: Link Capabilities L0s L1 treated as unsupported to avoid device defect
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: supports D1 D2
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: PME# supported from D0 D1 D2 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: PCI bridge to [bus 02-03]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:03: extended config space not accessible
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: PCI bridge to [bus 03]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: PCI bridge to [bus 04]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: PCI bridge to [bus 05]
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: [1969:e091] type 00 class 0x020000 PCIe Endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: BAR 0 [mem 0xef200000-0xef23ffff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: BAR 2 [io  0xd000-0xd07f]
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: [Firmware Bug]: disabling VPD access (can't determine size of non-standard VPD format)
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: PME# supported from D0 D1 D2 D3hot D3cold
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: PCI bridge to [bus 06]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: PCI bridge to [bus 07]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: PCI bridge to [bus 08]
+лис 27 19:53:01 WSM kernel: pci 0000:09:00.0: [2646:5019] type 00 class 0x010802 PCIe Endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:09:00.0: BAR 0 [mem 0xef100000-0xef103fff 64bit]
+лис 27 19:53:01 WSM kernel: pci 0000:09:00.0: 31.504 Gb/s available PCIe bandwidth, limited by 8.0 GT/s PCIe x4 link at 0000:00:1d.4 (capable of 63.012 Gb/s with 16.0 GT/s PCIe x4 link)
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: PCI bridge to [bus 09]
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKA configured for IRQ 11
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKB configured for IRQ 10
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKC configured for IRQ 11
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKD configured for IRQ 11
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKE configured for IRQ 11
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKF configured for IRQ 11
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKG configured for IRQ 11
+лис 27 19:53:01 WSM kernel: ACPI: PCI: Interrupt link LNKH configured for IRQ 11
+лис 27 19:53:01 WSM kernel: iommu: Default domain type: Translated
+лис 27 19:53:01 WSM kernel: iommu: DMA domain TLB invalidation policy: lazy mode
+лис 27 19:53:01 WSM kernel: pps_core: LinuxPPS API ver. 1 registered
+лис 27 19:53:01 WSM kernel: pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+лис 27 19:53:01 WSM kernel: PTP clock support registered
+лис 27 19:53:01 WSM kernel: EDAC MC: Ver: 3.0.0
+лис 27 19:53:01 WSM kernel: efivars: Registered efivars operations
+лис 27 19:53:01 WSM kernel: NetLabel: Initializing
+лис 27 19:53:01 WSM kernel: NetLabel:  domain hash size = 128
+лис 27 19:53:01 WSM kernel: NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+лис 27 19:53:01 WSM kernel: NetLabel:  unlabeled traffic allowed by default
+лис 27 19:53:01 WSM kernel: PCI: Using ACPI for IRQ routing
+лис 27 19:53:01 WSM kernel: PCI: pci_cache_line_size set to 64 bytes
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0x00058000-0x0005ffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0x0009f000-0x0009ffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0xb57ce000-0xb7ffffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0xba43f000-0xbbffffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0xbc804000-0xbfffffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0xbdb1c000-0xbfffffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0xbf700000-0xbfffffff]
+лис 27 19:53:01 WSM kernel: e820: register RAM buffer resource [mem 0x43f000000-0x43fffffff]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: vgaarb: setting as boot VGA device
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: vgaarb: bridge control possible
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: vgaarb: VGA device added: decodes=io+mem,owns=io+mem,locks=none
+лис 27 19:53:01 WSM kernel: vgaarb: loaded
+лис 27 19:53:01 WSM kernel: hpet0: at MMIO 0xfed00000, IRQs 2, 8, 0, 0, 0, 0, 0, 0
+лис 27 19:53:01 WSM kernel: hpet0: 8 comparators, 64-bit 24.000000 MHz counter
+лис 27 19:53:01 WSM kernel: clocksource: Switched to clocksource tsc-early
+лис 27 19:53:01 WSM kernel: VFS: Disk quotas dquot_6.6.0
+лис 27 19:53:01 WSM kernel: VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+лис 27 19:53:01 WSM kernel: AppArmor: AppArmor Filesystem Enabled
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:00: Reserved [io  0x0a00-0x0a2f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:00: Reserved [io  0x0a30-0x0a3f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:00: Reserved [io  0x0a40-0x0a4f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x002e-0x002f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x004e-0x004f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0061]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0063]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0065]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0067]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0070]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0080]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x0092]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Skipped [io  0x00b2-0x00b3]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Reserved [io  0x0680-0x069f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Reserved [io  0xffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Reserved [io  0xffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Reserved [io  0xffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Could not reserve [io  0x1800-0x18fe]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:01: Reserved [io  0x164e-0x164f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:02: Reserved [io  0x0800-0x087f]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xfed10000-0xfed17fff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xfed18000-0xfed18fff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xfed19000-0xfed19fff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xf0000000-0xf7ffffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xfed20000-0xfed3ffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Could not reserve [mem 0xfed90000-0xfed93fff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xfed45000-0xfed8ffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xff000000-0xffffffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Could not reserve [mem 0xfee00000-0xfeefffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:03: Reserved [mem 0xeffe0000-0xefffffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Reserved [mem 0xfd000000-0xfdabffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Reserved [mem 0xfdad0000-0xfdadffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Reserved [mem 0xfdb00000-0xfdffffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Could not reserve [mem 0xfe000000-0xfe01ffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Reserved [mem 0xfe036000-0xfe03bfff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Reserved [mem 0xfe03d000-0xfe3fffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:04: Reserved [mem 0xfe410000-0xfe7fffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:05: Reserved [io  0xff00-0xfffe]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:06: Reserved [mem 0xfdaf0000-0xfdafffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:06: Reserved [mem 0xfdae0000-0xfdaeffff]
+лис 27 19:53:01 WSM kernel: acpi PNP0C02:06: Reserved [mem 0xfdac0000-0xfdacffff]
+лис 27 19:53:01 WSM kernel: pnp: PnP ACPI init
+лис 27 19:53:01 WSM kernel: pnp 00:00: [dma 0 disabled]
+лис 27 19:53:01 WSM kernel: pnp: PnP ACPI: found 1 devices
+лис 27 19:53:01 WSM kernel: clocksource: acpi_pm: mask: 0xffffff max_cycles: 0xffffff, max_idle_ns: 2085701024 ns
+лис 27 19:53:01 WSM kernel: NET: Registered PF_INET protocol family
+лис 27 19:53:01 WSM kernel: IP idents hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+лис 27 19:53:01 WSM kernel: tcp_listen_portaddr_hash hash table entries: 8192 (order: 5, 131072 bytes, linear)
+лис 27 19:53:01 WSM kernel: Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+лис 27 19:53:01 WSM kernel: TCP established hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+лис 27 19:53:01 WSM kernel: TCP bind hash table entries: 65536 (order: 9, 2097152 bytes, linear)
+лис 27 19:53:01 WSM kernel: TCP: Hash tables configured (established 131072 bind 65536)
+лис 27 19:53:01 WSM kernel: MPTCP token hash table entries: 16384 (order: 7, 393216 bytes, linear)
+лис 27 19:53:01 WSM kernel: UDP hash table entries: 8192 (order: 7, 524288 bytes, linear)
+лис 27 19:53:01 WSM kernel: NET: Registered PF_UNIX/PF_LOCAL protocol family
+лис 27 19:53:01 WSM kernel: NET: Registered PF_XDP protocol family
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0: PCI bridge to [bus 01]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0:   bridge window [io  0xe000-0xefff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0:   bridge window [mem 0xee000000-0xef0fffff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0:   bridge window [mem 0xd0000000-0xe1ffffff 64bit pref]
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: PCI bridge to [bus 03]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: PCI bridge to [bus 02-03]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: PCI bridge to [bus 04]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: PCI bridge to [bus 05]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: PCI bridge to [bus 06]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3:   bridge window [io  0xd000-0xdfff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3:   bridge window [mem 0xef200000-0xef2fffff]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: PCI bridge to [bus 07]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: PCI bridge to [bus 08]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: PCI bridge to [bus 09]
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4:   bridge window [mem 0xef100000-0xef1fffff]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: resource 4 [io  0x0000-0x0cf7 window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: resource 5 [io  0x0d00-0xffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: resource 6 [mem 0x000a0000-0x000bffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: resource 7 [mem 0xc0000000-0xefffffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:00: resource 8 [mem 0xfd000000-0xfe7fffff window]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:01: resource 0 [io  0xe000-0xefff]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:01: resource 1 [mem 0xee000000-0xef0fffff]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:01: resource 2 [mem 0xd0000000-0xe1ffffff 64bit pref]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:06: resource 0 [io  0xd000-0xdfff]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:06: resource 1 [mem 0xef200000-0xef2fffff]
+лис 27 19:53:01 WSM kernel: pci_bus 0000:09: resource 1 [mem 0xef100000-0xef1fffff]
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.1: extending delay after power-on from D3hot to 20 msec
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.1: D0 power state depends on 0000:01:00.0
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: set MSI_INTX_DISABLE_BUG flag
+лис 27 19:53:01 WSM kernel: PCI: CLS 64 bytes, default 64
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.1: [8086:a120] type 00 class 0x058000 conventional PCI endpoint
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.1: BAR 0 [mem 0xfd000000-0xfdffffff 64bit]
+лис 27 19:53:01 WSM kernel: DMAR: No ATSR found
+лис 27 19:53:01 WSM kernel: DMAR: No SATC found
+лис 27 19:53:01 WSM kernel: DMAR: dmar0: Using Queued invalidation
+лис 27 19:53:01 WSM kernel: Trying to unpack rootfs image as initramfs...
+лис 27 19:53:01 WSM kernel: pci 0000:00:00.0: Adding to iommu group 0
+лис 27 19:53:01 WSM kernel: pci 0000:00:01.0: Adding to iommu group 1
+лис 27 19:53:01 WSM kernel: pci 0000:00:14.0: Adding to iommu group 2
+лис 27 19:53:01 WSM kernel: pci 0000:00:16.0: Adding to iommu group 3
+лис 27 19:53:01 WSM kernel: pci 0000:00:17.0: Adding to iommu group 4
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.0: Adding to iommu group 5
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1b.3: Adding to iommu group 6
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.0: Adding to iommu group 7
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.3: Adding to iommu group 8
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1c.4: Adding to iommu group 9
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.0: Adding to iommu group 10
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pci 0000:00:1d.4: Adding to iommu group 11
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.0: Adding to iommu group 12
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.2: Adding to iommu group 12
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.3: Adding to iommu group 12
+лис 27 19:53:01 WSM kernel: pci 0000:00:1f.4: Adding to iommu group 12
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.0: Adding to iommu group 1
+лис 27 19:53:01 WSM kernel: pci 0000:01:00.1: Adding to iommu group 1
+лис 27 19:53:01 WSM kernel: pci 0000:02:00.0: Adding to iommu group 13
+лис 27 19:53:01 WSM kernel: pci 0000:06:00.0: Adding to iommu group 14
+лис 27 19:53:01 WSM kernel: pci 0000:09:00.0: Adding to iommu group 15
+лис 27 19:53:01 WSM kernel: DMAR: Intel(R) Virtualization Technology for Directed I/O
+лис 27 19:53:01 WSM kernel: PCI-DMA: Using software bounce buffering for IO (SWIOTLB)
+лис 27 19:53:01 WSM kernel: software IO TLB: mapped [mem 0x00000000ae611000-0x00000000b2611000] (64MB)
+лис 27 19:53:01 WSM kernel: Initialise system trusted keyrings
+лис 27 19:53:01 WSM kernel: Key type blacklist registered
+лис 27 19:53:01 WSM kernel: workingset: timestamp_bits=36 (anon: 31) max_order=22 bucket_order=0 (anon: 0)
+лис 27 19:53:01 WSM kernel: fuse: init (API version 7.45)
+лис 27 19:53:01 WSM kernel: integrity: Platform Keyring initialized
+лис 27 19:53:01 WSM kernel: integrity: Machine keyring initialized
+лис 27 19:53:01 WSM kernel: Key type asymmetric registered
+лис 27 19:53:01 WSM kernel: Asymmetric key parser 'x509' registered
+лис 27 19:53:01 WSM kernel: Block layer SCSI generic (bsg) driver version 0.4 loaded (major 245)
+лис 27 19:53:01 WSM kernel: io scheduler mq-deadline registered
+лис 27 19:53:01 WSM kernel: ledtrig-cpu: registered to indicate activity on CPUs
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1b.0: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1b.3: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1c.0: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1c.3: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1c.4: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1d.0: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: pcieport 0000:00:1d.4: Intel SPT PCH root port ACS workaround enabled
+лис 27 19:53:01 WSM kernel: acpi LNXTHERM:00: registered as thermal_zone0
+лис 27 19:53:01 WSM kernel: ACPI: thermal: Thermal Zone [TZ00] (28 C)
+лис 27 19:53:01 WSM kernel: acpi LNXTHERM:01: registered as thermal_zone1
+лис 27 19:53:01 WSM kernel: ACPI: thermal: Thermal Zone [TZ01] (30 C)
+лис 27 19:53:01 WSM kernel: Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+лис 27 19:53:01 WSM kernel: 00:00: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
+лис 27 19:53:01 WSM kernel: i8042: PNP: No PS/2 controller found.
+лис 27 19:53:01 WSM kernel: mousedev: PS/2 mouse device common for all mice
+лис 27 19:53:01 WSM kernel: rtc_cmos PNP0B00:00: RTC can wake from S4
+лис 27 19:53:01 WSM kernel: rtc_cmos PNP0B00:00: registered as rtc0
+лис 27 19:53:01 WSM kernel: rtc_cmos PNP0B00:00: setting system clock to 2026-11-27T19:52:58 UTC (1795809178)
+лис 27 19:53:01 WSM kernel: rtc_cmos PNP0B00:00: alarms up to one month, y3k, 242 bytes nvram
+лис 27 19:53:01 WSM kernel: intel_pstate: Intel P-state driver initializing
+лис 27 19:53:01 WSM kernel: intel_pstate: HWP enabled
+лис 27 19:53:01 WSM kernel: Relocating firmware framebuffer to offset 0x0000000001000000[d] within [mem 0xe0000000-0xe1ffffff flags 0x14220c]
+лис 27 19:53:01 WSM kernel: efifb: probing for efifb
+лис 27 19:53:01 WSM kernel: efifb: framebuffer at 0xe1000000, using 3072k, total 3072k
+лис 27 19:53:01 WSM kernel: efifb: mode is 1024x768x32, linelength=4096, pages=1
+лис 27 19:53:01 WSM kernel: efifb: scrolling: redraw
+лис 27 19:53:01 WSM kernel: efifb: Truecolor: size=8:8:8:8, shift=24:16:8:0
+лис 27 19:53:01 WSM kernel: Console: switching to colour frame buffer device 128x48
+лис 27 19:53:01 WSM kernel: fb0: EFI VGA frame buffer device
+лис 27 19:53:01 WSM kernel: NET: Registered PF_INET6 protocol family
+лис 27 19:53:01 WSM kernel: Segment Routing with IPv6
+лис 27 19:53:01 WSM kernel: RPL Segment Routing with IPv6
+лис 27 19:53:01 WSM kernel: In-situ OAM (IOAM) with IPv6
+лис 27 19:53:01 WSM kernel: mip6: Mobile IPv6
+лис 27 19:53:01 WSM kernel: NET: Registered PF_PACKET protocol family
+лис 27 19:53:01 WSM kernel: mpls_gso: MPLS GSO support
+лис 27 19:53:01 WSM kernel: microcode: Current revision: 0x000000f0
+лис 27 19:53:01 WSM kernel: microcode: Updated early from: 0x000000c2
+лис 27 19:53:01 WSM kernel: IPI shorthand broadcast: enabled
+лис 27 19:53:01 WSM kernel: sched_clock: Marking stable (336102034, 454228)->(341936402, -5380140)
+лис 27 19:53:01 WSM kernel: registered taskstats version 1
+лис 27 19:53:01 WSM kernel: Loading compiled-in X.509 certificates
+лис 27 19:53:01 WSM kernel: Freeing initrd memory: 211004K
+лис 27 19:53:01 WSM kernel: Loaded X.509 cert 'Build time autogenerated kernel key: 80e2862d00e29fb7388d484f00e15f66351c21a7'
+лис 27 19:53:01 WSM kernel: Demotion targets for Node 0: null
+лис 27 19:53:01 WSM kernel: Key type .fscrypt registered
+лис 27 19:53:01 WSM kernel: Key type fscrypt-provisioning registered
+лис 27 19:53:01 WSM kernel: Key type encrypted registered
+лис 27 19:53:01 WSM kernel: AppArmor: AppArmor sha256 policy hashing enabled
+лис 27 19:53:01 WSM kernel: ima: No TPM chip found, activating TPM-bypass!
+лис 27 19:53:01 WSM kernel: ima: Allocated hash algorithm: sha256
+лис 27 19:53:01 WSM kernel: ima: No architecture policies found
+лис 27 19:53:01 WSM kernel: evm: Initialising EVM extended attributes:
+лис 27 19:53:01 WSM kernel: evm: security.selinux
+лис 27 19:53:01 WSM kernel: evm: security.SMACK64 (disabled)
+лис 27 19:53:01 WSM kernel: evm: security.SMACK64EXEC (disabled)
+лис 27 19:53:01 WSM kernel: evm: security.SMACK64TRANSMUTE (disabled)
+лис 27 19:53:01 WSM kernel: evm: security.SMACK64MMAP (disabled)
+лис 27 19:53:01 WSM kernel: evm: security.apparmor
+лис 27 19:53:01 WSM kernel: evm: security.ima
+лис 27 19:53:01 WSM kernel: evm: security.capability
+лис 27 19:53:01 WSM kernel: evm: HMAC attrs: 0x1
+лис 27 19:53:01 WSM kernel: RAS: Correctable Errors collector initialized.
+лис 27 19:53:01 WSM kernel: clk: Disabling unused clocks
+лис 27 19:53:01 WSM kernel: PM: genpd: Disabling unused power domains
+лис 27 19:53:01 WSM kernel: Freeing unused decrypted memory: 2028K
+лис 27 19:53:01 WSM kernel: Freeing unused kernel image (initmem) memory: 4652K
+лис 27 19:53:01 WSM kernel: Write protecting the kernel read-only data: 34816k
+лис 27 19:53:01 WSM kernel: Freeing unused kernel image (text/rodata gap) memory: 1232K
+лис 27 19:53:01 WSM kernel: Freeing unused kernel image (rodata/data gap) memory: 628K
+лис 27 19:53:01 WSM kernel: x86/mm: Checked W+X mappings: passed, no W+X pages found.
+лис 27 19:53:01 WSM kernel: x86/mm: Checking user space page tables
+лис 27 19:53:01 WSM kernel: x86/mm: Checked W+X mappings: passed, no W+X pages found.
+лис 27 19:53:01 WSM kernel: Run /init as init process
+лис 27 19:53:01 WSM kernel:   with arguments:
+лис 27 19:53:01 WSM kernel:     /init
+лис 27 19:53:01 WSM kernel:     splash
+лис 27 19:53:01 WSM kernel:   with environment:
+лис 27 19:53:01 WSM kernel:     HOME=/
+лис 27 19:53:01 WSM kernel:     TERM=linux
+лис 27 19:53:01 WSM kernel: input: Sleep Button as /devices/platform/PNP0C0E:00/input/input0
+лис 27 19:53:01 WSM kernel: ACPI: button: Sleep Button [SLPB]
+лис 27 19:53:01 WSM kernel: input: Power Button as /devices/platform/PNP0C0C:00/input/input1
+лис 27 19:53:01 WSM kernel: ACPI: button: Power Button [PWRB]
+лис 27 19:53:01 WSM kernel: input: Power Button as /devices/platform/LNXPWRBN:00/input/input2
+лис 27 19:53:01 WSM kernel: ACPI: button: Power Button [PWRF]
+лис 27 19:53:01 WSM kernel: Key type psk registered
+лис 27 19:53:01 WSM kernel: SCSI subsystem initialized
+лис 27 19:53:01 WSM kernel: ACPI: bus type USB registered
+лис 27 19:53:01 WSM kernel: usbcore: registered new interface driver usbfs
+лис 27 19:53:01 WSM kernel: usbcore: registered new interface driver hub
+лис 27 19:53:01 WSM kernel: usbcore: registered new device driver usb
+лис 27 19:53:01 WSM kernel: i801_smbus 0000:00:1f.4: enabling device (0001 -> 0003)
+лис 27 19:53:01 WSM kernel: i801_smbus 0000:00:1f.4: SPD Write Disable is set
+лис 27 19:53:01 WSM kernel: i801_smbus 0000:00:1f.4: SMBus using PCI interrupt
+лис 27 19:53:01 WSM kernel: i2c i2c-0: Successfully instantiated SPD at 0x50
+лис 27 19:53:01 WSM kernel: i2c i2c-0: Successfully instantiated SPD at 0x51
+лис 27 19:53:01 WSM kernel: libata version 3.00 loaded.
+лис 27 19:53:01 WSM kernel: alx 0000:06:00.0 eth0: Qualcomm Atheros AR816x/AR817x Ethernet [40:8d:5c:40:a1:2c]
+лис 27 19:53:01 WSM kernel: xhci_hcd 0000:00:14.0: xHCI Host Controller
+лис 27 19:53:01 WSM kernel: xhci_hcd 0000:00:14.0: new USB bus registered, assigned bus number 1
+лис 27 19:53:01 WSM kernel: xhci_hcd 0000:00:14.0: hcc params 0x200077c1 hci version 0x100 quirks 0x0000000001109810
+лис 27 19:53:01 WSM kernel: xhci_hcd 0000:00:14.0: xHCI Host Controller
+лис 27 19:53:01 WSM kernel: xhci_hcd 0000:00:14.0: new USB bus registered, assigned bus number 2
+лис 27 19:53:01 WSM kernel: xhci_hcd 0000:00:14.0: Host supports USB 3.0 SuperSpeed
+лис 27 19:53:01 WSM kernel: usb usb1: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 7.02
+лис 27 19:53:01 WSM kernel: usb usb1: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+лис 27 19:53:01 WSM kernel: usb usb1: Product: xHCI Host Controller
+лис 27 19:53:01 WSM kernel: usb usb1: Manufacturer: Linux 7.2.15+kali-amd64 xhci-hcd
+лис 27 19:53:01 WSM kernel: usb usb1: SerialNumber: 0000:00:14.0
+лис 27 19:53:01 WSM kernel: hub 1-0:1.0: USB hub found
+лис 27 19:53:01 WSM kernel: hub 1-0:1.0: 16 ports detected
+лис 27 19:53:01 WSM kernel: usb usb2: New USB device found, idVendor=1d6b, idProduct=0003, bcdDevice= 7.02
+лис 27 19:53:01 WSM kernel: usb usb2: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+лис 27 19:53:01 WSM kernel: usb usb2: Product: xHCI Host Controller
+лис 27 19:53:01 WSM kernel: usb usb2: Manufacturer: Linux 7.2.15+kali-amd64 xhci-hcd
+лис 27 19:53:01 WSM kernel: usb usb2: SerialNumber: 0000:00:14.0
+лис 27 19:53:01 WSM kernel: hub 2-0:1.0: USB hub found
+лис 27 19:53:01 WSM kernel: hub 2-0:1.0: 8 ports detected
+лис 27 19:53:01 WSM kernel: tsc: Refined TSC clocksource calibration: 2711.999 MHz
+лис 27 19:53:01 WSM kernel: clocksource: tsc: mask: 0xffffffffffffffff max_cycles: 0x271785701be, max_idle_ns: 440795203568 ns
+лис 27 19:53:01 WSM kernel: clocksource: Switched to clocksource tsc
+лис 27 19:53:01 WSM kernel: iTCO_wdt iTCO_wdt: Found a Intel PCH TCO device (Version=4, TCOBASE=0x0400)
+лис 27 19:53:01 WSM kernel: iTCO_wdt iTCO_wdt: initialized. heartbeat=30 sec (nowayout=0)
+лис 27 19:53:01 WSM kernel: nvme nvme0: pci function 0000:09:00.0
+лис 27 19:53:01 WSM kernel: ahci 0000:00:17.0: AHCI vers 0001.0301, 32 command slots, 6 Gbps, SATA mode
+лис 27 19:53:01 WSM kernel: ahci 0000:00:17.0: 2/2 ports implemented (port mask 0x30)
+лис 27 19:53:01 WSM kernel: ahci 0000:00:17.0: flags: 64bit ncq sntf pm led clo only pio slum part ems deso sadm sds apst 
+лис 27 19:53:01 WSM kernel: scsi host0: ahci
+лис 27 19:53:01 WSM kernel: scsi host1: ahci
+лис 27 19:53:01 WSM kernel: scsi host2: ahci
+лис 27 19:53:01 WSM kernel: scsi host3: ahci
+лис 27 19:53:01 WSM kernel: scsi host4: ahci
+лис 27 19:53:01 WSM kernel: scsi host5: ahci
+лис 27 19:53:01 WSM kernel: ata1: DUMMY
+лис 27 19:53:01 WSM kernel: ata2: DUMMY
+лис 27 19:53:01 WSM kernel: ata3: DUMMY
+лис 27 19:53:01 WSM kernel: ata4: DUMMY
+лис 27 19:53:01 WSM kernel: ata5: SATA max UDMA/133 abar m2048@0xef32b000 port 0xef32b300 irq 135 lpm-pol 3
+лис 27 19:53:01 WSM kernel: ata6: SATA max UDMA/133 abar m2048@0xef32b000 port 0xef32b380 irq 135 lpm-pol 3
+лис 27 19:53:01 WSM kernel: nvme nvme0: passthrough uses implicit buffer lengths
+лис 27 19:53:01 WSM kernel: nvme nvme0: allocated 64 MiB host memory buffer (1 segment).
+лис 27 19:53:01 WSM kernel: nvme nvme0: 4/0/0 default/read/poll queues
+лис 27 19:53:01 WSM kernel:  nvme0n1: p1 p2 p3 p4
+лис 27 19:53:01 WSM kernel: usb 1-13: new low-speed USB device number 2 using xhci_hcd
+лис 27 19:53:01 WSM kernel: ata6: SATA link up 1.5 Gbps (SStatus 113 SControl 300)
+лис 27 19:53:01 WSM kernel: ata5: SATA link up 6.0 Gbps (SStatus 133 SControl 300)
+лис 27 19:53:01 WSM kernel: ata5.00: Model 'Samsung SSD 850 EVO 120GB', rev 'EMT02B6Q', applying quirks: noncqtrim zeroaftertrim
+лис 27 19:53:01 WSM kernel: ata5.00: supports DRM functions and may not be fully accessible
+лис 27 19:53:01 WSM kernel: ata5.00: ATA-9: Samsung SSD 850 EVO 120GB, EMT02B6Q, max UDMA/133
+лис 27 19:53:01 WSM kernel: ata5.00: 234441648 sectors, multi 1: LBA48 NCQ (depth 32), AA
+лис 27 19:53:01 WSM kernel: ata5.00: Features: Trust Dev-Sleep DIPM NCQ-sndrcv
+лис 27 19:53:01 WSM kernel: ata5.00: supports DRM functions and may not be fully accessible
+лис 27 19:53:01 WSM kernel: ata5.00: Invalid log directory version 0x0000
+лис 27 19:53:01 WSM kernel: ata5.00: configured for UDMA/133
+лис 27 19:53:01 WSM kernel: ata6.00: HPA detected: current 625140335, native 625142448
+лис 27 19:53:01 WSM kernel: ata6.00: ATA-8: SAMSUNG HD321KJ, CP100-10, max UDMA7
+лис 27 19:53:01 WSM kernel: ata6.00: 625140335 sectors, multi 16: LBA48 NCQ (depth 32), AA
+лис 27 19:53:01 WSM kernel: ata6.00: Features: HIPM DIPM
+лис 27 19:53:01 WSM kernel: ata6.00: configured for UDMA/133
+лис 27 19:53:01 WSM kernel: ahci 0000:00:17.0: port does not support device sleep
+лис 27 19:53:01 WSM kernel: scsi 4:0:0:0: Direct-Access     ATA      Samsung SSD 850  2B6Q PQ: 0 ANSI: 5
+лис 27 19:53:01 WSM kernel: scsi 5:0:0:0: Direct-Access     ATA      SAMSUNG HD321KJ  0-10 PQ: 0 ANSI: 5
+лис 27 19:53:01 WSM kernel: usb 1-13: New USB device found, idVendor=2a7a, idProduct=938f, bcdDevice= 0.01
+лис 27 19:53:01 WSM kernel: usb 1-13: New USB device strings: Mfr=0, Product=1, SerialNumber=0
+лис 27 19:53:01 WSM kernel: usb 1-13: Product: CASUE USB KB
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: [sdb] 625140335 512-byte logical blocks: (320 GB/298 GiB)
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: [sdb] Write Protect is off
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: [sdb] Mode Sense: 00 3a 00 00
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] 234441648 512-byte logical blocks: (120 GB/112 GiB)
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] Write Protect is off
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] Mode Sense: 00 3a 00 00
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: [sdb] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: [sdb] Preferred minimum I/O size 512 bytes
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] Preferred minimum I/O size 512 bytes
+лис 27 19:53:01 WSM kernel:  sda: sda1 sda2 sda3
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] supports TCG Opal
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: [sda] Attached SCSI disk
+лис 27 19:53:01 WSM kernel: hid: raw HID events driver (C) Jiri Kosina
+лис 27 19:53:01 WSM kernel: usb 1-14: new low-speed USB device number 3 using xhci_hcd
+лис 27 19:53:01 WSM kernel:  sdb:
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: [sdb] Attached SCSI disk
+лис 27 19:53:01 WSM kernel: usbcore: registered new interface driver usbhid
+лис 27 19:53:01 WSM kernel: usbhid: USB HID core driver
+лис 27 19:53:01 WSM kernel: input: CASUE USB KB as /devices/pci0000:00/0000:00:14.0/usb1/1-13/1-13:1.0/0003:2A7A:938F.0001/input/input3
+лис 27 19:53:01 WSM kernel: usb 1-14: New USB device found, idVendor=18f8, idProduct=0f99, bcdDevice= 1.00
+лис 27 19:53:01 WSM kernel: usb 1-14: New USB device strings: Mfr=0, Product=1, SerialNumber=0
+лис 27 19:53:01 WSM kernel: usb 1-14: Product: USB OPTICAL MOUSE 
+лис 27 19:53:01 WSM kernel: input: USB OPTICAL MOUSE  as /devices/pci0000:00/0000:00:14.0/usb1/1-14/1-14:1.0/0003:18F8:0F99.0003/input/input4
+лис 27 19:53:01 WSM kernel: hid-generic 0003:2A7A:938F.0001: input,hidraw0: USB HID v1.10 Keyboard [CASUE USB KB] on usb-0000:00:14.0-13/input0
+лис 27 19:53:01 WSM kernel: input: CASUE USB KB Consumer Control as /devices/pci0000:00/0000:00:14.0/usb1/1-13/1-13:1.1/0003:2A7A:938F.0002/input/input5
+лис 27 19:53:01 WSM kernel: hid-generic 0003:18F8:0F99.0003: input,hidraw1: USB HID v1.10 Mouse [USB OPTICAL MOUSE ] on usb-0000:00:14.0-14/input0
+лис 27 19:53:01 WSM kernel: input: USB OPTICAL MOUSE  Keyboard as /devices/pci0000:00/0000:00:14.0/usb1/1-14/1-14:1.1/0003:18F8:0F99.0004/input/input7
+лис 27 19:53:01 WSM kernel: input: CASUE USB KB System Control as /devices/pci0000:00/0000:00:14.0/usb1/1-13/1-13:1.1/0003:2A7A:938F.0002/input/input6
+лис 27 19:53:01 WSM kernel: hid-generic 0003:2A7A:938F.0002: input,hidraw2: USB HID v1.10 Device [CASUE USB KB] on usb-0000:00:14.0-13/input1
+лис 27 19:53:01 WSM kernel: hid-generic 0003:18F8:0F99.0004: input,hiddev0,hidraw3: USB HID v1.10 Keyboard [USB OPTICAL MOUSE ] on usb-0000:00:14.0-14/input1
+лис 27 19:53:01 WSM kernel: PM: Image not found (code -22)
+лис 27 19:53:01 WSM kernel: EXT4-fs (sda2): mounted filesystem 66070137-2ae6-419f-89aa-526564d28d40 ro with ordered data mode. Quota mode: none.
+лис 27 19:53:01 WSM kernel: Not activating Mandatory Access Control as /sbin/tomoyo-init does not exist.
+лис 27 19:53:01 WSM systemd[1]: RTC configured in localtime, applying delta of 120 minutes to system time.
+лис 27 19:53:01 WSM systemd[1]: Inserted module 'autofs4'
+лис 27 19:53:01 WSM systemd[1]: systemd 262.2-1 running in system mode (+PAM +AUDIT +SELINUX +APPARMOR +IMA +IPE +SMACK +SECCOMP -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 +KMOD +LIBCRYPTSETUP +LIBCRYPTSETUP_PLUGINS +LIBFDISK +PCRE2 +PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD +BPF_FRAMEWORK +BTF -XKBCOMMON -UTMP +LIBARCHIVE)
+лис 27 19:53:01 WSM systemd[1]: Detected architecture x86-64.
+лис 27 19:53:01 WSM systemd[1]: Hostname set to <WSM>.
+лис 27 19:53:01 WSM systemd[1]: bpf-restrict-fs: LSM BPF program attached
+лис 27 19:53:01 WSM systemd-sslh-generator: Configuration directory '/etc/sslh/' does not exist! No units generated.
+лис 27 19:53:01 WSM systemd[1]: Queued start job for default target graphical.target.
+лис 27 19:53:01 WSM systemd[1]: Created slice system-getty.slice - Slice /system/getty.
+лис 27 19:53:01 WSM systemd[1]: Created slice system-modprobe.slice - Slice /system/modprobe.
+лис 27 19:53:01 WSM systemd[1]: Created slice system-systemd\x2dfsck.slice - Slice /system/systemd-fsck.
+лис 27 19:53:01 WSM systemd[1]: Created slice user.slice - User and Session Slice.
+лис 27 19:53:01 WSM systemd[1]: Started systemd-ask-password-wall.path - Forward Password Requests to Wall Directory Watch.
+лис 27 19:53:01 WSM systemd[1]: Set up automount proc-sys-fs-binfmt_misc.automount - Arbitrary Executable File Formats File System Automount Point.
+лис 27 19:53:01 WSM systemd[1]: Expecting device dev-disk-by\x2duuid-2AB3\x2d46DD.device - /dev/disk/by-uuid/2AB3-46DD...
+лис 27 19:53:01 WSM systemd[1]: Expecting device dev-disk-by\x2duuid-fc18a093\x2d9d0e\x2d4a3b\x2d8586\x2d114175e09d97.device - /dev/disk/by-uuid/fc18a093-9d0e-4a3b-8586-114175e09d97...
+лис 27 19:53:01 WSM systemd[1]: Reached target imports.target - Image Downloads.
+лис 27 19:53:01 WSM systemd[1]: Reached target slices.target - Slice Units.
+лис 27 19:53:01 WSM systemd[1]: Reached target stunnel.target - TLS tunnels for network services - per-config-file target.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-ask-password.socket - Query the User Interactively for a Password.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-coredump.socket - Process Core Dump Socket.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-creds.socket - Credential Encryption/Decryption.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-factory-reset.socket - Factory Reset Management.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-hostnamed.socket - Hostname Service Socket.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-journald-dev-log.socket - Journal Socket (/dev/log).
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-journald.socket - Journal Sockets.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-mute-console.socket - Console Output Muting Service Socket.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-sysinstall.socket - System Install Tool.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-udevd-kernel.socket - udev Kernel Socket.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-udevd-varlink.socket - udev Varlink Socket.
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-userdbd.socket - User Database Manager Socket.
+лис 27 19:53:01 WSM systemd[1]: Mounting dev-hugepages.mount - Huge Pages File System...
+лис 27 19:53:01 WSM systemd[1]: Mounting dev-mqueue.mount - POSIX Message Queue File System...
+лис 27 19:53:01 WSM systemd[1]: Mounting sys-kernel-debug.mount - Kernel Debug File System...
+лис 27 19:53:01 WSM systemd[1]: Mounting sys-kernel-tracing.mount - Kernel Trace File System...
+лис 27 19:53:01 WSM systemd[1]: auth-rpcgss-module.service - Kernel Module supporting RPCSEC_GSS skipped, unmet condition check ConditionPathExists=/etc/krb5.keytab
+лис 27 19:53:01 WSM systemd[1]: Starting keyboard-setup.service - Set the console keyboard layout...
+лис 27 19:53:01 WSM systemd[1]: Starting kmod-static-nodes.service - Create List of Static Device Nodes...
+лис 27 19:53:01 WSM systemd[1]: Starting modprobe@configfs.service - Load Kernel Module configfs...
+лис 27 19:53:01 WSM systemd[1]: Starting modprobe@drm.service - Load Kernel Module drm...
+лис 27 19:53:01 WSM systemd[1]: Starting modprobe@efi_pstore.service - Load Kernel Module efi_pstore...
+лис 27 19:53:01 WSM systemd[1]: modprobe@fuse.service - Load Kernel Module fuse skipped, unmet condition check ConditionKernelModuleLoaded=!fuse
+лис 27 19:53:01 WSM systemd[1]: Mounting sys-fs-fuse-connections.mount - FUSE Control File System...
+лис 27 19:53:01 WSM systemd[1]: systemd-fsck-root.service - File System Check on Root Device skipped, unmet condition check ConditionPathExists=!/run/initramfs/fsck-root
+лис 27 19:53:01 WSM systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-journald.service - Journal Service...
+лис 27 19:53:01 WSM kernel: pstore: Using crash dump compression: deflate
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-modules-load.service - Load Kernel Modules...
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-remount-fs.service - Remount Root and Kernel File Systems...
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-udev-load-credentials.service - Load udev Rules from Credentials...
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-udev-trigger.service - Coldplug All udev Devices...
+лис 27 19:53:01 WSM systemd[1]: Mounted dev-hugepages.mount - Huge Pages File System.
+лис 27 19:53:01 WSM systemd-journald[325]: Collecting audit messages is disabled.
+лис 27 19:53:01 WSM systemd[1]: Mounted dev-mqueue.mount - POSIX Message Queue File System.
+лис 27 19:53:01 WSM systemd[1]: Mounted sys-kernel-debug.mount - Kernel Debug File System.
+лис 27 19:53:01 WSM systemd[1]: Mounted sys-kernel-tracing.mount - Kernel Trace File System.
+лис 27 19:53:01 WSM systemd[1]: Finished keyboard-setup.service - Set the console keyboard layout.
+лис 27 19:53:01 WSM kernel: i2c_dev: i2c /dev entries driver
+лис 27 19:53:01 WSM kernel: pstore: Registered efi_pstore as persistent store backend
+лис 27 19:53:01 WSM systemd[1]: Finished kmod-static-nodes.service - Create List of Static Device Nodes.
+лис 27 19:53:01 WSM systemd[1]: modprobe@configfs.service: Deactivated successfully.
+лис 27 19:53:01 WSM systemd[1]: Finished modprobe@configfs.service - Load Kernel Module configfs.
+лис 27 19:53:01 WSM systemd[1]: modprobe@efi_pstore.service: Deactivated successfully.
+лис 27 19:53:01 WSM systemd[1]: Finished modprobe@efi_pstore.service - Load Kernel Module efi_pstore.
+лис 27 19:53:01 WSM systemd[1]: Mounted sys-fs-fuse-connections.mount - FUSE Control File System.
+лис 27 19:53:01 WSM kernel: EXT4-fs (sda2): re-mounted 66070137-2ae6-419f-89aa-526564d28d40 r/w.
+лис 27 19:53:01 WSM systemd[1]: Mounting sys-kernel-config.mount - Kernel Configuration File System...
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully...
+лис 27 19:53:01 WSM kernel: lp: driver loaded but no devices found
+лис 27 19:53:01 WSM kernel: ppdev: user-space parallel port driver
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-udev-load-credentials.service - Load udev Rules from Credentials.
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-remount-fs.service - Remount Root and Kernel File Systems.
+лис 27 19:53:01 WSM systemd[1]: systemd-hwdb-update.service - Rebuild Hardware Database skipped, unmet condition check ConditionNeedsUpdate=/etc
+лис 27 19:53:01 WSM systemd[1]: systemd-pstore.service - Platform Persistent Storage Archival skipped, unmet condition check ConditionDirectoryNotEmpty=/sys/fs/pstore
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-random-seed.service - Load/Save OS Random Seed...
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-modules-load.service - Load Kernel Modules.
+лис 27 19:53:01 WSM kernel: ACPI: bus type drm_connector registered
+лис 27 19:53:01 WSM systemd[1]: Mounted sys-kernel-config.mount - Kernel Configuration File System.
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-sysctl.service - Apply Kernel Variables...
+лис 27 19:53:01 WSM systemd[1]: modprobe@drm.service: Deactivated successfully.
+лис 27 19:53:01 WSM systemd[1]: Finished modprobe@drm.service - Load Kernel Module drm.
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-random-seed.service - Load/Save OS Random Seed.
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-sysctl.service - Apply Kernel Variables.
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully.
+лис 27 19:53:01 WSM systemd[1]: systemd-sysusers.service - Create System Users skipped, no trigger condition checks were met.
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-journalctl.socket - Journal Log Access Socket...
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-timesyncd.service - Network Time Synchronization...
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-tmpfiles-setup-dev.service - Create Static Device Nodes in /dev...
+лис 27 19:53:01 WSM systemd[1]: Listening on systemd-journalctl.socket - Journal Log Access Socket.
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-userdbd.service - User Database Manager...
+лис 27 19:53:01 WSM systemd[1]: Finished systemd-tmpfiles-setup-dev.service - Create Static Device Nodes in /dev.
+лис 27 19:53:01 WSM systemd[1]: Reached target local-fs-pre.target - Preparation for Local File Systems.
+лис 27 19:53:01 WSM systemd[1]: Starting systemd-udevd.service - Rule-based Manager for Device Events and Files...
+лис 27 19:53:01 WSM systemd[1]: Started systemd-journald.service - Journal Service.
+лис 27 19:53:01 WSM systemd-journald[325]: Received client request to flush runtime journal.
+лис 27 19:53:01 WSM kernel: sd 4:0:0:0: Attached scsi generic sg0 type 0
+лис 27 19:53:01 WSM kernel: sd 5:0:0:0: Attached scsi generic sg1 type 0
+лис 27 19:53:01 WSM kernel: EDAC ie31200: No ECC support
+лис 27 19:53:01 WSM kernel: EDAC ie31200: No ECC support
+лис 27 19:53:01 WSM kernel: mei_me 0000:00:16.0: enabling device (0000 -> 0002)
+лис 27 19:53:02 WSM kernel: resource: resource sanity check: requesting [mem 0x00000000fdffe800-0x00000000fe0007ff], which spans more than PNP0C02:04 [mem 0xfdb00000-0xfdffffff]
+лис 27 19:53:02 WSM kernel: caller get_primary_reg_base+0x4c/0xa0 [intel_pmc_core] mapping multiple BARs
+лис 27 19:53:02 WSM kernel: intel_pmc_core INT33A1:00:  initialized
+лис 27 19:53:02 WSM kernel: input: PC Speaker as /devices/platform/pcspkr/input/input9
+лис 27 19:53:02 WSM kernel: ee1004 0-0050: 512 byte EE1004-compliant SPD EEPROM, read-only
+лис 27 19:53:02 WSM kernel: ee1004 0-0051: 512 byte EE1004-compliant SPD EEPROM, read-only
+лис 27 19:53:02 WSM kernel: RAPL PMU: API unit is 2^-32 Joules, 3 fixed counters, 655360 ms ovfl timer
+лис 27 19:53:02 WSM kernel: RAPL PMU: hw unit of domain pp0-core 2^-14 Joules
+лис 27 19:53:02 WSM kernel: RAPL PMU: hw unit of domain package 2^-14 Joules
+лис 27 19:53:02 WSM kernel: RAPL PMU: hw unit of domain dram 2^-14 Joules
+лис 27 19:53:02 WSM kernel: Adding 6050812k swap on /dev/sda3.  Priority:-1 extents:1 across:6050812k SS
+лис 27 19:53:02 WSM kernel: snd_hda_intel 0000:00:1f.3: enabling device (0000 -> 0002)
+лис 27 19:53:02 WSM kernel: snd_hda_intel 0000:01:00.1: Disabling MSI
+лис 27 19:53:02 WSM kernel: snd_hda_intel 0000:01:00.1: Handle vga_switcheroo audio client
+лис 27 19:53:02 WSM kernel: input: HDA NVidia HDMI/DP,pcm=3 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input10
+лис 27 19:53:02 WSM kernel: input: HDA NVidia HDMI/DP,pcm=7 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input11
+лис 27 19:53:02 WSM kernel: input: HDA NVidia HDMI/DP,pcm=8 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input12
+лис 27 19:53:02 WSM kernel: input: HDA NVidia HDMI/DP,pcm=9 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input13
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0: ALC1150: SKU not ready 0x00000000
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0: autoconfig for ALC1150: line_outs=3 (0x14/0x15/0x16/0x0/0x0) type:line
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:    speaker_outs=0 (0x0/0x0/0x0/0x0/0x0)
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:    hp_outs=1 (0x1b/0x0/0x0/0x0/0x0)
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:    mono: mono_out=0x0
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:    dig-out=0x11/0x1e
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:    inputs:
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:      Rear Mic=0x18
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:      Front Mic=0x19
+лис 27 19:53:02 WSM kernel: snd_hda_codec_alc882 hdaudioC0D0:      Line=0x1a
+лис 27 19:53:02 WSM kernel: input: HDA Digital PCBeep as /devices/pci0000:00/0000:00:1f.3/sound/card0/input14
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Rear Mic as /devices/pci0000:00/0000:00:1f.3/sound/card0/input15
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Front Mic as /devices/pci0000:00/0000:00:1f.3/sound/card0/input16
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Line as /devices/pci0000:00/0000:00:1f.3/sound/card0/input17
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Line Out Front as /devices/pci0000:00/0000:00:1f.3/sound/card0/input18
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Line Out Surround as /devices/pci0000:00/0000:00:1f.3/sound/card0/input19
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Line Out CLFE as /devices/pci0000:00/0000:00:1f.3/sound/card0/input20
+лис 27 19:53:02 WSM kernel: input: HDA Intel PCH Front Headphone as /devices/pci0000:00/0000:00:1f.3/sound/card0/input21
+лис 27 19:53:02 WSM kernel: intel_rapl_common: Found RAPL domain package
+лис 27 19:53:02 WSM kernel: intel_rapl_common: Found RAPL domain core
+лис 27 19:53:02 WSM kernel: intel_rapl_common: Found RAPL domain dram
+лис 27 19:53:02 WSM kernel: NET: Registered PF_QIPCRTR protocol family
+лис 27 19:53:02 WSM kernel: alx 0000:06:00.0 eth0: NIC Up: 1 Gbps Full
+лис 27 19:53:03 WSM kernel: RPC: Registered named UNIX socket transport module.
+лис 27 19:53:03 WSM kernel: RPC: Registered udp transport module.
+лис 27 19:53:03 WSM kernel: RPC: Registered tcp transport module.
+лис 27 19:53:03 WSM kernel: RPC: Registered tcp-with-tls transport module.
+лис 27 19:53:03 WSM kernel: RPC: Registered tcp NFSv4.1 backchannel transport module.
+лис 27 19:53:05 WSM kernel: nvidia: loading out-of-tree module taints kernel.
+лис 27 19:53:05 WSM kernel: nvidia: module license 'NVIDIA' taints kernel.
+лис 27 19:53:05 WSM kernel: Disabling lock debugging due to kernel taint
+лис 27 19:53:05 WSM kernel: nvidia: module verification failed: signature and/or required key missing - tainting kernel
+лис 27 19:53:05 WSM kernel: nvidia: module license taints kernel.
+лис 27 19:53:05 WSM kernel: nvidia-nvlink: Nvlink Core is being initialized, major device number 237
+лис 27 19:53:05 WSM kernel: 
+лис 27 19:53:05 WSM kernel: nvidia 0000:01:00.0: vgaarb: VGA decodes changed: olddecodes=io+mem,decodes=none:owns=io+mem
+лис 27 19:53:05 WSM kernel: NVRM: loading NVIDIA UNIX x86_64 Kernel Module  580.196.11  Sat Nov 14 01:55:18 UTC 2026
+лис 27 19:53:06 WSM kernel: nvidia-modeset: Loading NVIDIA Kernel Mode Setting Driver for UNIX platforms  580.196.11  Sat Nov 14 01:30:18 UTC 2026
+лис 27 19:53:06 WSM kernel: [drm] [nvidia-drm] [GPU ID 0x00000100] Loading driver
+лис 27 19:53:06 WSM kernel: [drm] Initialized nvidia-drm 0.0.0 for 0000:01:00.0 on minor 0
+лис 27 19:53:06 WSM kernel: Console: switching to colour dummy device 80x25
+лис 27 19:53:06 WSM kernel: nvidia 0000:01:00.0: vgaarb: deactivate vga console
+лис 27 19:53:06 WSM kernel: fbcon: nvidia-drmdrmfb (fb0) is primary device
+лис 27 19:53:06 WSM kernel: Console: switching to colour frame buffer device 240x67
+лис 27 19:53:06 WSM kernel: nvidia 0000:01:00.0: [drm] fb0: nvidia-drmdrmfb frame buffer device
+лис 27 19:53:17 WSM kernel: block nvme0n1: No UUID available providing old NGUID
+лис 27 19:53:22 WSM kernel: nvidia_uvm: module uses symbols nvUvmInterfaceDisableAccessCntr from proprietary module nvidia, inheriting taint.
+лис 27 20:18:13 WSM kernel: perf: interrupt took too long (2516 > 2500), lowering kernel.perf_event_max_sample_rate to 79250
