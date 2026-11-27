@@ -78,20 +78,24 @@ Mesa's Vulkan device enumeration to that PCI device:
 
 ```sh
 BDF=0000:01:00.0
-# These flags explicitly opt into two different side-effect boundaries.
-# Do not add them until the corresponding owner approvals and issue #18 gates
-# have been completed.
-# Enumeration-only witness: requires explicit owner approval; no queue/workload.
-DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+# Mesa DRI_PRIME uses underscores, not the colon/dot spelling used by lspci.
+DRI_BDF="$(printf '%s' "$BDF" | tr ':.' '__')"
+DRI_PRIME_VALUE="pci-$DRI_BDF!"
+
+# These flags explicitly opt into separate side-effect boundaries.
+# Do not run either command until the corresponding owner approvals and
+# issue #18 gates have been completed.
+# Enumeration-only allocates/frees a temporary GR channel but no VkDevice/queue.
+DRI_PRIME_DEBUG=1 DRI_PRIME="$DRI_PRIME_VALUE" \
   ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
   --enumeration-only
 
-# Compute acceptance: separate approval after issue #18 gates.
-DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+# Compute acceptance additionally creates a Vulkan queue and submits GPU work.
+DRI_PRIME_DEBUG=1 DRI_PRIME="$DRI_PRIME_VALUE" \
   ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
   --allow-gpu-submit --elements 257 --spv vector_add.spv
 
-DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+DRI_PRIME_DEBUG=1 DRI_PRIME="$DRI_PRIME_VALUE" \
   ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
   --allow-gpu-submit --elements 1048576 --spv vector_add.spv
 ```
@@ -109,9 +113,9 @@ Save together:
 - stdout and stderr;
 - `uname -a`, distribution release, `cat /proc/cmdline`;
 - `lspci -Dnnk -s "$BDF"` and `lspci -Dvv -s "$BDF"`;
-- Do not run a separate `vulkaninfo --summary` for evidence; the approved
-  enumeration-only mode already performs device discovery and an additional
-  invocation would create another temporary GR channel.
+- harness stdout includes the verified PCI BDF, driver name/ID and API version;
+- do not run a separate `vulkaninfo --summary` for evidence; it would perform
+  another NVK discovery and allocate another temporary GR channel.
 - kernel journal for the same boot:
   `sudo journalctl -b -k -o short-monotonic --no-pager`;
 - SHA-256 of `nvk-vector-add.c`, `vector_add.comp`, generated SPIR-V,
@@ -124,9 +128,11 @@ Example capture:
 set -o pipefail
 BDF="$(lspci -Dnn -d 10de:1c82 | awk 'NR==1 {print $1}')"
 test -n "$BDF" || { echo "GP107_NOT_FOUND"; exit 2; }
+DRI_BDF="$(printf '%s' "$BDF" | tr ':.' '__')"
+DRI_PRIME_VALUE="pci-$DRI_BDF!"
 
 for N in 257 1048576; do
-  DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+  DRI_PRIME_DEBUG=1 DRI_PRIME="$DRI_PRIME_VALUE" \
     ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
       --allow-gpu-submit --elements "$N" --spv vector_add.spv \
     2>&1 | tee "nvk-vector-add-$BDF-$N.log"
