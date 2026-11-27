@@ -51,7 +51,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
 `nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому для pinned Linux `9437ee8...` і stable `gregkh/linux:v7.2.15` source-correct selector — **`FIFO=debug`**. Офіційна [сторінка параметрів Nouveau](https://nouveau.freedesktop.org/KernelModuleParameters.html) досі перелічує engine name `PFIFO`; це документаційна/legacy назва. Для конкретного kernel вирішальним є його source: якщо distro несе відмінний `layout.h`/parser, selector треба підтвердити за цим пакетом перед boot. Для профільного Kali `7.2.15+kali-amd64` перевірений upstream stable `v7.2.15` має token `fifo`.
 
-`CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` можна залишити як best-effort контекст для client-aware повідомлень; якщо таких рядків немає, це не є доказом відсутності каналу чи події.
+`CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` є технічно підтримуваним, але **не входить до першого boot**: початковий trace має залишатися вузьким і містити лише TOP та FIFO selectors. За окремої потреби його можна перевірити в наступному спеціальному проході для client-aware повідомлень; відсутність таких рядків нічого не доводить щодо каналу чи події.
 
 `nvkm_fifo_oneinit()` створює `nonstall.event` із `&fifo->engine.subdev`, тобто trace-події `nvkm_event_*` також ідуть через `fifo`. `nvkm_event_ntfy_add()`, `nvkm_event_get()` і `nvkm_event_put()` мають `nvkm_trace()` записи (`event: ntfy add`, `event: incr/decr`). Якщо першого проходу `FIFO=debug` недостатньо, можливий **окремий, більш гучний** rollback boot із `nouveau.debug=TOP=trace,FIFO=trace` для збору цих event-level повідомлень.
 
@@ -98,7 +98,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 2. У **одноразовому** test boot передати параметр модулю через тимчасовий boot entry:
 
    ```text
-   nouveau.debug=TOP=trace,FIFO=debug,CLIENT=debug
+   nouveau.debug=TOP=trace,FIFO=debug
    ```
 
    Наприклад, у меню GRUB відредагувати лише поточний запис клавішею `e`,
@@ -127,7 +127,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    printf 'EVIDENCE_DIR=%s\n' "$OUT"
    ```
 
-   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи. `CLIENT=debug` є окремим підтримуваним selector для client-aware NVIF logging, але не окремим NVKM subdevice; його додаткові рядки — best-effort, а їх відсутність нічого не доводить про channel/event subscription.
+   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи. `CLIENT=debug` у першому проході не вмикається. Це окремий підтримуваний selector для client-aware logging, але не окремий NVKM subdevice; його можна перевірити окремо лише за потреби, і відсутність таких рядків нічого не доводить про channel/event subscription.
 
    Шукати decoded записи у `relevant-lines.log`, але всі висновки звіряти з повним `kernel.log`:
 
