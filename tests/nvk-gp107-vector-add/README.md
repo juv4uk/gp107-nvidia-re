@@ -100,12 +100,15 @@ Example capture:
 set -o pipefail
 BDF="$(lspci -Dnn -d 10de:1c82 | awk 'NR==1 {print $1}')"
 test -n "$BDF" || { echo "GP107_NOT_FOUND"; exit 2; }
-DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
-  ./nvk-vector-add --bdf "$BDF" --spv vector_add.spv \
-  2>&1 | tee "nvk-vector-add-$BDF.log"
-rc=${PIPESTATUS[0]}
-printf 'EXIT_STATUS=%s\n' "$rc" | tee -a "nvk-vector-add-$BDF.log"
-exit "$rc"
+
+for N in 257 1048576; do
+  DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+    ./nvk-vector-add --bdf "$BDF" --elements "$N" --spv vector_add.spv \
+    2>&1 | tee "nvk-vector-add-$BDF-$N.log"
+  rc=${PIPESTATUS[0]}
+  printf 'EXIT_STATUS=%s\n' "$rc" | tee -a "nvk-vector-add-$BDF-$N.log"
+  test "$rc" -eq 0 || exit "$rc"
+done
 ```
 
 ## Failure classification
