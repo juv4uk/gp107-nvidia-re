@@ -9,10 +9,11 @@ NVK/Nouveau і під пропрієтарним NVIDIA ICD, не запуска
 | Boot | Стан | Driver record |
 |---|---|---|
 | Відкритий (`wsm_open_driver=1`, Nouveau) | **runtime-proven**, 3 повтори | `driverID=24 (DRIVER_ID_MESA_NVK)`, `driverName=NVK`, `Mesa 26.1.6-1` |
-| Закритий (NVIDIA default) | **NOT_RUN** — очікує owner-reboot | буде записано окремо в `artifacts-nvidia/` |
+| Закритий (NVIDIA default) | **runtime-proven**, 3 повтори | `driverID=4 (VK_DRIVER_ID_NVIDIA_PROPRIETARY)`, `driverName=NVIDIA`, `580.196.11` |
 
-Не робиться жодного висновку про продуктивність закритого драйвера, доки
-його запуск не відбувся.
+Обидва boot-и завершені одним і тим самим бінарником і протоколом. Порівняння
+нижче — **interpretation** на основі `runtime-proven` вимірів, а не новий
+вимір і не доведення причинності.
 
 ## Метод
 
@@ -64,7 +65,7 @@ driver `NVK(24)`.
 
 | Розмір | Трафік на ітерацію | median ns (3 повтори) | median GB/s | min ns |
 |---|---|---|---|---|
-| 4096 elem | 49 152 B | 31 051 / 36 577 / 36 167 | 1.359 – 1.583 | 29 974 – 31 565 |
+| 4096 elem | 49 152 B | 31 051 / 36 577 / 36 167 | 1.344 – 1.583 | 29 974 – 31 565 |
 | 1 Mi elem | 12 582 912 B | 1 360 625 / 1 363 174 / 1 465 332 | 8.587 – 9.248 | 1 226 909 – 1 271 996 |
 | 8 Mi elem | 100 663 296 B | 14 832 023 / 15 111 598 / 14 083 088 | 6.661 – 7.148 | 11 233 323 – 12 641 482 |
 
@@ -78,19 +79,75 @@ driver `NVK(24)`.
   `mean` у двох повторах у 5–9 разів більший за `median` через CPU-планувальник.
 - Порівнювати з закритим драйвером треба **median**, а не `mean`.
 
-### Що НЕ доведено
+### Що НЕ доведено (open boot)
 
-- **UNPROVEN** — перевага будь-якого драйвера; закритий boot ще не запускався.
+- **UNPROVEN** — причинність будь-якої переваги; порівняння описане нижче.
 - **UNPROVEN** — VRAM-only bandwidth, 3D/framebuffer, power/clock, довготривала
   стабільність; у бенчмарку немає контролю частот і немає transfer-only шляху.
 - **string-only** — `0x137000A1` лишається рядком kernel log; бенчмарк його не читає.
 - `PHYSICAL_COMPUTE_TEST=PASS` з doc 14 і цей бенчмарк — різні запуски; новий
   functional smoke тут не перезапускався.
 
+## Результат — закритий драйвер (`runtime-proven`)
+
+Після owner-reboot: `/proc/cmdline` без `wsm_open_driver=1`, `lspci` показує
+`Kernel driver in use: nvidia`, sysfs `binding=nvidia`, явний ICD
+`/usr/share/vulkan/icd.d/nvidia_icd.json`. Усі три повтори:
+`BENCH_RC=0`, `mismatch=0`,
+`BENCH-OK ... driver_id=4 driver_name=NVIDIA binding=nvidia pr21=NOT-RUN mmio=none`,
+`api=0x00404138`. Kernel-log delta порожній у всіх трьох повторах.
+
+| Розмір | Трафік на ітерацію | median ns (3 повтори) | median GB/s | min ns |
+|---|---|---|---|---|
+| 4096 elem | 49 152 B | 27 392 / 29 731 / 19 084 | 1.653 – 2.576 | 18 692 – 26 482 |
+| 1 Mi elem | 12 582 912 B | 1 252 954 / 1 272 210 / 1 169 729 | 9.891 – 10.757 | 1 106 678 – 1 108 098 |
+| 8 Mi elem | 100 663 296 B | 9 360 557 / 8 959 942 / 8 850 876 | 10.754 – 11.373 | 8 611 911 – 8 694 654 |
+
+### interpretation
+
+- 1 Mi дає 9.89–10.76 GB/s, 8 Mi — 10.75–11.37 GB/s; на відміну від NVK,
+  закритий драйвер не показав падіння пропускної здатності на великому dispatch.
+  Причину цього бенчмарк не встановлює.
+- Малий dispatch знову шумний: 19–30 µs median; у rep1 `mean` 1 Mi помітно
+  більший за `median` через CPU-планувальник.
+- Порівнювати з відкритим boot треба **median**, а не `mean`.
+
+## Порівняння обох boot-ів (`interpretation`)
+
+Похідна таблиця: спершу береться median трьох повторів усередині кожного boot,
+потім — відношення NVK / NVIDIA. Це не новий вимір і не статистичний тест.
+
+| Розмір | median-of-3 NVK ns | median-of-3 NVIDIA ns | NVK / NVIDIA | Діапазон відношень за повторами |
+|---|---|---|---|---|
+| 4096 elem | 36 167 | 27 392 | 1.32× | 1.13 – 1.90× |
+| 1 Mi elem | 1 363 174 | 1 252 954 | 1.09× | 1.07 – 1.25× |
+| 8 Mi elem | 14 832 023 | 8 959 942 | 1.66× | 1.59 – 1.69× |
+
+- Найменша різниця — 1 Mi (NVK ≈ 9 % повільніше); найбільша — 8 Mi
+  (NVK ≈ 66 % повільніше). Малий dispatch має найширший шум.
+- **interpretation**, не `runtime-proven` causation: boot-и відбувалися послідовно
+  з owner-reboot між ними; немає чергування A/B, контролю частот/температури,
+  ізоляції CPU і повторів у межах однієї сесії.
+- **UNPROVEN** — продуктивність у VRAM-only шляху, 3D/framebuffer, енергоспоживання,
+  стабільність під навантаженням і будь-яка перевага, спричинена саме кодом драйвера.
+- **string-only** — `0x137000A1` лишається рядком kernel log; жоден бенчмарк
+  його не читав.
+
+### Provenance
+
+SHA-256 `08-run.log`:
+
+- NVK: `f9b594716cd68537b40c2be17146372a934ec85dacfe91c4f576e67679620551`,
+  `69a159805536a6c2c6a44a6f113aa8d13e9c013be88d6f83f91892c7b6920939`,
+  `46aa3d69b1c6f66d8fe051e010a55bd756349b097f636b8e87d19cf9c1ec576f`.
+- NVIDIA: `b6a8ee43de88d42af57726847fdcdd1852b042afd52d0cd33df474ffe1960790`,
+  `999daf9da5023ea296bc8a9eb47bb02e8632a9c0e6f497aeef052bb97e661c56`,
+  `52d91198a4f496d2f6cd8fc6816ce3335eccf0c0fec5a4c05212f6cd2451b675`.
+
 ## Межі
 
 - Жодного MMIO read/write, `nva`, custom reset, `/dev/nvidia*`, `Tested-by`.
 - Жодного PR #21 executable — `pr21=NOT-RUN` у всіх записах.
 - Не змінено pin-и, SENS/CML/wsm-os-lisp, GRUB чи active driver.
-- Після owner-reboot результат потрібно записати в цей же документ окремою
-  секцією, не підмінюючи open-driver цифри.
+- Обидва набори артефактів (`artifacts-nouveau-rep1..3`, `artifacts-nvidia-rep1..3`)
+  записані окремо; NVK-цифри не підмінено.
