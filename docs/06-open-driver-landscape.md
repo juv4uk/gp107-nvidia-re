@@ -940,7 +940,7 @@ DRI_PRIME="pci-$DRI_BDF!" vkcube
 - [Mesa DRI_PRIME — PCI selector for OpenGL/Vulkan and Vulkan device filtering](https://docs.mesa3d.org/envvars.html#dri_prime)
 - [Nouveau reclocking limitations](https://nouveau.freedesktop.org/)
 
-## 18. Pascal 3D command classes для GP107
+## 17. Pascal 3D command classes для GP107
 
 У [NVIDIA public class index](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/README.txt) GP107 прямо перелічений як GPU, що підтримує обидва Pascal 3D класи:
 
@@ -954,7 +954,7 @@ DRI_PRIME="pci-$DRI_BDF!" vkcube
 - [PASCAL_A class header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/clc097.h)
 - [PASCAL_B class header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/clc197.h)
 
-## 19. Пакет інструментів і послідовність для локального агента
+## 18. Пакет інструментів і послідовність для локального агента
 
 Нижче — порядок для локального native Linux свідка. Це не інструкція
 перебудовувати робочу систему; перший Nouveau тест — окремий Live USB
@@ -1127,7 +1127,7 @@ find /sys/class/drm -maxdepth 7 -path '*/device/hwmon/*' -type f
 Зберігати лише власні traces, ABI факти, посилання, hashes і мінімальні
 reproducers із відповідними ліцензіями.
 
-### F. GP107 reset/boot matrix та evidence bundle
+### E. GP107 reset/boot matrix та evidence bundle
 
 Якщо тестовий стенд стабільний, окремо виконати cold boot, warm reboot
 і suspend/resume з D3. Для кожного стану зберігати повний kernel log
