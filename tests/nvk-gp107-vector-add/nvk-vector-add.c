@@ -226,6 +226,7 @@ int main(int argc, char **argv)
     uint32_t element_count = 257u;
     bool allow_channel_init = false;
     bool allow_gpu_submit = false;
+    bool enumeration_only = false;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--bdf") == 0 && i + 1 < argc)
             bdf_text = argv[++i];
@@ -244,6 +245,8 @@ int main(int argc, char **argv)
             allow_channel_init = true;
         } else if (strcmp(argv[i], "--allow-gpu-submit") == 0) {
             allow_gpu_submit = true;
+        } else if (strcmp(argv[i], "--enumeration-only") == 0) {
+            enumeration_only = true;
         } else {
             fprintf(stderr,
                     "usage: %s --bdf DDDD:BB:DD.F --allow-temp-gr-channel-init "
@@ -259,11 +262,13 @@ int main(int argc, char **argv)
      * state and allocate/free a temporary GR channel. Creating a Vulkan
      * device/queue goes further and can submit initial engine state.
      */
-    if (!allow_channel_init || !allow_gpu_submit) {
+    if (!allow_channel_init ||
+        (!enumeration_only && !allow_gpu_submit) ||
+        (enumeration_only && allow_gpu_submit)) {
         fprintf(stderr,
-                "ENUMERATION_NOT_AUTHORIZED: both --allow-temp-gr-channel-init "
-                "and --allow-gpu-submit are required before any Vulkan "
-                "instance/device enumeration or workload\n");
+                "ENUMERATION_NOT_AUTHORIZED: --allow-temp-gr-channel-init is "
+                "required for any NVK discovery; compute mode additionally "
+                "requires --allow-gpu-submit\n");
         fprintf(stderr,
                 "No Vulkan instance or physical device was created or enumerated\n");
         return 4;
@@ -374,6 +379,11 @@ int main(int argc, char **argv)
            VK_VERSION_MAJOR(base_properties.apiVersion),
            VK_VERSION_MINOR(base_properties.apiVersion),
            VK_VERSION_PATCH(base_properties.apiVersion));
+    if (enumeration_only) {
+        printf("NVK_GP107_ENUMERATION_ONLY_PASS: no VkDevice, queue, or GPFIFO workload was created\n");
+        vkDestroyInstance(instance, NULL);
+        return 0;
+    }
 
     uint32_t queue_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queue_count, NULL);
