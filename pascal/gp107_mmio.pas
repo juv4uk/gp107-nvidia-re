@@ -39,11 +39,6 @@ begin
   end;
 
   { Neither the flag nor an inventory snapshot grants physical device access. }
-  if allow < 0 then
-    allow := 0;
-  if offset > High(LongWord) then
-    offset := 0;
-
   err := 'MMIO-FAIL step=owner-authorization-required code=' +
          IntToStr(STATUS_NOT_AUTHORIZED);
   Result := STATUS_NOT_AUTHORIZED;
