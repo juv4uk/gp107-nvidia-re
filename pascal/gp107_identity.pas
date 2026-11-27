@@ -450,6 +450,7 @@ var
   cfg: array[0..CONFIG_BYTES - 1] of Byte;
   sr: TSearchRec;
   candidate: Tgp107Pci;
+  bdfInfo: Tgp107Pci;
   candidateInv: Tgp107Inventory;
   sv, sd, cv, cd: Word;
   rc, flags: LongInt;
@@ -474,7 +475,7 @@ begin
       if (sr.Name = '.') or (sr.Name = '..') then
         Continue;
       path := IncludeTrailingPathDelimiter(devdir) + sr.Name;
-      if not ParseBdf(sr.Name, candidate, candidateBdf) then
+      if not ParseBdf(sr.Name, bdfInfo, candidateBdf) then
         Continue;
 
       entryFd := COpenAt(AT_FDCWD, PChar(path),
@@ -507,6 +508,10 @@ begin
         end;
 
         FillChar(candidate, SizeOf(candidate), 0);
+        candidate.domain := bdfInfo.domain;
+        candidate.bus := bdfInfo.bus;
+        candidate.slot := bdfInfo.slot;
+        candidate.func := bdfInfo.func;
         candidate.vendor := cv;
         candidate.device := cd;
         candidate.command := Word(cfg[$04] or (Word(cfg[$05]) shl 8));
