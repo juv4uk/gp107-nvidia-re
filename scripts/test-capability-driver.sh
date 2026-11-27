@@ -42,7 +42,7 @@ make -C "$ROOT/lib" clean all >/dev/null
 echo 'C11-COMPILE-OK werror=yes layout=32/68/140'
 
 step 'synthetic sysfs fixture (single card, nvidia bound)'
-mkdir -p "$FIX/bus/pci/devices/0000:01:00.0"
+mkdir -p "$FIX/bus/pci/devices/0000:01:00.0" "$FIX/bus/pci/drivers/nvidia"
 python3 - "$FIX/bus/pci/devices/0000:01:00.0" <<'PY'
 import os
 import sys
@@ -65,6 +65,32 @@ with open(os.path.join(dev, 'device'), 'w') as fh:
 with open(os.path.join(dev, 'resource0'), 'wb') as fh:
     fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(60))
 PY
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+
+step 'negative witness (driver binding cannot be inferred from an invalid entry)'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+printf 'not-a-symlink\n' >"$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/driver-invalid.out" 2>"$WORK/driver-invalid.err"; then
+  fail 'еміттер трактував regular file як unbound driver'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-link-unknown code=20' "$WORK/driver-invalid.err" \
+  || fail 'не відхилено invalid driver entry'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+
+step 'negative witness (truncated driver target is unknown)'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+python3 - "$FIX/bus/pci/devices/0000:01:00.0/driver" <<'PY'
+import os
+import sys
+os.symlink("/" + "x" * 600, sys.argv[1])
+PY
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/driver-long.out" 2>"$WORK/driver-long.err"; then
+  fail 'еміттер прийняв обрізаний driver symlink'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-link-invalid code=20' "$WORK/driver-long.err" \
+  || fail 'не відхилено обрізаний driver target'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
 ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 
 step 'fixture identity (single card is accepted)'
@@ -133,51 +159,58 @@ grep -Fq 'IDENTITY-FAIL step=bdf-mismatch' "$WORK/bdf.err" \
   || fail 'нема названого negative-маркера bdf-mismatch'
 echo 'NEGATIVE-BDF-OK marker=step=bdf-mismatch'
 
-step 'MMIO gate (opt-in required before any mapping)'
+step 'MMIO is denied before inventory when owner authorization is absent'
 if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
-    >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
-  fail 'MMIO-шлях спрацював без явного opt-in'
+    >"$WORK/mmio-noopt.out" 2>"$WORK/mmio-noopt.err"; then
+  fail 'physical MMIO unexpectedly succeeded without the opt-in flag'
 fi
-grep -Fq 'MMIO-FAIL step=opt-in-required' "$WORK/noopt.err" \
-  || fail 'нема названого negative-маркера opt-in-required'
-echo 'NEGATIVE-MMIO-OPTIN-OK marker=step=opt-in-required'
-
-step 'MMIO gate (bound kernel driver is refused)'
+grep -Fq 'MMIO-FAIL step=owner-authorization-required code=19' "$WORK/mmio-noopt.err" \
+  || fail 'owner authorization gate missing without the opt-in flag'
 if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/bound.out" 2>"$WORK/bound.err"; then
-  fail 'MMIO-шлях проігнорував bindings драйвера'
+    >"$WORK/mmio-allow.out" 2>"$WORK/mmio-allow.err"; then
+  fail 'physical MMIO unexpectedly succeeded with --allow-mmio'
 fi
-grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
-  || fail 'нема названого negative-маркера driver-bound'
-echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
+grep -Fq 'MMIO-FAIL step=owner-authorization-required code=19' "$WORK/mmio-allow.err" \
+  || fail 'CLI opt-in incorrectly bypassed owner authorization'
+echo 'NEGATIVE-MMIO-OWNER-AUTH-OK allow-flag=not-authorization'
 
-step 'MMIO read-only witness on synthetic resource0 (not hardware)'
+step 'direct public C API cannot open or map a PCI resource'
+cat >"$WORK/direct-mmio.c" <<'C'
+#include <stdint.h>
+#include <string.h>
+#include "gp107_mmio.h"
+
+int main(void)
+{
+    char err[256] = {0};
+    uint32_t value = 0;
+    int rc = gp107_mmio_read32("/path/that-must-not-be-opened",
+                               "0000:01:00.0", 0, &value,
+                               err, sizeof(err));
+    return rc == GP107_ERR_NOT_AUTHORIZED &&
+           strstr(err, "physical-mmio-not-authorized") != NULL ? 0 : 1;
+}
+C
+cc -std=c11 -Wall -Wextra -Werror -pedantic -D_POSIX_C_SOURCE=200809L \
+  -I"$ROOT/lib" "$WORK/direct-mmio.c" "$ROOT/lib/gp107_identity.c" \
+  "$ROOT/lib/gp107_mmio.c" -o "$WORK/direct-mmio"
+"$WORK/direct-mmio"
+if grep -nE '\b(mmap|munmap)[[:space:]]*\(' lib/gp107_mmio.c; then
+  fail 'public MMIO API still contains a mapping call'
+fi
+echo 'DIRECT-MMIO-API-DENIED no-open=no-map'
+
+step 'capability ledger denies unbound MMIO regardless of CLI flag'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
-"$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
-for marker in \
-  '(kind . gp107-mmio-read)' \
-  '(offset . 0x0)' \
-  '(value . 0x1c8210de)' \
-  '(right . read-only)' \
-  '(boot0 . unproven)' \
-  '(summary . MMIO-READ-OK)'; do
-  grep -Fq "$marker" "$WORK/mmio.out" || fail "нема маркера: $marker"
-done
-echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
-
-step 'capability ledger (unbound + no opt-in stays deferred)'
-"$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-deferred.out"
-grep -Fq '(mmio-read . deferred) (reason . opt-in-required)' "$WORK/ledger-deferred.out" \
-  || fail 'ledger не лишив MMIO у deferred без opt-in'
-echo 'LEDGER-DEFERRED-OK marker=step=opt-in-required'
-
-step 'capability ledger (unbound + opt-in grants read-only only)'
-"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted.out"
-grep -Fq '(mmio-read . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
-  || fail 'ledger не надав read-only MMIO після opt-in'
-grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
-  || fail 'ledger розширив права поза read-only'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+"$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-noauth.out"
+grep -Fq '(mmio-read . denied) (reason . owner-authorization-required)' "$WORK/ledger-noauth.out" \
+  || fail 'ledger exposed unbound MMIO without owner authorization'
+"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-allow.out"
+grep -Fq '(mmio-read . denied) (reason . owner-authorization-required)' "$WORK/ledger-allow.out" \
+  || fail 'CLI opt-in incorrectly granted MMIO capability'
+grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-allow.out" \
+  || fail 'ledger expanded rights outside read-only'
+echo 'LEDGER-OWNER-AUTH-DENIED allow-flag=not-authorization'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
@@ -210,4 +243,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=10 mmio=physical-not-authorized hardware-mmio=NOT-RUN"
