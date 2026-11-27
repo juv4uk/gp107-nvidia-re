@@ -46,6 +46,7 @@
 | [`24-rea-p1-rm-dispatch-window.md`](docs/24-rea-p1-rm-dispatch-window.md) | Вузьке Rizin-вікно RM dispatch у `nvidia.ko`: адреси, xrefs і межі; не causal proof NVK/NVIDIA performance gap |
 | [`25-rea-p1-uvm-caller-map.md`](docs/25-rea-p1-uvm-caller-map.md) | Call-site карти `nvUvmInterfaceMemory*`/`Channel*` у shipped `nvidia-uvm.ko`; runlist, notifier, RM class і BOOT0 лишаються UNPROVEN |
 | [`26-rea-p1-uvm-alloc-enum-and-alignment.md`](docs/26-rea-p1-uvm-alloc-enum-and-alignment.md) | Enum-розгалуження `uvm_rm_mem_alloc` і виправлення disalignment у `channel_pool_add`; RM-семантика лишається UNPROVEN |
+| [`27-rea-p1-uvm-object-field-aliasing.md`](docs/27-rea-p1-uvm-object-field-aliasing.md) | Offset `+0x1e0` має різні базові об'єкти в `nvidia-uvm.ko`; RM-handle/feature-flag лишаються UNPROVEN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
