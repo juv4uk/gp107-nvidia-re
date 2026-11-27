@@ -7,5 +7,7 @@ probes/01_min_cuinit
 pascal/01_min_cuinit
 pascal/02_bar_identity
 pascal/03_rm_arch_info
+pascal/04_capability_identity
+build/
 __pycache__/
 *.pyc

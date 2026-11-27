@@ -2,7 +2,7 @@ FPC       ?= fpc
 FPCFLAGS  ?= -O2 -Mobjfpc -Sh -XS -Fu.
 FPC_PIN   ?= 3.2.2
 
-TARGETS := 01_min_cuinit 02_bar_identity 03_rm_arch_info
+TARGETS := 01_min_cuinit 02_bar_identity 03_rm_arch_info 04_capability_identity
 
 all: check-fpc $(TARGETS)
 
@@ -20,6 +20,9 @@ check-fpc:
 	$(FPC) $(FPCFLAGS) -o$@ $<
 
 03_rm_arch_info: 03_rm_arch_info.pas nv_abi.pas nv_device.pas nv_rm.pas
+	$(FPC) $(FPCFLAGS) -o$@ $<
+
+04_capability_identity: 04_capability_identity.pas
 	$(FPC) $(FPCFLAGS) -o$@ $<
 
 run: all

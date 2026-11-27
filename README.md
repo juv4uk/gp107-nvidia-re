@@ -33,6 +33,7 @@ docs/
   07-next-research-direction.md R580 RM command submission and GPU-sync research plan (E1–E6)
   08-final-sprint-report.md     підсумок proprietary R580 RM-зондів; не є Nouveau/NVK runtime acceptance
   09-gp107-fifo-nonstall-source-audit.md source audit і read-only trace plan (RUNLIST_ID_NOT_OBSERVED)
+  10-open-driver-capability-identity.md research-контракт першого зрізу відкритого драйвера для лісп-машини
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
