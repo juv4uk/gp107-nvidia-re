@@ -718,6 +718,20 @@ per-device version selection у коді Mesa. У source snapshot
 bring-up. Не переносити загальне заголовне формулювання Mesa Vulkan 1.4
 на кожну архітектуру автоматично.
 
+**Незалежне підтвердження через Khronos Conformant Products:** запис
+Software Freedom Conservancy №908 від 2025-04-18 декларує
+`Vulkan_1_3` і прямо включає GeForce GTX 1050 та GTX 1050 Ti до списку
+продуктів. У записі вказано CTS 1.4.1.2, Intel Core i9-10980XE та
+Linux 6.14.0 (Fedora 41). Це узгоджується з per-device Mesa source:
+для Pascal оголошується API 1.3, а conformance оцінюється окремо.
+Не плутати цей запис Software Freedom Conservancy з окремим записом
+NVIDIA №805 від 2024-11-13, де Vulkan 1.4 декларувався для Pascal
+у пропрієтарному драйвері. Khronos entry — upstream conformance proof
+для переліченого продуктового набору, але не runtime proof нашої
+конкретної плати, її subsystem/VBIOS чи встановленої версії Mesa.
+
+Джерело:
+- [Khronos Vulkan Conformant Products — Software Freedom Conservancy entry #908](https://www.khronos.org/conformance/adopters/conformant-products/vulkan)
 Джерело:
 - [Mesa pinned source — per-device NVK API version and conformance predicates](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
 
@@ -785,9 +799,14 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 Для NVDEC сторінка показує два рядки з однаковою маркетинговою назвою
 GTX 1050 / 1050 Ti, але з різними значеннями кількох codec columns.
 Тому не переносити всі профілі/бітності одного рядка на нашу плату без
-точного зіставлення VBIOS/SKU. У нас є owner-observed subsystem
-`1462:3351`, але точний board variant ще потребує фізичної наклейки
-або перевірки VBIOS identity.
+точного зіставлення VBIOS/SKU. Owner-observed subsystem `1462:3351`
+(Windows `SUBSYS_33511462`) у базі LACT зіставляється з **MSI GTX 1050 Ti
+Gaming X**. Це незалежне каталожне підтвердження назви board variant;
+у фізичному hardware passport усе одно записати фактичні PCI subsystem IDs
+та VBIOS version. NVIDIA matrix не прив'язує два NVDEC-рядки до subsystem ID,
+тому конкретний набір decode profiles нашої Gaming X лишається непідтвердженим.
+NVENC duplicate rows GTX 1050/1050 Ti, навпаки, мають однакові показані
+codec flags; відрізняються саме два NVDEC rows.
 
 ### Що насправді реалізовано в Linux Nouveau для GP107
 
@@ -847,7 +866,7 @@ capability matrix.
 | Proprietary R580 legacy codec API | Окремий vendor control path | перевіряти тільки на R580 у власній сесії |
 
 Джерела:
-- [NVIDIA Video Encode and Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix-new)
+- [NVIDIA Video Encode and Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-support-matrix)
 - [Linux GP107 NVENC placeholder](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
 - [Linux GP107 NVDEC placeholder](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c)
 - [Linux GP107 chipset registration](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
