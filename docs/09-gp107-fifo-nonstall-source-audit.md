@@ -51,7 +51,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
 `nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому правильний selector — **`FIFO=debug`**, не `PFIFO=debug`.
 
-У тому самому `layout.h` немає subdevice з ім'ям `client`; `CLIENT=debug` не вибирає окремий NVKM context і не вмикає client logging. Тому не додавати його як нібито дієвий прапорець.
+`CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` можна залишити як best-effort контекст для client-aware повідомлень; якщо таких рядків немає, це не є доказом відсутності каналу чи події.
 
 `nvkm_fifo_oneinit()` створює `nonstall.event` із `&fifo->engine.subdev`, тобто trace-події `nvkm_event_*` також ідуть через `fifo`. `nvkm_event_ntfy_add()`, `nvkm_event_get()` і `nvkm_event_put()` мають `nvkm_trace()` записи (`event: ntfy add`, `event: incr/decr`). Якщо першого проходу `FIFO=debug` недостатньо, можливий **окремий, більш гучний** rollback boot із `nouveau.debug=TOP=trace,FIFO=trace` для збору цих event-level повідомлень.
 
@@ -98,7 +98,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 2. У **одноразовому** test boot передати параметр модулю через тимчасовий boot entry:
 
    ```text
-   nouveau.debug=TOP=trace,FIFO=debug
+   nouveau.debug=TOP=trace,FIFO=debug,CLIENT=debug
    ```
 
    Наприклад, у меню GRUB відредагувати лише поточний запис клавішею `e`,
