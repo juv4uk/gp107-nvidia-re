@@ -1,120 +1,85 @@
-# 29 — Userspace capability-identity драйвер: перший зріз коду
+# 29 — Userspace capability identity для GP107
 
-Це перший userspace capability-identity зріз у C: бібліотека з fail-closed
-інвентаризацією sysfs. Це **не** ABI, не kernel-модуль, не RM/GPFIFO-шлях і не
-заміна `nvidia.ko`. Наявність програмного MMIO gate не є дозволом власника на
-фізичний доступ. SENS, CML, `wsm-os-lisp`, ADR, target contract і ABI-pin v8
-не змінено.
+Це C11-дослідницька бібліотека для PCI/sysfs inventory. Вона не є kernel
+driver, NVIDIA RM client, GPU command path чи ABI. SENS, CML, wsm-os-lisp,
+ADR, target contract і ABI pins не змінювалися.
 
-## 0. Межа owner-дозволу
+## 0. Фізичний доступ: не авторизований
 
-У цій координації **не надано дозволу на фізичний MMIO**, unbind драйвера,
-перехід у `wsm_open_driver=1`, зміну boot parameters або інший GPU boot.
-Прапорець `--allow-mmio` — програмна умова API, а не owner approval.
+**Фізичне MMIO НЕ АВТОРИЗОВАНО / НЕ ВИКОНУВАЛОСЯ.**
 
-- MMIO-сеам є окремим експериментальним модулем.
-- Єдина публічна C-функція сама перевіряє opt-in, точну PCI identity,
-  driver binding, розмір BAR0 і межі offset; low-level mapper приватний.
-- Відкритий PCI-device directory закріплюється file descriptor, а `readlinkat()`
-  перевіряє саме його `driver` entry: лише `ENOENT` для цього entry означає
-  unbound. Зникнення батьківського шляху, інші помилки, некоректний або
-  обрізаний link завершуються fail-closed як unknown.
-- Перед mapping перевіряються розмір BAR0 з inventory та розмір відкритого
-  `resource0` через `fstat`.
-- C та x86-64 assembly paths проходять через ту саму gated API. ASM load
-  primitive не експортується у public header.
-- Фізичні `resource0` mapping/read, driver unbind і Nouveau boot тут не
-  виконувалися й не авторизовані. Позитивний MMIO-тест — лише synthetic file.
+- Прапорець --allow-mmio — CLI аргумент, не дозвіл власника.
+- Публічний gp107_mmio_read32() безумовно повертає
+  GP107_ERR_NOT_AUTHORIZED (code 21) для кожного коректного виклику.
+- lib/gp107_mmio.c не відкриває resource0, не мапить BAR0 і не читає
+  регістри.
+- Capability ledger завжди залишає physical MMIO у not-authorized;
+  granted не виводиться ні з прапорця, ні з synthetic fixture.
+- Driver binding читається через закріплений fd PCI-device directory та
+  readlinkat(). Тільки ENOENT саме для driver entry означає known-unbound;
+  інші помилки, зникнення parent directory й обрізаний symlink дають
+  fail-closed unknown.
+- Немає driver unbind, зміни boot options, firmware, reboot, RM/UVM ioctl,
+  GPU dispatch чи фізичного aperture test.
 
-Фізичне MMIO залишається **NOT AUTHORIZED / NOT RUN** до окремого явного
-рішення власника. Наявність `mmio-read`, `--allow-mmio` чи ASM primitive
-не змінює цю межу.
+Можливе майбутнє фізичне дослідження вимагатиме окремого явного owner-рішення,
+незалежного review та source-backed whitelist конкретного безпечного регістру.
+Цей PR такого дозволу не надає.
 
-## 1. Що додано
+## 1. Що містить цей зріз
 
 | Файл | Призначення |
 |---|---|
-| `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
-| `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
-| `lib/gp107_mmio.h/.c` | Єдина gated read-only API з внутрішніми opt-in, identity, binding і BAR-size checks; фізичний доступ не авторизований |
-| `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
-| `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
-| `scripts/test-capability-driver.sh` | названі кроки, 5 негативних witness, firewall коду, best-effort host inventory |
-| `docs/29-userspace-capability-driver.md` | цей звіт |
+| lib/gp107_identity.h/.c | PCI vendor/device/BDF/config identity, driver binding, resource metadata з sysfs |
+| lib/gp107_capabilities.h/.c | Машиночитаний ledger із розділенням inventory, software gate та owner approval |
+| lib/gp107_mmio.h/.c | Стабільний fail-closed API, який відмовляє у фізичному MMIO |
+| lib/gp107ctl.c | CLI inventory, capabilities, layout і відмовний mmio-read |
+| scripts/test-capability-driver.sh | C11 build, synthetic sysfs negatives, direct-API/CLI denial та source firewall |
 
-Публічний контракт:
+Розмір compile-time layout: identity=32, binding=68, inventory=140 байт.
 
-```c
-int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
-                         struct gp107_inventory *out, char *err, size_t errsz);
+## 2. Рівні доказів
 
-int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
-                      int allow, uint32_t offset, uint32_t *value,
-                      char *err, size_t errsz);
-```
+| Факт | Статус | Межа |
+|---|---|---|
+| Layout 32/68/140 | **statically proven** | _Static_assert та C11 build |
+| 10de:1c82 @ 0000:01:00.0, bar0-base=0xee000000, driver nvidia | **історичне sysfs-observation на RE host** | Не є свіжою перевіркою H170 owner-host і не дозволяє BAR access |
+| Duplicate device, missing config, чужий BDF | **synthetic-fixture** | Inventory має завершуватися fail-closed |
+| Invalid/truncated driver-link | **synthetic negative** | Unknown не прирівнюється до unbound |
+| MMIO CLI без прапорця та з --allow-mmio | **synthetic/API denial test** | Обидва варіанти NOT_AUTHORIZED |
+| Прямий C API виклик MMIO | **synthetic/API denial test** | Не відкриває шлях пристрою; повертає code 21 |
+| Capability ledger | **synthetic-fixture** | Physical MMIO завжди not-authorized |
+| BOOT0, BAR0 register semantics, RM class/runlist/notifier/fence | **UNPROVEN** | Фізичного читання немає |
+| PCI BDF ↔ RM gpu_id | **UNPROVEN** | Потрібні окремі докази |
 
-Виклик `gp107ctl` друкує людиночитану S-подібну проєкцію фактів, поки не
-ухвалене owner-рішення про ABI. Це не capability word у Lisp-машині.
+Історичні host facts не переносяться на H170 автоматично: підключений owner
+executor зараз недоступний, тож локальне підтвердження не отримано.
 
-## 2. Статус фактів
+## 3. Перевірка
 
-| # | Факт | Статус | Свідок / межа |
-|---:|---|---|---|
-| 1 | Розкладки `gp107_pci_identity=32`, `gp107_driver_binding=68`, `gp107_inventory=140` байт | **statically proven** | `_Static_assert` у `lib/gp107_identity.h`; вивід `LAYOUT-OK identity=32 binding=68 inventory=140` (розширено у docs/30) |
-| 2 | На RE host виявлено картку `10de:1c82 @ 0000:01:00.0`, `bar0-base=0xee000000`, driver `nvidia` | **sysfs-observation на RE host** | `gp107ctl inventory` на host `/sys`; це не H170 certification і не доказ для offline-плати власника |
-| 3 | Друга картка того самого vendor/device відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=card-count code=13 count=2` |
-| 4 | Відсутній `config` відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
-| 5 | Чужий BDF відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
-| 6 | MMIO без прапорця відхиляється до будь-якого mapping | **synthetic-fixture** | `MMIO-FAIL step=opt-in-required code=15` |
-| 7 | MMIO з bound драйвером відхиляється | **synthetic-fixture** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
-| 8 | Read-only 32-бітне читання з `resource0` | **synthetic-fixture PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом звичайного файлу |
-| 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
-| 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
-| 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
-| 12 | Причина будь-якої відмови ядра / ексклюзивне володіння BAR | **UNPROVEN** | код друкує errno як число, не інтерпретує причину |
+Команди локального CI:
+- make -C lib clean all
+- bash scripts/test-capability-driver.sh
+- make test-valid-cards-static
 
-Висновок про продуктивність чи «працюючий драйвер» з цього зрізу **не
-випливає**: тут немає жодного GPU-завдання.
+Гейт перевіряє C11 -Werror, layout assertions, synthetic sysfs identity,
+driver-link fail-closed, відмову CLI з/без --allow-mmio, прямий C API denial,
+відсутність file-open/mapping calls у MMIO implementation та узгодженість
+capability ledger.
 
-## 3. Що перевіряє гейт
+Очікуваний фінальний маркер:
 
-```bash
-make -C lib clean all
-bash scripts/test-capability-driver.sh
-make test-valid-cards-static   # старий базовий гейт не послаблено
-```
+CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-sysfs=only physical-mmio=NOT-AUTHORIZED/NOT-RUN
 
-`scripts/test-capability-driver.sh` виконує:
+Цей маркер не означає фізичний H170 test або runtime GPU validation.
 
-1. `bash -n` обох нових/сусідніх gating-скриптів;
-2. firewall **коду** `lib/*.c`, `lib/*.h`: заборонені write mapping, RM-імена,
-   BOOT0-константа, атестація й authoritative pin;
-3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
-4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. capability ledger states та BAR I/O-flag mutation;
-6. driver-link errors fail-closed: лише `ENOENT` дорівнює unbound;
-7. direct C API tests: opt-in і bound-driver gates не можна обійти повз CLI;
-8. short BAR0 та offset поза 4 KiB window fail-closed;
-9. C/ASM equivalence на синтетичному `resource0`; жодного фізичного mapping;
-10. best-effort host sysfs inventory; результат не приписується H170.
+## 4. Наступна безпечна робота
 
-Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
+Продовжити source-only дослідження:
+- exact package pairing для nvidia.ko та nvidia-uvm.ko;
+- bounded caller tracing для add_gpu / channel_pool_add;
+- звірка GP107 Nouveau/NVK support і firmware provenance;
+- кореляція PCI BDF ↔ RM gpu_id лише на підставі окремого доказу.
 
-Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
-непривілейованим/детермінованим з `EACCES` на `resource0`.
-
-## 4. Незавершене й найменший наступний крок
-
-- **Питання без відповіді:** який саме offset у BAR0 можна читати безпечно на
-  цій платі за відсутності bound драйвера? Поточний код не містить жодного
-  припущення про адресу регістру.
-- **Наступний крок без апаратного доступу:** продовжити source-only аудит
-  Nouveau/NVKM та публічної PCI/BAR документації. Фізичний aperture test не є
-  автоматичним наступним кроком і потребує окремого owner approval. Без нього
-  BOOT0 та будь-яке значення регістру лишаються `UNPROVEN`.
-- Окремо: мульти-GPU RM fixture для кореляції `PCI BDF ↔ RM gpu_id` не існує;
-  цей стан не можна вивести з одного пристрою.
-
-Межі: жодного transfer-коду, release/tag/publish, installer-змін, `Tested-by`,
-new harness чи запуску PR #21. Коміт і пуш виконуються завжди.
+Не робити aperture test, unbind, reboot, firmware, RM/UVM ioctl, GPU workload
+чи зміну ABI pins.
