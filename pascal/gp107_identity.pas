@@ -191,16 +191,52 @@ begin
   Result := True;
 end;
 
-function ReadBinding(const devdir: string; var outDriver: Tgp107Driver): LongInt;
+function BindingError(const marker: string; out err: string): LongInt;
+begin
+  err := marker;
+  Result := STATUS_BINDING;
+end;
+
+function ReadBinding(const devdir: string; var outDriver: Tgp107Driver;
+                     out err: string): LongInt;
 var
-  path, target: string;
+  dirfd, saved: cint;
+  st: TStat;
+  path, target, base: string;
   n: ssize_t;
-  saved: cint;
   buf: array[0..511] of Byte;
-  base: string;
   i: Integer;
 begin
+  err := '';
   FillChar(outDriver, SizeOf(outDriver), 0);
+
+  { Anchor the lookup like the C readlinkat() path: open and stat the PCI
+    device directory first, so a disappearing parent cannot be mistaken for
+    an unbound GPU. }
+  dirfd := FpOpen(PChar(devdir), O_RDONLY or O_CLOEXEC, 0);
+  if dirfd < 0 then
+  begin
+    saved := fpgeterrno;
+    Exit(BindingError('IDENTITY-FAIL step=driver-binding-open code=' +
+      IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(saved), err));
+  end;
+  try
+    if FpFStat(dirfd, st) <> 0 then
+    begin
+      saved := fpgeterrno;
+      Exit(BindingError('IDENTITY-FAIL step=driver-binding-open code=' +
+        IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(saved), err));
+    end;
+    if (st.st_mode and S_IFMT) <> S_IFDIR then
+      Exit(BindingError('IDENTITY-FAIL step=driver-binding-open code=' +
+        IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(ESysEnotdir), err));
+  finally
+    FpClose(dirfd);
+  end;
+
+  { FPC 3.2.2 RTL provides FpReadLink but no FpReadLinkAt; use the equivalent
+    path-based FpReadLink against the already-validated device directory and
+    preserve the C named markers and errno reporting. }
   path := IncludeTrailingPathDelimiter(devdir) + 'driver';
   FillChar(buf, SizeOf(buf), 0);
   n := FpReadLink(PChar(path), PChar(@buf[0]), SizeOf(buf) - 1);
@@ -208,11 +244,14 @@ begin
   begin
     saved := fpgeterrno;
     if saved = ESysEnoent then
-      Exit(0);
-    Exit(-1);
+      Exit(STATUS_OK);
+    Exit(BindingError('IDENTITY-FAIL step=driver-binding-read code=' +
+      IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(saved), err));
   end;
-  if n = 0 then
-    Exit(-1);
+  if (n = 0) or (n >= SizeOf(buf) - 1) then
+    Exit(BindingError('IDENTITY-FAIL step=driver-binding-read code=' +
+      IntToStr(STATUS_BINDING), err));
+
   SetLength(target, n);
   Move(buf[0], target[1], n);
   i := LastDelimiter('/', target);
@@ -220,12 +259,13 @@ begin
     base := Copy(target, i + 1, MaxInt)
   else
     base := target;
-  if Length(base) >= Length(outDriver.name) then
-    SetLength(base, Length(outDriver.name) - 1);
+  if (Length(base) = 0) or (Length(base) >= Length(outDriver.name)) then
+    Exit(BindingError('IDENTITY-FAIL step=driver-name-invalid code=' +
+      IntToStr(STATUS_BINDING), err));
   for i := 1 to Length(base) do
     outDriver.name[i - 1] := base[i];
   outDriver.bound := 1;
-  Result := 1;
+  Result := STATUS_OK;
 end;
 
 procedure ReadBar0Size(const devdir: string; var id: Tgp107Pci);
@@ -320,13 +360,9 @@ begin
                IntToStr(STATUS_USAGE) + ' name=' + sr.Name;
         Exit(STATUS_USAGE);
       end;
-      rc := ReadBinding(path, inv.driver);
-      if rc < 0 then
-      begin
-        err := 'IDENTITY-FAIL step=driver-binding-read code=' +
-               IntToStr(STATUS_BINDING);
-        Exit(STATUS_BINDING);
-      end;
+      rc := ReadBinding(path, inv.driver, err);
+      if rc <> STATUS_OK then
+        Exit(rc);
       ReadBar0Size(path, candidate);
       inv.pci := candidate;
       Inc(inv.valid_count);

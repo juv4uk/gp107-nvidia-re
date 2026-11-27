@@ -105,7 +105,7 @@ make test-valid-cards-static   # старий базовий гейт не по�
 10. C/ASM equivalence на synthetic `resource0` та best-effort host inventory без H170 claims.
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 pascal=equiv hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.

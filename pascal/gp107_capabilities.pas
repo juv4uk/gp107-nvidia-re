@@ -54,11 +54,12 @@ begin
     '((kind . gp107-capability-ledger)'#10 +
     ' (authority . gp107-research-not-abi)'#10 +
     ' (abi-pin . untouched)'#10 +
-    ' (pci-inventory . observed) (evidence . runtime-proven)'#10 +
+    ' (pci-inventory . observed) (evidence . caller-supplied-sysfs)'#10 +
     ' (bar0-decode . ' + decode + ') (evidence . statically-proven-layout)'#10 +
     ' (rm-identity . deferred) (reason . not-in-this-slice)'#10 +
     ' (mmio-read-software-gate . ' + state + ') (reason . ' + reason + ')'#10 +
-    ' (owner-approval . not-inferred) (physical-mmio . not-authorized)'#10 +
+    ' (owner-approval . not-inferred)'#10 +
+    ' (physical-mmio . not-authorized)'#10 +
     ' (boot0 . unproven) (evidence . unproven)'#10 +
     ' (rights (write . none) (dispatch . none) (rm . none))'#10 +
     ' (summary . CAPABILITY-LEDGER-OK))'#10;

@@ -52,6 +52,7 @@ clean-room зондами справді виконано на цій машин
 | 29 | Опційний read-only MMIO-сеам | **synthetic-fixture checks PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | 8 fail-closed witnesses і позитивне читання звичайного synthetic `resource0`; `--allow-mmio` не є owner approval |
 | 30 | Декодування публічного PCI config-header і capability-ledger | **statically proven layout + sysfs-observation на RE host** | `revision=0xa1`, `class=0x030000`, `command=0x0407`, BAR0 memory/32-bit/non-prefetch спостерігалися з host sysfs; ledger відділяє software gate від owner approval; див. docs/30 |
 | 31 | Власний x86-64 asm-примітив read-only MMIO | **statically proven + synthetic-fixture PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | `movl`+`lfence` у бінарнику, C/asm-виводи ідентичні на синтетичному `resource0`; див. docs/31 |
+| 32 | Free Pascal як основна research-реалізація capability-identity | **statically proven layout + runtime-proven parity (fixture + host sysfs); physical MMIO NOT RUN** | FPC 3.2.2, `LAYOUT-OK identity=32 binding=68 inventory=140`, Pascal/C байтова еквівалентність на синтетичному sysfs і host inventory; C/asm лишаються еталонами; див. docs/32 |
 
 ## Що реально дає репозиторій
 

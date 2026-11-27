@@ -32,13 +32,14 @@ Inline-асемблер належить цьому проєкту. Він ро�
 | 2 | Розкладки `32/68/140` байт | **statically proven** | `{$if SizeOf(...)<>...}{$fatal}` і `LAYOUT-OK identity=32 binding=68 inventory=140` |
 | 3 | Inline `lfence` присутній у бінарнику | **statically proven** | `PASCAL-ASM-STATIC-OK primitive=movl+lfence sysv-amd64`; `objdump -d` |
 | 4 | Pascal/C виводи `inventory`, `capabilities` і `mmio-read` байтово ідентичні на синтетичному sysfs | **runtime-proven (fixture)** | `PASCAL-PARITY-OK`, `PASCAL-MMIO-PARITY-OK` |
-| 5 | Pascal/C негативні маркери ідентичні: card-count, config-read, bdf-mismatch, driver-binding-read, opt-in, driver-bound, resource0-size, offset | **runtime-proven (fixture)** | `cmp` stderr у кожному named step |
+| 5 | Pascal/C негативні маркери ідентичні: card-count, config-read, bdf-mismatch, driver-binding-read, offset-required, opt-in, driver-bound, resource0-size, offset-unaligned, offset-out-of-window, bar0-not-memory | **runtime-proven (fixture)** | `cmp` stderr у кожному named step |
 | 6 | Прямий виклик публічного C API не обходить opt-in і driver-bound | **runtime-proven (fixture)** | `MMIO-API-GATE-OK direct-call=guarded optin=required bound-driver=denied` |
 | 7 | Ledger `deferred`/`granted` і BAR-flag mutation однакові в Pascal і C | **runtime-proven (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK`, `BAR-FLAG-MUTATION-OK` |
 | 8 | На реальному hostі Pascal inventory збігається з C | **runtime-proven** | `HOST-INVENTORY-PASS evidence=runtime-proven pascal=C`; `10de:1c82 @ 0000:01:00.0` |
 | 9 | Фізичний MMIO-доступ до реальної GP107 | **NOT RUN** | `nvidia` bound; cmdline без `wsm_open_driver=1`; жодного unbind/reboot |
 | 10 | BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, `BDF ↔ RM gpu_id` | **UNPROVEN / string-only** | Pascal не додає жодного нового твердження; константа відсутня у коді |
 | 11 | Використання Pascal як основи майбутнього релізу під плату власника | **design choice / interpretation** | owner-заява про цільове залізо; не release-рішення й не ABI-pin |
+| 12 | C перевіряє `driver`-symlink через `readlinkat()` на відкритому каталозі; Pascal — шляхом через `FpReadLink` | **interpretation / PARTIAL** | у FPC 3.2.2 RTL немає `FpReadLinkAt`; названі маркери й fail-closed поведінка збігаються на fixture, але C-якір сильніший |
 
 ## 3. Межі
 

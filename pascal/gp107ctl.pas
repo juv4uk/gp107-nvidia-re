@@ -52,63 +52,79 @@ begin
   Result := STATUS_USAGE;
 end;
 
+function HexDigitValue(ch: Char): Integer;
+begin
+  case ch of
+    '0'..'9': Result := Ord(ch) - Ord('0');
+    'a'..'f': Result := Ord(ch) - Ord('a') + 10;
+    'A'..'F': Result := Ord(ch) - Ord('A') + 10;
+  else
+    Result := -1;
+  end;
+end;
+
+{ Mirror C strtoul(..., 0): leading isspace, optional sign, 0x/0/10 base,
+  but only '\n', '\r' and ' ' may trail. }
 function ParseOffset(const s: string; out value: LongWord): Boolean;
 var
-  t, rest: string;
-  i, digit: LongInt;
+  i, n, digit, base: Integer;
   acc: QWord;
+  negative, haveDigits: Boolean;
 begin
   Result := False;
   value := 0;
-  t := Trim(s);
-  if t = '' then
+  n := Length(s);
+  i := 1;
+  while (i <= n) and (s[i] in [' ', #9, #10, #11, #12, #13]) do
+    Inc(i);
+
+  negative := False;
+  if (i <= n) and ((s[i] = '+') or (s[i] = '-')) then
+  begin
+    negative := s[i] = '-';
+    Inc(i);
+  end;
+  if i > n then
     Exit;
+
   acc := 0;
-  if (Length(t) > 2) and (t[1] = '0') and (t[2] in ['x', 'X']) then
+  base := 10;
+  if s[i] = '0' then
   begin
-    rest := Copy(t, 3, MaxInt);
-    if rest = '' then
-      Exit;
-    for i := 1 to Length(rest) do
+    base := 8;
+    if (i + 2 <= n) and (s[i + 1] in ['x', 'X']) and
+       (HexDigitValue(s[i + 2]) >= 0) then
     begin
-      case rest[i] of
-        '0'..'9': digit := Ord(rest[i]) - Ord('0');
-        'a'..'f': digit := Ord(rest[i]) - Ord('a') + 10;
-        'A'..'F': digit := Ord(rest[i]) - Ord('A') + 10;
-      else
-        Exit;
-      end;
-      acc := acc * 16 + QWord(digit);
-      if acc > $ffffffff then
-        Exit;
-    end;
-  end
-  else if (Length(t) > 1) and (t[1] = '0') then
-  begin
-    rest := Copy(t, 2, MaxInt);
-    for i := 1 to Length(rest) do
-    begin
-      if not (rest[i] in ['0'..'7']) then
-        Exit;
-      digit := Ord(rest[i]) - Ord('0');
-      acc := acc * 8 + QWord(digit);
-      if acc > $ffffffff then
-        Exit;
-    end;
-  end
-  else
-  begin
-    for i := 1 to Length(t) do
-    begin
-      if not (t[i] in ['0'..'9']) then
-        Exit;
-      digit := Ord(t[i]) - Ord('0');
-      acc := acc * 10 + QWord(digit);
-      if acc > $ffffffff then
-        Exit;
+      base := 16;
+      Inc(i, 2);
     end;
   end;
+
+  haveDigits := False;
+  while i <= n do
+  begin
+    digit := HexDigitValue(s[i]);
+    if (digit < 0) or (digit >= base) then
+      Break;
+    if acc > (QWord($ffffffff) - QWord(digit)) div QWord(base) then
+      Exit;
+    acc := acc * QWord(base) + QWord(digit);
+    haveDigits := True;
+    Inc(i);
+  end;
+  if not haveDigits then
+    Exit;
+
+  { strtoul negates modulo 2^64 and sets ERANGE for any non-zero negative
+    value here; the C caller rejects both overflow and >0xffffffff. }
+  if negative and (acc <> 0) then
+    Exit;
   value := LongWord(acc);
+
+  while (i <= n) and (s[i] in [#10, #13, ' ']) do
+    Inc(i);
+  if i <= n then
+    Exit;
   Result := True;
 end;
 
@@ -135,7 +151,7 @@ begin
   WriteLn(' (driver (bound . ', BoolStr(inv.driver.bound <> 0, 'yes', 'no'),
           ') (name . "', FixedString(inv.driver.name), '"))');
   WriteLn(' (rights (pci . inventory-only) (rm-control . none) (mmio . none))');
-  WriteLn(' (evidence (pci . runtime-proven) (driver . runtime-proven) (boot0 . unproven))');
+  WriteLn(' (evidence (pci . observation-only) (driver . observation-only) (scope . caller-supplied-sysfs) (boot0 . unproven))');
   WriteLn(' (summary . IDENTITY-OK))');
 end;
 
@@ -144,6 +160,7 @@ var
   inv: Tgp107Inventory;
   offset, value: LongWord;
   allow, i, rc: LongInt;
+  haveOffset: Boolean;
 begin
   if ParamCount < 1 then
     Halt(Usage);
@@ -165,6 +182,7 @@ begin
   offset := 0;
   value := 0;
   allow := 0;
+  haveOffset := False;
 
   for i := 2 to ParamCount do
   begin
@@ -181,6 +199,7 @@ begin
                 ' value=', Copy(arg, 10, MaxInt));
         Halt(STATUS_USAGE);
       end;
+      haveOffset := True;
     end
     else if arg = '--allow-mmio' then
       allow := 1
@@ -218,25 +237,13 @@ begin
     Halt(STATUS_OK);
   end;
 
-  rc := RequireOptin(allow, err);
-  if rc <> STATUS_OK then
+  if not haveOffset then
   begin
-    WriteLn(StdErr, err);
-    Halt(rc);
+    WriteLn(StdErr, 'USAGE-FAIL step=offset-required code=', STATUS_USAGE);
+    Halt(STATUS_USAGE);
   end;
-  rc := ScanInventory(root, LowerCase(expect), inv, err);
-  if rc <> STATUS_OK then
-  begin
-    WriteLn(StdErr, err);
-    Halt(rc);
-  end;
-  rc := CheckDriver(inv, err);
-  if rc <> STATUS_OK then
-  begin
-    WriteLn(StdErr, err);
-    Halt(rc);
-  end;
-  rc := Read32(root, inv, allow, offset, value, err);
+
+  rc := Read32(root, LowerCase(expect), allow, offset, value, err);
   if rc <> STATUS_OK then
   begin
     WriteLn(StdErr, err);
@@ -244,7 +251,7 @@ begin
   end;
   WriteLn('((kind . gp107-mmio-read)');
   WriteLn(' (offset . 0x', HexN(offset, 1), ') (value . 0x', HexN(value, 8), ')');
-  WriteLn(' (right . read-only) (evidence . runtime-proven)');
+  WriteLn(' (right . read-only) (evidence . unclassified) (scope . caller-supplied-sysfs)');
   WriteLn(' (boot0 . unproven) (summary . MMIO-READ-OK))');
   Halt(STATUS_OK);
 end.
