@@ -1,0 +1,109 @@
+name: NVK GP107 compute harness validation
+
+on:
+  push:
+    paths:
+      - "tests/nvk-gp107-vector-add/**"
+      - ".github/workflows/nvk-gp107-compute-validate.yml"
+  pull_request:
+    paths:
+      - "tests/nvk-gp107-vector-add/**"
+      - ".github/workflows/nvk-gp107-compute-validate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-build-validation:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install compile-only dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential libvulkan-dev glslang-tools spirv-tools
+
+      - name: Compile shader, validate SPIR-V, and link C harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tests/nvk-gp107-vector-add
+          {
+            echo "PHYSICAL_GPU_TEST=NOT_RUN"
+            cc --version | head -n 1
+            glslangValidator --version | head -n 2
+            spirv-val --version | head -n 1
+            pkg-config --modversion vulkan
+            glslangValidator -V --target-env vulkan1.1 \
+              -o vector_add.spv vector_add.comp
+            spirv-val --target-env vulkan1.1 vector_add.spv
+            spirv-dis vector_add.spv -o vector_add.spvasm
+            cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+              -o nvk-vector-add nvk-vector-add.c -lvulkan
+            file nvk-vector-add vector_add.spv
+            sha256sum nvk-vector-add.c vector_add.comp vector_add.spv \
+              vector_add.spvasm nvk-vector-add
+          } 2>&1 | tee validation.log
+
+      - name: Exercise fail-closed CLI gates without Vulkan enumeration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tests/nvk-gp107-vector-add
+
+          expect_exit() {
+            expected="$1"
+            logfile="$2"
+            shift 2
+            set +e
+            "$@" > "$logfile" 2>&1
+            actual="$?"
+            set -e
+            if [ "$actual" -ne "$expected" ]; then
+              cat "$logfile"
+              echo "EXPECTED_EXIT=$expected ACTUAL_EXIT=$actual COMMAND=$*"
+              exit 1
+            fi
+            echo "EXIT_GATE_OK expected=$expected command=$*"
+          }
+
+          # No acknowledgement: fail before Vulkan instance/device enumeration.
+          expect_exit 4 default-deny.log ./nvk-vector-add
+          grep -F "ENUMERATION_NOT_AUTHORIZED" default-deny.log
+          grep -F "No Vulkan instance or physical device was created or enumerated" default-deny.log
+
+          # Channel acknowledgement alone cannot enter Vulkan enumeration.
+          expect_exit 4 missing-mode-deny.log ./nvk-vector-add \
+            --bdf 0000:01:00.0 --allow-temp-gr-channel-init
+
+          # Enumeration-only and GPU-submit modes are mutually exclusive.
+          expect_exit 4 conflicting-mode-deny.log ./nvk-vector-add \
+            --bdf 0000:01:00.0 --allow-temp-gr-channel-init \
+            --enumeration-only --allow-gpu-submit
+
+          # Invalid work size is rejected by the argument parser.
+          expect_exit 2 invalid-size-deny.log ./nvk-vector-add \
+            --bdf 0000:01:00.0 --elements 258
+
+          echo "VULKAN_INSTANCE_CREATED=NO"
+          echo "PHYSICAL_DEVICE_ENUMERATED=NO"
+          echo "PHYSICAL_GPU_TEST=NOT_RUN"
+
+      - name: Upload build evidence (no GPU runtime)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvk-gp107-source-build-validation
+          path: |
+            tests/nvk-gp107-vector-add/validation.log
+            tests/nvk-gp107-vector-add/default-deny.log
+            tests/nvk-gp107-vector-add/missing-mode-deny.log
+            tests/nvk-gp107-vector-add/conflicting-mode-deny.log
+            tests/nvk-gp107-vector-add/invalid-size-deny.log
+            tests/nvk-gp107-vector-add/vector_add.spv
+            tests/nvk-gp107-vector-add/vector_add.spvasm
+            tests/nvk-gp107-vector-add/nvk-vector-add
+          if-no-files-found: ignore
