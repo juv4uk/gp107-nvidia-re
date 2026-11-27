@@ -39,8 +39,8 @@ int gp107_capability_report(const struct gp107_inventory *inv,
         state = "deferred";
         reason = "opt-in-required";
     } else {
-        state = "granted";
-        reason = "read-only-window";
+        state = "deferred";
+        reason = "read-safe-offset-unproven";
     }
 
     append_line(out, cap, "((kind . gp107-capability-ledger)\n");
