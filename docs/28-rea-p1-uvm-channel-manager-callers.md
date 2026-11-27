@@ -146,7 +146,10 @@ Store у `parent+0x19f8` уже доведено в самій callee (`[r12]=ra
 крок — звузити питання до типу батька: перевірити перший аргумент `add_gpu`
 та call-site області `0x080bad…` у межах уже відкритих вікон (без `/r`,
 без `izz~`), не змішуючи з runlist. Назва типу лишається `interpretation`,
-доки немає source-proven символу.
+доки немає source-proven символу. Виконано в `docs/34`: власник чотирьох
+call-site — `uvm_test_channel_sanity`, а батько береться з таблиці
+`g_uvm_global+0x28`; назва типу й роль першого аргументу `add_gpu` лишаються
+`interpretation`/`UNPROVEN`.
 
 ## Ukrainian one-liner
 

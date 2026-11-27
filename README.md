@@ -54,6 +54,7 @@
 | [`tests/nvk-gp107-vector-add/README.md`](tests/nvk-gp107-vector-add/README.md) | NVK GP107 vector-add harness: compile-only CI, fail-closed gates; фізичний GPU тест NOT_RUN |
 | [`32-freepascal-primary-slice.md`](docs/32-freepascal-primary-slice.md) | Free Pascal 3.2.2 як основна реалізація; C/asm лишаються еталонами, hardware MMIO NOT_RUN |
 | [`33-asm-first-target-contract.md`](docs/33-asm-first-target-contract.md) | opcode-послідовність як авторитетний артефакт під залізо власника; Pascal/C — обгортка/oracle, не реліз |
+| [`34-rea-p1-parent-object-and-test-context.md`](docs/34-rea-p1-parent-object-and-test-context.md) | батько з `g_uvm_global+0x28`, чотири call-site в `uvm_test_channel_sanity`; назва типу лишається interpretation |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
