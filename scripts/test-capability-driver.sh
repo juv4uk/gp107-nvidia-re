@@ -239,6 +239,21 @@ open(p, 'wb').write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 echo 'NEGATIVE-BAR0-SIZE-OK marker=step=bar0-size-too-small'
 
+step 'resource0 symlink is refused (openat O_NOFOLLOW)'
+RESOURCE="$FIX/bus/pci/devices/0000:01:00.0/resource0"
+mv "$RESOURCE" "$WORK/resource0-target"
+ln -s "$WORK/resource0-target" "$RESOURCE"
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/resource-symlink.out" 2>"$WORK/resource-symlink.err"; then
+  fail 'MMIO followed a symlink substituted for resource0'
+fi
+grep -Fq 'MMIO-FAIL step=resource0-open' "$WORK/resource-symlink.err" \
+  || fail 'resource0 symlink rejection did not report open failure'
+rm "$RESOURCE"
+mv "$WORK/resource0-target" "$RESOURCE"
+echo 'NEGATIVE-RESOURCE0-SYMLINK-OK nofollow=yes'
+
+
 step 'MMIO refuses an unaligned 32-bit offset'
 if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
     >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
