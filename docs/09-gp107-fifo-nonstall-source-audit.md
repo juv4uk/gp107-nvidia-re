@@ -152,13 +152,18 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
      echo "GP107_SYSFS_IDENTITY_MISMATCH vendor=$VENDOR device=$DEVICE"; exit 2;
    }
    printf 'GP107_BDF_AFTER_BOOT=%s vendor=%s device=%s\n' "$BDF" "$VENDOR" "$DEVICE"
-   lspci -Dnnk -s "$BDF"
+   LSPCI=$(lspci -Dnnk -s "$BDF")
+   printf '%s\n' "$LSPCI"
+   DRIVER=$(printf '%s\n' "$LSPCI" | sed -n 's/^[[:space:]]*Kernel driver in use: //p')
+   [ "$DRIVER" = 'nouveau' ] || { echo "GP107_DRIVER_NOT_NOUVEAU=${DRIVER:-none}"; exit 2; }
 
    OUT="$HOME/gp107-trace-$BDF-$(date +%Y%m%d-%H%M%S)"
    mkdir -p "$OUT"
    uname -a > "$OUT/uname.txt"
    cat /proc/cmdline > "$OUT/cmdline.txt"
-   lspci -Dnnk -s "$BDF" > "$OUT/lspci.txt"
+   printf '%s\n' "$LSPCI" > "$OUT/lspci.txt"
+   printf 'GP107_BDF=%s driver=%s\n' "$BDF" "$DRIVER" > "$OUT/device-identity.txt"
+   cat /sys/module/nouveau/parameters/debug > "$OUT/loaded-debug-parameter.txt" 2>/dev/null || true
    modinfo -p nouveau > "$OUT/nouveau-module-params.txt"
    if [ -r "/boot/config-$(uname -r)" ]; then
      cp "/boot/config-$(uname -r)" "$OUT/kernel.config"
@@ -189,6 +194,8 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    - `CHANNEL_RUNLIST_CORRELATED` — тільки коли конкретний GR/compute user channel прив'язаний source-backed/runtime до цього runlist;
    - `NONSTALL_EVENT_OBJECT_REGISTERED` — лише коли callback `nvkm_uchan_uevent()` із `args->v0.type == NVIF_CHAN_EVENT_V0_NON_STALL_INTR` завершився успішно; це ще не ALLOW;
    - `NONSTALL_EVENT_ALLOWED` — тільки за окремим witness успішного `NVIF_EVENT_V0_ALLOW`;
+   - `RUNLIST_REFCOUNT_UPDATED` — тільки за окремим witness `nvkm_event_get()`/`nvkm_event_put()` із реальним index;
+   - `FENCE_PROGRESS_OBSERVED` — тільки за окремим runtime witness завершення fence/interrupt;
    - жодного `Tested-by` від агента/LLM.
 
 ### Mesa/NVK trigger caution
