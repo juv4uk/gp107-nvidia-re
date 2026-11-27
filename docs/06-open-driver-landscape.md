@@ -499,29 +499,25 @@ backport. `nouveau.atomic=0` залишити лише як діагностич
 `nouveau_mode_config_funcs_atomic` і вибір через
 `drm_drv_uses_atomic_modeset(dev)`). Перевірив також точні point-release
 source commits:
+- [Linux 7.3.6: Nouveau display source](https://github.com/gregkh/linux/blob/v7.3.6/drivers/gpu/drm/nouveau/nouveau_display.c)
 - [Linux 7.3.5: `988117cc1bb17338c586a4e21ade88b5397eac33`](https://github.com/gregkh/linux/blob/988117cc1bb17338c586a4e21ade88b5397eac33/drivers/gpu/drm/nouveau/nouveau_display.c)
 - [Linux 7.2.15: `497791a0a96b866d90add64041c47acdff49cae6`](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nouveau_display.c)
 
-Обидва source files повернули однаковий blob
-`d71dcfc6ee66b3349cd87404aa15ea9823417d36`, у якому ще немає
-`nouveau_mode_config_funcs_atomic`. Отже `Cc: stable@vger.kernel.org`
-не означає, що backport уже потрапив у point release або дистрибутив.
+Усі три перевірені source files повернули однаковий blob
+`d71dcfc6ee66b3349cd87404aa15ea9823417d36`, у якому немає
+`nouveau_mode_config_funcs_atomic`, `.atomic_commit` або
+`.atomic_check`. Отже навіть stable 7.3.6 станом на 2026-11-27 не містить
+цього fix; `Cc: stable@vger.kernel.org` саме по собі не доводить backport.
 
-Для нашого зафіксованого профілю Kali/kernel `7.2.15+kali-amd64` це
-особливо важливо: перевірити source package/patch set самого Kali build,
-а не виводити статус лише з номера upstream stable. Якщо backport відсутній
-і regression відтворюється, `nouveau.atomic=0` — лише тимчасовий
-діагностичний обхід; acceptance має перевіряти normal atomic KMS з fix.
-
-Для нашого зафіксованого профілю Kali/kernel `7.2.15+kali-amd64` не робити
-висновок лише з номера версії. Потрібно перевірити вихідний пакет/commit або
-наявність atomic callbacks у зібраному Nouveau. Якщо backport відсутній і
-регресія відтворюється, `nouveau.atomic=0` — діагностичний тимчасовий обхід;
-основним acceptance лишається робота з atomic modesetting на виправленому
-ядрі.
+Для нашого зафіксованого Kali/kernel `7.2.15+kali-amd64` обов'язково
+перевірити source package/patch set або callbacks у зібраному Nouveau,
+а не робити висновок лише з номера upstream stable. Якщо backport
+відсутній і регресія відтворюється, `nouveau.atomic=0` — лише тимчасова
+діагностика; acceptance має перевіряти normal atomic KMS на ядрі з fix.
 
 Джерела:
 - [GP107 regression report and follow-up (2026-11-02 — 2026-11-25)](https://kernelthread.org/t/OS7PR01MB1391484D564CF93DFBB4C1DCE966A2@OS7PR01MB13914.jpnprd01.prod.outlook.kr)
+- [Nouveau work item #517: GP107 atomic modesetting regression](https://gitlab.freedesktop.org/drm/nouveau/-/work_items/517)
 - [Introduced: atomic modesetting by default for NV50+](https://github.com/torvalds/linux/commit/2652aca460dcfdd0d169bbfa358aa15804dc736b)
 - [Fix: add atomic DRM mode-config callbacks](https://github.com/torvalds/linux/commit/ed7fb901fce31588bd12ab95adc36ebcb51bc8ea)
 
