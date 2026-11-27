@@ -1,0 +1,19 @@
+# clean-room Vulkan compute benchmark artifacts
+bdf=0000:01:00.0
+binding=nvidia
+icd=/usr/share/vulkan/icd.d/nvidia_icd.json
+bench_rc=0
+capture_utc=2026-11-27T18:45:10Z
+uname=Linux WSM 7.2.15+kali-amd64 #1 SMP PREEMPT_DYNAMIC Kali 7.2.15-1kali1 (2026-11-03) x86_64 GNU/Linux
+
+6458a678643e5164da9f593da61b81d9bbddc6967bf74c863c32b17516cf05f5  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/00-utc.txt
+a3657f661522c0072d51a47f9c233f20274f9729078787708a44386409d22fd2  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/01-cmdline.txt
+7c604dfba9ed3b52ca8ff09b0fc4cbbb1ee5fc9908c5c0ea787ea65c102fd398  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/02-lspci.txt
+48345ab14930f65b3c7886469ec5e49cb43feb1a451dddf7e375f65cd68ad855  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/03-lsmod.txt
+3c4e97c1a405d62cc867e0ddc2ff9da84bc11758015e466bba1ee66777f252a0  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/04-binding.txt
+9c25ccf0cf19b0ee0c2d27d070d0058b52ea99a254c79c4619f379382b05ec12  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/05-icd.txt
+ae33a3e4913f4d7cdceb3265de94c5cd9bf2893373202efd250f696277ef5f90  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/06-vulkaninfo.txt
+bbc7c8b99cd1fc2072a5719444da80b2eda8df53b41e1f505abda94229d64fec  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/07-kernel-before.txt
+d4862646314d72dbf14b01d0ed1b59fdcb83289ce31cd4ac20b7a33b1d773685  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/08-run.log
+bbc7c8b99cd1fc2072a5719444da80b2eda8df53b41e1f505abda94229d64fec  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/09-kernel-after.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/agents/gp107-nvidia-re/experiments/vk-compute-bench/artifacts-transfer-4096-rep3/10-kernel-delta.txt

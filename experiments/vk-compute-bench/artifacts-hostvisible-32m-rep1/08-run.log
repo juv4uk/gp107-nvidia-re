@@ -1,0 +1,10 @@
+BENCH-BOARD-OK bdf=0000:01:00.0 vendor=0x10de device=0x1c82 binding=nvidia
+BENCH-PCI-RECORD bdf=0000:01:00.0 match=yes
+BENCH-DRIVER-RECORD id=4 name=NVIDIA info=580.196.11 device=NVIDIA GeForce GTX 1050 Ti api=0x00404138
+BENCH-ICD-RECORD icd=/usr/share/vulkan/icd.d/nvidia_icd.json
+BENCH-MEMORY-RECORD memType=8 path=HOST_VISIBLE|HOST_COHERENT
+BENCH-CORRECT elements=33554432 mismatch=0 checksum=0xe4a076f5
+BENCH-CORRECT-AFTER elements=33554432 mismatch=0 checksum=0xe4a076f5
+BENCH-CASE elements=33554432 bytes_per_buffer=134217728 groups=524288 warmup=5 iters=20 min_ns=39935594 median_ns=42577965 mean_ns=42536529 median_gb_s=9.4568 traffic_bytes=402653184
+BENCH-OK board=10de:1c82@0000:01:00.0 driver_id=4 driver_name=NVIDIA binding=nvidia pr21=NOT-RUN mmio=none
+BENCH_RC=0

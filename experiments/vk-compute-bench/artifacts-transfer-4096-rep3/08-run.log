@@ -1,0 +1,13 @@
+TRANSFER-BOARD-OK bdf=0000:01:00.0 vendor=0x10de device=0x1c82 binding=nvidia
+TRANSFER-PCI-RECORD bdf=0000:01:00.0 match=yes
+TRANSFER-DRIVER-RECORD id=4 name=NVIDIA info=580.196.11 device=NVIDIA GeForce GTX 1050 Ti
+TRANSFER-ICD-RECORD icd=/usr/share/vulkan/icd.d/nvidia_icd.json
+TRANSFER-MEM-RECORD host_type=8 device_type=7 device_local_only=1
+TRANSFER-CONFIG elements=4096 iters=20 warmup=2 local_size=64 pr21=NOT-RUN mmio=none
+TRANSFER-CORRECT elements=4096 mismatch=0 checksum=0xc8d96145
+TRANSFER-PHASE phase=h2d_a median_ns=19402 effective_gb_s=0.8444 traffic_bytes=16384
+TRANSFER-PHASE phase=h2d_b median_ns=18770 effective_gb_s=0.8729 traffic_bytes=16384
+TRANSFER-PHASE phase=compute median_ns=17417 effective_gb_s=2.8221 traffic_bytes=49152
+TRANSFER-PHASE phase=d2h_c median_ns=17997 effective_gb_s=0.9104 traffic_bytes=16384
+TRANSFER-OK board=10de:1c82@0000:01:00.0 driver_id=4 driver_name=NVIDIA binding=nvidia pr21=NOT-RUN mmio=none
+BENCH_RC=0

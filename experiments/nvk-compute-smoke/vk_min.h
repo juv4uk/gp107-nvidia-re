@@ -76,8 +76,11 @@ typedef uint32_t VkDeviceCreateFlags2_unused;
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY 4
 #define VK_DRIVER_ID_MESA_LLVMPIPE 13
 
+#define VK_BUFFER_USAGE_TRANSFER_SRC_BIT 0x00000001U
+#define VK_BUFFER_USAGE_TRANSFER_DST_BIT 0x00000002U
 #define VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 0x00000020U
 #define VK_SHARING_MODE_EXCLUSIVE 0
+#define VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT 0x00000001U
 #define VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 0x00000002U
 #define VK_MEMORY_PROPERTY_HOST_COHERENT_BIT 0x00000004U
 #define VK_DESCRIPTOR_TYPE_STORAGE_BUFFER 7
@@ -203,6 +206,10 @@ typedef struct VkBufferCreateInfo {
 typedef struct VkMemoryRequirements {
     VkDeviceSize size, alignment; uint32_t memoryTypeBits;
 } VkMemoryRequirements;
+
+typedef struct VkBufferCopy {
+    VkDeviceSize srcOffset, dstOffset, size;
+} VkBufferCopy;
 
 typedef struct VkMemoryAllocateInfo {
     VkStructureType sType; const void* pNext; VkDeviceSize allocationSize;
@@ -332,6 +339,8 @@ typedef VkResult (*PFN_vkBeginCommandBuffer)(VkCommandBuffer, const VkCommandBuf
 typedef void (*PFN_vkCmdBindPipeline)(VkCommandBuffer, VkPipelineBindPoint, VkPipeline);
 typedef void (*PFN_vkCmdBindDescriptorSets)(VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout, uint32_t, uint32_t, const VkDescriptorSet*, uint32_t, const uint32_t*);
 typedef void (*PFN_vkCmdDispatch)(VkCommandBuffer, uint32_t, uint32_t, uint32_t);
+typedef void (*PFN_vkCmdCopyBuffer)(VkCommandBuffer, VkBuffer, VkBuffer,
+                                    uint32_t, const VkBufferCopy*);
 typedef VkResult (*PFN_vkEndCommandBuffer)(VkCommandBuffer);
 typedef VkResult (*PFN_vkCreateFence)(VkDevice, const VkFenceCreateInfo*, const VkAllocationCallbacks*, VkFence*);
 typedef void (*PFN_vkDestroyFence)(VkDevice, VkFence, const VkAllocationCallbacks*);

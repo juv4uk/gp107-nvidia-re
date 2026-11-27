@@ -67,6 +67,23 @@ BENCH_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json bash run_matrix_grid.sh
 
 Повний результат і межі — `docs/21-proprietary-performance-matrix.md`.
 
+## Transfer + DEVICE_LOCAL compute
+
+Окремий `vk_transfer_bench` кладе дані через staging у DEVICE_LOCAL, має
+окремий fence на кожну з чотирьох фаз (`h2d_a`, `h2d_b`, `compute`, `d2h_c`)
+і не підміняє HOST_VISIBLE-результати:
+
+```sh
+make vk_transfer_bench
+BENCH_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json \
+BENCH_ELEMENTS=8388608 BENCH_BIN=$PWD/vk_transfer_bench \
+BENCH_OUT=$PWD/artifacts-transfer-example bash run.sh
+
+BENCH_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json bash run_transfer_grid.sh
+```
+
+Деталі й межі — `docs/22-device-local-transfer-and-compute-phases.md`.
+
 ## Межі
 
 - Жодного MMIO read/write, `nva`, custom reset, `/dev/nvidia*`, `Tested-by`.
