@@ -23,17 +23,21 @@ When it exits with code 0, the run has:
 It reports the physical device API version returned by the driver and
 supports two required sizes: 257 elements (to exercise the final partial
 workgroup) and 1,048,576 elements (a larger dispatch/buffer case). The
-expected Vulkan API version is intentionally **not hard-coded**. We checked
-the versioned Debian Mesa `26.3.1-1` source snapshot (in Debian experimental):
-`nvk_get_vk_version()` in
-[`nvk_physical_device.c`](https://sources.debian.org/src/mesa/26.3.1-1/src/nouveau/vulkan/nvk_physical_device.c)
-returns 1.3 when `cls_eng3d < TURING_A`, including Pascal/GP107, because
-`hostImageCopy` is Turing+ only. It also exposes
-`VK_EXT_pci_bus_info` on discrete GPUs. The generic Mesa 26.3.1 release
-headline is Vulkan 1.4, but the release notes explicitly say that the
-reported per-device `apiVersion` depends on the particular driver. We
-therefore print the actual device value and never substitute the release
-headline for a hardware witness.
+expected Vulkan API version is intentionally **not hard-coded**. It is pinned
+to the exact upstream release tag `upstream-mesa-26.3.1`, commit
+`fec8830e9c94b1d67f3d8469467d5529fb2978cd`, tarball SHA-256
+`4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961`.
+In that source, `nvk_get_vk_version()` returns 1.3 for
+`MAXWELL_A <= cls_eng3d < TURING_A`, including Pascal/GP107, because
+`hostImageCopy` is Turing+ only. It also enables `VK_EXT_pci_bus_info`
+for discrete GPUs. Mesa 26.3.1's generic release headline is Vulkan 1.4, but
+the release notes say the reported per-device `apiVersion` depends on the
+driver. We therefore print the actual device value rather than substituting
+the release headline for a hardware witness.
+
+[Upstream Mesa tag](https://android.googlesource.com/platform/external/mesa3d/+/refs/tags/upstream-mesa-26.3.1) ·
+[version source](https://android.googlesource.com/platform/external/mesa3d/+/refs/tags/upstream-mesa-26.3.1/src/nouveau/vulkan/nvk_physical_device.c) ·
+[release notes](https://docs.mesa3d.org/relnotes/26.3.1.html)
 
 ## Build
 
@@ -77,6 +81,12 @@ BDF=0000:01:00.0
 # These flags explicitly opt into two different side-effect boundaries.
 # Do not add them until the corresponding owner approvals and issue #18 gates
 # have been completed.
+# Enumeration-only witness: requires explicit owner approval; no queue/workload.
+DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
+  ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
+  --enumeration-only
+
+# Compute acceptance: separate approval after issue #18 gates.
 DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
   ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
   --allow-gpu-submit --elements 257 --spv vector_add.spv
@@ -99,7 +109,9 @@ Save together:
 - stdout and stderr;
 - `uname -a`, distribution release, `cat /proc/cmdline`;
 - `lspci -Dnnk -s "$BDF"` and `lspci -Dvv -s "$BDF"`;
-- `vulkaninfo --summary`;
+- Do not run a separate `vulkaninfo --summary` for evidence; the approved
+  enumeration-only mode already performs device discovery and an additional
+  invocation would create another temporary GR channel.
 - kernel journal for the same boot:
   `sudo journalctl -b -k -o short-monotonic --no-pager`;
 - SHA-256 of `nvk-vector-add.c`, `vector_add.comp`, generated SPIR-V,
@@ -115,7 +127,8 @@ test -n "$BDF" || { echo "GP107_NOT_FOUND"; exit 2; }
 
 for N in 257 1048576; do
   DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
-    ./nvk-vector-add --bdf "$BDF" --elements "$N" --spv vector_add.spv \
+    ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
+      --allow-gpu-submit --elements "$N" --spv vector_add.spv \
     2>&1 | tee "nvk-vector-add-$BDF-$N.log"
   rc=${PIPESTATUS[0]}
   printf 'EXIT_STATUS=%s\n' "$rc" | tee -a "nvk-vector-add-$BDF-$N.log"
@@ -125,18 +138,19 @@ done
 
 ## Fail-closed execution gates
 
-The executable refuses to call `vkCreateInstance()` or `vkEnumeratePhysicalDevices()` unless **both** explicit command-line acknowledgements are present:
+The executable defaults to **no Vulkan instance creation and no physical-device enumeration**. There are two separately acknowledged modes:
 
-- `--allow-temp-gr-channel-init`: acknowledges that NVK physical-device discovery may open the Nouveau render node read/write, initialize VM/NVIF state, and allocate/free a temporary GR channel plus engine subchannel objects.
-- `--allow-gpu-submit`: acknowledges that the program proceeds beyond enumeration to Vulkan device/queue creation and a real compute submit/readback.
+- `--allow-temp-gr-channel-init` is required for any NVK discovery. It acknowledges that physical-device enumeration may open the Nouveau render node read/write, initialize VM/NVIF state, and allocate/free a temporary GR channel and subchannel objects.
+- `--enumeration-only` selects a limited witness. With the first flag, it enumerates the exact GP107 and verifies PCI/BDF plus Mesa NVK driver identity, then destroys the Vulkan instance and exits. It does not create a `VkDevice`, queue, fence, or submit a GPFIFO workload. This is still **not read-only** because discovery has the channel/VM/NVIF effects above.
+- `--allow-gpu-submit` is required for compute mode and acknowledges continuing beyond enumeration to Vulkan device/queue creation and an actual compute submit/readback. It cannot be combined with `--enumeration-only`.
 
-Without both flags, the process prints `ENUMERATION_NOT_AUTHORIZED`, states that no Vulkan instance or physical device was enumerated, and exits with code 4 before Vulkan instance creation. This is a guard against accidental execution, not a substitute for the separate owner approval, issue #18 evidence gates, exact kernel/Mesa provenance, or rollback plan. **Do not pass either flag now.**
+Without the applicable explicit flags, the process prints `ENUMERATION_NOT_AUTHORIZED`, states that no Vulkan instance or physical device was enumerated, and exits with code 4 before Vulkan instance creation. This guard is not a substitute for separate owner approval, issue #18 evidence gates, exact kernel/Mesa provenance, or a rollback plan. **Do not pass either acknowledgement flag now.**
 
-Exact upstream Mesa release pin: `upstream-mesa-26.3.1`, commit `fec8830e9c94b1d67f3d8469467d5529fb2978cd`, tarball SHA-256 `4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961`.
+The exact upstream Mesa source pin is `upstream-mesa-26.3.1` (commit `fec8830e9c94b1d67f3d8469467d5529fb2978cd`, tarball SHA-256 `4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961`). The source audit in [issue #18](https://github.com/juv4uk/gp107-nvidia-re/issues/18#issuecomment-7209842238) establishes the discovery and queue-init boundaries.
 
-On that release, physical-device discovery calls `nvkmd_nouveau_try_create_pdev()` → `nouveau_ws_device_new()`; it opens the DRM render node with `O_RDWR`, initializes VM/NVIF state, creates a temporary `NOUVEAU_FIFO_ENGINE_GR` context, queries engine classes and destroys the context. Kernel channel setup also creates a separate KILLED event and allows it; this is not the FIFO NONSTALL event. The `NON_STALL_INTR` object is created without ALLOW and remains `allowed=0`. There is no Mesa `DRM_NOUVEAU_EXEC` on this discovery path. The exact source review is recorded in [issue #18](https://github.com/juv4uk/gp107-nvidia-re/issues/18#issuecomment-7209842238).
+On this release, physical-device discovery calls `nvkmd_nouveau_try_create_pdev()` → `nouveau_ws_device_new()`. It opens the render node with `O_RDWR`, initializes VM/NVIF state, creates a temporary `NOUVEAU_FIFO_ENGINE_GR` context, queries engine classes, and destroys that context. Kernel channel setup allows a separate KILLED event; this is not the FIFO NONSTALL event. The `NON_STALL_INTR` object is created without ALLOW and remains `allowed=0`. There is no Mesa `DRM_NOUVEAU_EXEC` on this discovery path.
 
-Device/queue creation is a different boundary: on the same exact Mesa 26.3.1 tag, NVK queue initialization builds initial engine state and reaches `nvk_queue_push()` / exec. It is therefore not an acceptable no-submit probe.
+Device/queue creation is a different boundary: on the same exact Mesa 26.3.1 tag, NVK queue initialization builds initial engine state and reaches `nvk_queue_push()` / exec. It is therefore not a no-submit probe.
 
 ## Enumeration is not strictly read-only
 
