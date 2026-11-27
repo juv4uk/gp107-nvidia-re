@@ -480,6 +480,82 @@ GP107_SWAP_TARGET="$DECOY_ID" "$WORK/mmio-bdf-swap-test" "$FIX" pinned-pci-ident
 rm "$FIX/bus/pci/devices/0000:01:00.0"
 ln -s "$FIX/devices/0000:01:00.0" "$FIX/bus/pci/devices/0000:01:00.0"
 
+step 'Pascal retains one pinned dirfd when BDF symlink changes after openat'
+cat > "$WORK/openat-swap.c" <<'EOF'
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+typedef int (*openat_fn)(int, const char *, int, ...);
+static openat_fn real_openat;
+static int swapped;
+
+int openat(int dirfd, const char *path, int flags, ...)
+{
+    int fd;
+    mode_t mode = 0;
+    va_list ap;
+    union {
+        void *object;
+        openat_fn function;
+    } symbol;
+
+    if (real_openat == NULL) {
+        symbol.object = dlsym(RTLD_NEXT, "openat");
+        real_openat = symbol.function;
+        if (real_openat == NULL) {
+            errno = ENOSYS;
+            return -1;
+        }
+    }
+
+    if ((flags & O_CREAT) != 0) {
+        va_start(ap, flags);
+        mode = (mode_t)va_arg(ap, int);
+        va_end(ap);
+        fd = real_openat(dirfd, path, flags, mode);
+    } else {
+        fd = real_openat(dirfd, path, flags);
+    }
+
+    if (fd >= 0 && !swapped && dirfd == AT_FDCWD &&
+        strstr(path, "/bus/pci/devices/0000:01:00.0") != NULL) {
+        const char *replacement = getenv("GP107_SWAP_TARGET");
+        if (replacement == NULL ||
+            unlink(path) != 0 || symlink(replacement, path) != 0) {
+            int saved = errno;
+            close(fd);
+            errno = saved;
+            fprintf(stderr, "PAS-CHECK-FAIL step=swap errno=%d\\n", saved);
+            return -1;
+        }
+        swapped = 1;
+        fprintf(stderr, "PAS-PINNED-FD-SWAP-OK after-openat=1\\n");
+    }
+    return fd;
+}
+EOF
+cc -shared -fPIC -Wall -Wextra -Werror "$WORK/openat-swap.c" -ldl \
+  -o "$WORK/libopenat-swap.so"
+GP107_SWAP_TARGET="$DECOY_ID" LD_PRELOAD="$WORK/libopenat-swap.so" \
+  "$PASBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+  >"$WORK/mmio-pas-pinned.out" 2>"$WORK/mmio-pas-pinned.err"
+grep -Fq 'PAS-PINNED-FD-SWAP-OK after-openat=1' "$WORK/mmio-pas-pinned.err" \
+  || fail 'Pascal race injector did not replace the BDF symlink after openat'
+grep -Fq '(value . 0x1c8210de)' "$WORK/mmio-pas-pinned.out" \
+  || fail 'Pascal mapper did not read from the already-pinned GP107 directory'
+[ "$(readlink "$FIX/bus/pci/devices/0000:01:00.0")" = "$DECOY_ID" ] \
+  || fail 'Pascal race injector did not leave the decoy path in place'
+rm "$FIX/bus/pci/devices/0000:01:00.0"
+ln -s "$FIX/devices/0000:01:00.0" "$FIX/bus/pci/devices/0000:01:00.0"
+echo 'PASCAL-PINNED-DIRFD-OK bdf-symlink-swap=survived pinned-resource0=original'
+
 step 'MMIO refuses an unaligned 32-bit offset'
 if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
     >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
