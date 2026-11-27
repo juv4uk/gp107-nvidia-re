@@ -9,8 +9,9 @@
 /*
  * Optional read-only aperture seam. Software-gated research code only:
  * physical MMIO, driver unbind and alternate boot are not authorized.
- * The public operation re-reads PCI identity and enforces opt-in, binding,
- * BAR size and offset checks internally. The allow flag is not owner approval.
+ * The public operation verifies PCI identity, BDF and subsystem data through
+ * the same pinned directory fd used for binding/resource0, then enforces opt-in,
+ * BAR size and offset checks. The allow flag is not owner approval.
  *
  * No write mapping, RM requests, FIFO, doorbell, firmware or BOOT0 value.
  */
