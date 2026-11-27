@@ -82,6 +82,8 @@ for marker in \
   '(driver (bound . yes) (name . "nvidia"))' \
   '(rm-control . none)' \
   '(boot0 . unproven)' \
+  '(source . caller-supplied-sysfs-root)' \
+  '(evidence (pci . sysfs-observation) (driver . sysfs-observation) (boot0 . unproven))' \
   '(summary . IDENTITY-OK)'; do
   grep -Fq "$marker" "$WORK/inv.out" || fail "нема маркера: $marker"
 done
@@ -103,7 +105,7 @@ step 'capability ledger (bound driver denies MMIO, RM deferred)'
 for marker in \
   '(kind . gp107-capability-ledger)' \
   '(abi-pin . untouched)' \
-  '(pci-inventory . granted)' \
+  '(pci-inventory . observed)' \
   '(bar0-decode . complete)' \
   '(rm-identity . deferred) (reason . not-in-this-slice)' \
   '(mmio-read . denied) (reason . driver-bound)' \

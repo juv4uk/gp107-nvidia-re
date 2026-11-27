@@ -47,8 +47,8 @@ int gp107_capability_report(const struct gp107_inventory *inv,
     append_line(out, cap, "((kind . gp107-capability-ledger)\n");
     append_line(out, cap, " (authority . gp107-research-not-abi)\n");
     append_line(out, cap, " (abi-pin . untouched)\n");
-    append_line(out, cap, " (pci-inventory . granted)"
-                          " (evidence . runtime-proven)\n");
+    append_line(out, cap, " (pci-inventory . observed)"
+                          " (evidence . sysfs-observation)\n");
     append_line(out, cap, " (bar0-decode . %s)"
                           " (evidence . statically-proven-layout)\n",
                 inv->pci.cfg_bytes == GP107_CONFIG_BYTES ? "complete" : "partial");

@@ -117,8 +117,12 @@ static int parse_bdf(const char *name, struct gp107_pci_identity *id,
     unsigned int bus = 0;
     unsigned int slot = 0;
     unsigned int func = 0;
+    int consumed = 0;
 
-    if (sscanf(name, "%4x:%2x:%2x.%u", &domain, &bus, &slot, &func) != 4) {
+    if (name == NULL || strlen(name) != 12 ||
+        sscanf(name, "%4x:%2x:%2x.%1x%n",
+               &domain, &bus, &slot, &func, &consumed) != 4 ||
+        consumed != 12 || name[consumed] != '\0') {
         return -1;
     }
     if (domain > 0xffffu || bus > 0xffu || slot > 0x1fu || func > 7u) {
@@ -139,23 +143,27 @@ static int read_driver_link(const char *devdir,
                             struct gp107_driver_binding *out,
                             char *err, size_t errsz)
 {
-    char path[GP107_PATH_CAP];
     char target[GP107_PATH_CAP];
     ssize_t n;
     const char *base;
     size_t len;
+    int dirfd;
 
     memset(out, 0, sizeof(*out));
-    if (join_path(path, sizeof(path), devdir, "driver") != 0) {
+    /* Pin the PCI device directory first. ENOENT from readlinkat() then means
+     * only that this directory has no "driver" entry, not that the device
+     * directory itself disappeared between two pathname lookups. */
+    dirfd = open(devdir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dirfd < 0) {
         return gp107_set_error(err, errsz,
-                               "IDENTITY-FAIL step=driver-link-path code=%d",
-                               GP107_ERR_PARSE);
+                               "IDENTITY-FAIL step=driver-parent-open code=%d errno=%d",
+                               GP107_ERR_DRIVER_LINK, errno);
     }
     errno = 0;
-    n = readlink(path, target, sizeof(target) - 1);
+    n = readlinkat(dirfd, "driver", target, sizeof(target) - 1);
     if (n < 0) {
         int saved = errno;
-        /* Only ENOENT proves that there is no driver link. */
+        (void)close(dirfd);
         if (saved == ENOENT) {
             out->bound = 0;
             return GP107_OK;
@@ -164,6 +172,7 @@ static int read_driver_link(const char *devdir,
                                "IDENTITY-FAIL step=driver-link-read code=%d errno=%d",
                                GP107_ERR_DRIVER_LINK, saved);
     }
+    (void)close(dirfd);
     if (n == 0 || (size_t)n >= sizeof(target) - 1) {
         return gp107_set_error(err, errsz,
                                "IDENTITY-FAIL step=driver-link-invalid code=%d length=%ld",
