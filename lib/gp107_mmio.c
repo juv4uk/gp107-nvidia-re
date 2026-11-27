@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
+static int require_optin(int allow, char *err, size_t errsz)
 {
     if (!allow) {
         return gp107_set_error(err, errsz,
@@ -18,8 +18,8 @@ int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
     return GP107_OK;
 }
 
-int gp107_mmio_check_driver(const struct gp107_inventory *inv,
-                            char *err, size_t errsz)
+static int require_unbound(const struct gp107_inventory *inv,
+                           char *err, size_t errsz)
 {
     if (inv == NULL) {
         return gp107_set_error(err, errsz,
@@ -34,7 +34,8 @@ int gp107_mmio_check_driver(const struct gp107_inventory *inv,
     return GP107_OK;
 }
 
-int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
+/* Private low-level mapping helper: never exported without the gates above. */
+static int map_read32(const char *sysfs_root, const char *bdf,
                       uint32_t offset, uint32_t *value,
                       char *err, size_t errsz)
 {
@@ -44,17 +45,8 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
     volatile const unsigned char *p;
     uint32_t v;
     int n;
+    struct stat st;
 
-    if (sysfs_root == NULL || bdf == NULL || value == NULL) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=bad-argument code=%d",
-                               GP107_ERR_USAGE);
-    }
-    if (offset > GP107_MMIO_WINDOW - 4u) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=offset-out-of-window code=%d offset=0x%x",
-                               GP107_ERR_OFFSET, offset);
-    }
     n = snprintf(path, sizeof(path), "%s/bus/pci/devices/%s/resource0",
                  sysfs_root, bdf);
     if (n < 0 || (size_t)n >= sizeof(path)) {
@@ -62,12 +54,24 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
                                "MMIO-FAIL step=path-too-long code=%d",
                                GP107_ERR_PARSE);
     }
+
     fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=resource0-open code=%d errno=%d",
                                GP107_ERR_OPEN, errno);
     }
+
+    /* Re-check the opened object, not only the earlier sysfs inventory.
+     * Unknown/short BAR resources are rejected before mmap. */
+    if (fstat(fd, &st) != 0 || st.st_size < (off_t)GP107_MMIO_WINDOW) {
+        int saved = errno;
+        (void)close(fd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bar0-size-unavailable code=%d errno=%d size=%lld",
+                               GP107_ERR_BAR_SIZE, saved, (long long)st.st_size);
+    }
+
     map = mmap(NULL, GP107_MMIO_WINDOW, PROT_READ, MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
         int saved = errno;
@@ -84,4 +88,51 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
     (void)munmap(map, GP107_MMIO_WINDOW);
     *value = v;
     return GP107_OK;
+}
+
+int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
+                      int allow, uint32_t offset, uint32_t *value,
+                      char *err, size_t errsz)
+{
+    struct gp107_inventory inventory;
+    int rc;
+
+    if (sysfs_root == NULL || expect_bdf == NULL || value == NULL ||
+        err == NULL || errsz == 0) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bad-argument code=%d",
+                               GP107_ERR_USAGE);
+    }
+
+    rc = require_optin(allow, err, errsz);
+    if (rc != GP107_OK) {
+        return rc;
+    }
+
+    rc = gp107_inventory_scan(sysfs_root, expect_bdf,
+                              &inventory, err, errsz);
+    if (rc != GP107_OK) {
+        return rc;
+    }
+
+    rc = require_unbound(&inventory, err, errsz);
+    if (rc != GP107_OK) {
+        return rc;
+    }
+
+    if (inventory.pci.bar0_size < GP107_MMIO_WINDOW) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=bar0-size-unavailable code=%d size=%u required=%u",
+                               GP107_ERR_BAR_SIZE, inventory.pci.bar0_size,
+                               GP107_MMIO_WINDOW);
+    }
+
+    if (offset > GP107_MMIO_WINDOW - 4u ||
+        offset > inventory.pci.bar0_size - 4u) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=offset-out-of-window code=%d offset=0x%x size=%u",
+                               GP107_ERR_OFFSET, offset, inventory.pci.bar0_size);
+    }
+
+    return map_read32(sysfs_root, inventory.bdf, offset, value, err, errsz);
 }
