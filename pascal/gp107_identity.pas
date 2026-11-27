@@ -45,6 +45,7 @@ const
   STATUS_MAP            = 18;
   STATUS_SIZE           = 19;
   STATUS_BINDING        = 20;
+  STATUS_SAFE_OFFSET_UNPROVEN = 21;
   STATUS_USAGE          = 64;
 
 type
