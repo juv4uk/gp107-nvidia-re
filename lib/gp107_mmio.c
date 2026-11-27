@@ -34,40 +34,56 @@ int gp107_mmio_check_driver(const struct gp107_inventory *inv,
     return GP107_OK;
 }
 
-int gp107_mmio_read32(const char *sysfs_root,
-                      const struct gp107_inventory *inv,
-                      uint32_t offset, uint32_t *value,
-                      char *err, size_t errsz)
+int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
+                      uint32_t offset, int allow,
+                      uint32_t *value, char *err, size_t errsz)
 {
+    struct gp107_inventory inv;
     char path[512];
     int fd;
     void *map;
     volatile const unsigned char *p;
     uint32_t v;
     int n;
+    int rc;
 
-    if (sysfs_root == NULL || inv == NULL || value == NULL) {
+    if (sysfs_root == NULL || expect_bdf == NULL || value == NULL) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bad-argument code=%d",
                                GP107_ERR_USAGE);
     }
-    if (inv->pci.bar0_size < GP107_MMIO_WINDOW) {
+
+    /* Public C callers receive the same hard gates as the CLI. */
+    rc = gp107_mmio_require_optin(allow, err, errsz);
+    if (rc != GP107_OK) {
+        return rc;
+    }
+    rc = gp107_inventory_scan(sysfs_root, expect_bdf, &inv, err, errsz);
+    if (rc != GP107_OK) {
+        return rc;
+    }
+    rc = gp107_mmio_check_driver(&inv, err, errsz);
+    if (rc != GP107_OK) {
+        return rc;
+    }
+
+    if (inv.pci.bar0_size < GP107_MMIO_WINDOW) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bar0-size-too-small code=%d size=0x%x",
-                               GP107_ERR_SIZE, inv->pci.bar0_size);
+                               GP107_ERR_SIZE, inv.pci.bar0_size);
     }
-    if (offset > GP107_MMIO_WINDOW - 4u) {
+    if ((offset & 3u) != 0u || offset > GP107_MMIO_WINDOW - 4u) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=offset-out-of-window code=%d offset=0x%x",
                                GP107_ERR_OFFSET, offset);
     }
-    if ((uint64_t)offset + 4u > inv->pci.bar0_size) {
+    if ((uint64_t)offset + 4u > inv.pci.bar0_size) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=offset-out-of-range code=%d offset=0x%x",
                                GP107_ERR_SIZE, offset);
     }
     n = snprintf(path, sizeof(path), "%s/bus/pci/devices/%s/resource0",
-                 sysfs_root, inv->bdf);
+                 sysfs_root, inv.bdf);
     if (n < 0 || (size_t)n >= sizeof(path)) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=path-too-long code=%d",
