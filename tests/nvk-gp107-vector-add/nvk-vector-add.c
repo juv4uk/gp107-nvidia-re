@@ -284,7 +284,7 @@ int main(int argc, char **argv)
            "vkEnumeratePhysicalDevices(list)");
 
     VkPhysicalDevice physical = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties base_properties;
+    VkPhysicalDeviceProperties base_properties = {0};
     unsigned int matching_devices = 0;
     for (uint32_t i = 0; i < physical_count; ++i) {
         VkPhysicalDeviceProperties properties;
