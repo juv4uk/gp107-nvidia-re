@@ -31,6 +31,7 @@ docs/
   05-gp107-capability-matrix.md evidence-based GP107 capability and proof-state matrix
   06-open-driver-landscape.md  upstream Nouveau/Mesa/NVK/Rusticl research for GP107
   07-next-research-direction.md R580 RM command submission and GPU-sync research plan (E1–E6)
+  08-final-sprint-report.md     підсумок proprietary R580 RM-зондів; не є Nouveau/NVK runtime acceptance
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda

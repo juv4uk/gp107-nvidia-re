@@ -1,4 +1,4 @@
-# 07 — Підсумковий звіт спринту GP107/GTX 1050 Ti під R580
+# 08 — Підсумковий звіт спринту GP107/GTX 1050 Ti під R580
 
 Це завершальний звіт семи частин спринту `gp107-nvidia-re`. Репозиторій
 залишається **неавторитетною research-базою**: він не є новою системною ABI,
@@ -103,55 +103,6 @@ sudo -n bash scripts/test-root-witness.sh
 сесії root-свідок показав `open(resource0)` OK і
 `mmap(PROT_READ|MAP_SHARED)` → `EINVAL`; сама причина `EINVAL` лишається
 `UNPROVEN`. Базовий гейт цей свідок не вимагає.
-
-### 3.5 Живий SENS TCP semantic oracle
-
-Це **окремий від GP107** інструмент: `sens --tcp=9999 --protocol=sexpr`
-на `127.0.0.1:9999`. Він не є coordination plane і не є доказом RM, BAR0
-чи BOOT0. Запуск і кваліфікація відбуваються тільки через pinned Guix
-dev-профіль SENS:
-
-```bash
-bash /tmp/opencode/oracle-up.sh
-```
-
-Фактично: `ORACLE_UP_RC=0`. Порт уже мав живий process, тому скрипт не
-створював другого listener, а кваліфікував наявний PID. Мета-файл
-`~/.local/state/sens/oracle.meta` зафіксував:
-
-```text
-head=6d23ead1ed38523d58f59ba8ff9d626f287c56c7
-bin_sha256=f5061bffb8900cd32f638d9f588e0d5e880de8f80ea69c9987454b49824f8d77
-version=sens 0.42.3
-port=9999
-pid=53680
-started_utc=2026-11-27T03:29:46Z
-launcher=GUIX=/usr/local/bin/guix /home/agents/GitHub/sens/guix/run dev
-```
-
-Сирі запити й відповіді (збережено в `~/.local/state/sens/oracle.*.probe`):
-
-```text
-(request (id 1) (op contract-version))
-(response (id 1) (status ok) (value (0 0)) (output ()) (contract-version (0 0)) (server-generation 1795750188))
-
-(request (id 2) (op eval) (source "(quote ok)"))
-(response (id 2) (status ok) (value ok) (output ()) (contract-version (0 0)) (server-generation 1795750188))
-
-(request (id 3) (op eval) (source "(монотонний-мс)"))
-(response (id 3) (status error) (kind type-error) (classification fault) (message "math requires explicit D12+ operands; D1-D10 bit words and unqualified numbers are not arithmetic values; operand_position=1 actual_kind=legacy-number") (contract-version (0 0)) (server-generation 1795750188))
-```
-
-Стани доказу:
-
-- `runtime-proven`: живий TCP-протокол відповідає на `contract-version`;
-  eval `(quote ok)` повертає `ok`; PID, head, хеш бінарника, версія, порт і
-  час старту кваліфіковані мета-файлом.
-- `UNPROVEN`: часовий eval. Окрім наведеного `type-error`, окрема проба
-  `(узгоджений-час-зараз)` дала `type-error ... D10 0011110001`. Часову
-  поведінку через TCP не зараховано як успішну.
-- `interpretation`: `contract-version (0 0)` у сирій відповіді не є заявою
-  Contract 12.0 conformance і не замінює релізних мовних гейтів.
 
 ## 4. Класифікація доказів
 
