@@ -149,6 +149,15 @@ ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 echo 'NEGATIVE-DRIVER-LINK-OK unknown=denied only-ENOENT=unbound'
 
 
+step 'MMIO CLI requires an explicit offset'
+if "$BIN" mmio-read --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/no-offset.out" 2>"$WORK/no-offset.err"; then
+  fail 'MMIO CLI accepted implicit offset zero'
+fi
+grep -Fq 'USAGE-FAIL step=offset-required' "$WORK/no-offset.err" \
+  || fail 'missing explicit-offset usage error'
+echo 'NEGATIVE-MMIO-OFFSET-REQUIRED-OK'
+
 step 'MMIO gate (opt-in required before any mapping)'
 if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
     >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
@@ -203,11 +212,20 @@ int main(int argc, char **argv)
     return 0;
 }
 EOF
-cc -std=c11 -Wall -Wextra -Werror -pedantic -I"$ROOT/lib" \
-  "$WORK/mmio-api-test.c" "$ROOT/lib/gp107_identity.c" \
+cc -std=c11 -Wall -Wextra -Werror -pedantic -D_POSIX_C_SOURCE=200809L \
+  -I"$ROOT/lib" "$WORK/mmio-api-test.c" "$ROOT/lib/gp107_identity.c" \
   "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-api-test"
 "$WORK/mmio-api-test" "$FIX"
 
+
+step 'MMIO refuses an unaligned 32-bit offset'
+if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
+  fail 'MMIO accepted unaligned offset'
+fi
+grep -Fq 'MMIO-FAIL step=offset-unaligned' "$WORK/unaligned.err" \
+  || fail 'missing unaligned-offset failure marker'
+echo 'NEGATIVE-MMIO-ALIGNMENT-OK offset=0x2 denied'
 
 step 'negative witness (undersized resource0 is refused)'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
@@ -308,6 +326,13 @@ PY
 "$BIN" inventory --sysfs-root="$FIX" >"$WORK/io-bar.out"
 grep -Fq '(bar0 (raw . 0xee000001) (space . io) (width . 32-bit) (prefetch . no)' "$WORK/io-bar.out" \
   || fail 'I/O-прапорець BAR0 не декодовано'
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/io-mmio.out" 2>"$WORK/io-mmio.err"; then
+  fail 'MMIO accepted an I/O-space BAR0'
+fi
+grep -Fq 'MMIO-FAIL step=bar0-not-memory' "$WORK/io-mmio.err" \
+  || fail 'missing I/O-space BAR0 denial'
+echo 'NEGATIVE-BAR0-SPACE-OK io-space=denied'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
 import sys
 p = sys.argv[1]
