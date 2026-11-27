@@ -24,7 +24,6 @@ static void append_line(char *out, size_t cap, const char *fmt, ...)
 int gp107_capability_report(const struct gp107_inventory *inv,
                             int allow_mmio, char *out, size_t cap)
 {
-    const char *state;
     const char *reason;
 
     if (inv == NULL || out == NULL || cap == 0) {
@@ -32,16 +31,8 @@ int gp107_capability_report(const struct gp107_inventory *inv,
     }
     out[0] = '\0';
 
-    if (inv->driver.bound) {
-        state = "denied";
-        reason = "driver-bound";
-    } else if (!allow_mmio) {
-        state = "deferred";
-        reason = "opt-in-required";
-    } else {
-        state = "granted";
-        reason = "read-only-window";
-    }
+    (void)allow_mmio;
+    reason = inv->driver.bound ? "driver-bound" : "owner-authorization-required";
 
     append_line(out, cap, "((kind . gp107-capability-ledger)\n");
     append_line(out, cap, " (authority . gp107-research-not-abi)\n");
