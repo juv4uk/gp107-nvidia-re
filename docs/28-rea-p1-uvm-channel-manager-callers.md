@@ -89,8 +89,12 @@ test eax, eax               ; статус
 | `0x080bb1d0` | `r13` | `[r13+0x19f8]` | `statically proven` |
 | `0x080bb2d2` | `rbx` | `[rbx+0x19f8]` | `statically proven` |
 
-Це замикається з `docs/27`: у самій функції `r12 = rsi`, потім
-`[r12] = rax` (новий менеджер), а `rbp = rdi`, `[new_manager] = rbp`. Отже:
+Це замикається з `docs/27`: у самій функції `r12 = rsi` (`0x080365c0`),
+потім `rax = __uvm_kvmalloc_zero(0x890, …)`, `[r12] = rax` (`0x080365e6`),
+а `rbp = rdi`, `[new_manager] = rbp` (`0x080365ea`) — **statically proven**
+за `ev_3f9de99c323fa009fab6c0b7132e79f5152ca93e595541a59baafff63370befe`
+і `ev_85a6c60b304e90601d96418caced27737010bde3b04846f29c02c1363b6069b8`.
+Отже:
 
 - `rdi` — батьківський об'єкт, який зберігається всередині нового менеджера;
 - `rsi` — вказівник на слот `parent+0x19f8`, куди записується новий менеджер;
@@ -137,10 +141,12 @@ release/tag/publish, зміни pin-ів/SENS/CML/ADR/target contract.
 
 ## 6. Наступний найменший крок
 
-Знайти store у `parent+0x19f8` у межах уже відкритих вікон `add_gpu` і області
-`0x080bad…` (без `/r`, без `izz~`), щоб остаточно ідентифікувати батьківський
-об'єкт. Після цього — окреме вузьке порівняння з `channel_pool_add`,
-не змішуючи з runlist.
+Store у `parent+0x19f8` уже доведено в самій callee (`[r12]=rax`, де
+`r12=rsi=&parent+0x19f8`); окремий пошук store не потрібен. Наступний найменший
+крок — звузити питання до типу батька: перевірити перший аргумент `add_gpu`
+та call-site області `0x080bad…` у межах уже відкритих вікон (без `/r`,
+без `izz~`), не змішуючи з runlist. Назва типу лишається `interpretation`,
+доки немає source-proven символу.
 
 ## Ukrainian one-liner
 
