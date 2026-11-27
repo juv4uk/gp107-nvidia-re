@@ -1309,9 +1309,9 @@ RUSTICL_ENABLE=nouveau clinfo
 
 **NOCL** (раніше CLUDA) — compute-only Gallium driver для Rusticl,
 що реалізує OpenCL поверх NVIDIA CUDA Driver API. Це не Nouveau KMD,
-не Nova і не відкритий шлях до firmware/MMIO. Він може бути корисним
-саме для цієї Pascal карти, бо використовує наявний proprietary R580
-CUDA driver backend, але поки це окремий development track.
+не Nova і не відкритий шлях до firmware/MMIO. Для GP107 це поки не
+готовий Pascal compute path: огляд MR snapshot від 2026-09-08 повідомив
+про hardcoded SM86 та NIR→PTX lowering без урахування SM level.
 
 У презентації Karol Herbst на XDC 2026 (2026-09-28) зафіксовано:
 - NOCL реалізує OpenCL 3.1; автор повідомив про понад 99% CTS pass rate
@@ -1332,19 +1332,39 @@ merge. Прямий GitLab MR у цьому проході повертав anti
 стан MR треба перевірити перед build, не припускаючи, що NOCL уже є
 в Mesa release. Не створювати системний build наосліп.
 
-**Якщо MR merged або є придатний тестовий branch**, локальний агент має:
-1. В окремому worktree/prefix зафіксувати Mesa commit і MR head.
+**SM61 gate — обов'язковий до будь-якого build або запуску на 1050 Ti.**
+У технічному огляді MR !37831 від 2026-09-08 зафіксовано hardcoded
+SM86 та NIR→PTX без SM-aware lowering; тому саме reviewed snapshot має
+статус `NOT_SUPPORTED_BY_REVIEWED_SNAPSHOT` для GP107/SM61, а не просто
+загальне `UNPROVEN`. Це твердження прив'язане до MR snapshot тогочасного
+огляду: актуальний GitLab head/state не вдалося перевірити через
+anti-bot challenge.
+
+За документацією NVIDIA, PTX з `.target sm_XY` може бути JIT-компільований
+для GPU targets `sm_MN`, де `MN >= XY`. Отже, **якщо** MR генерує PTX
+з фактичним `.target sm_86`, такий модуль не може бути JIT-компільований
+на GP107/SM61. Спершу треба знайти, де саме hardcoded SM86 використаний
+(device profile, backend capability selection чи emitted PTX directive),
+і перевірити реальний PTX `.version` + `.target`; не робити механічну
+заміну на SM61 без NIR opcode/feature compatibility audit.
+
+Джерела:
+- [ITN: аналіз MR !37831 від 2026-09-08](https://itn.lv/programmatura/mesa-draiveris-nocl-dod-opencl-uz-nvidia-cuda-luxmark-57-702-pret-64-009/)
+- [NVIDIA CUDA 12.9: PTX `.target sm_XY` compatibility and allowed `sm_61`](https://docs.nvidia.com/cuda/archive/12.9.0/cuda-compiler-driver-nvcc/index.html)
+- [Issue #3: source audit task and evidence boundary](https://github.com/juv4uk/gp107-nvidia-re/issues/3#issuecomment-7209202185)
+
+**Лише якщо source audit підтвердить SM-aware lowering і сумісний PTX target**, локальний агент має:
+1. В окремому worktree/prefix зафіксувати exact Mesa commit/MR head.
 2. Перевірити build dependencies/flags NOCL у самому source tree і
    версію CUDA SDK, яку очікує саме цей commit; не використовувати
    system Mesa як build destination.
-3. Переконатися, що R580 надає CUDA Driver API і Pascal device
-   compute capability 6.1. Не припускати, що `CUDA 6.5+` у презентації
-   гарантує сучасний NOCL build або кожну функцію API на R580.
-4. Через Rusticl device enumeration перевірити, що backend названий
-   NOCL/CUDA, а PCI identity — `10de:1c82`; потім vector-add із CPU
-   checksum та відповідний CTS subset.
-5. Окремо відзначити image APIs як `NOT_AVAILABLE`/непідтримані,
-   якщо вони ще не реалізовані.
+3. Переконатися, що R580 надає потрібні CUDA Driver API entrypoints,
+   а PTX JIT приймає ціль для compute capability 6.1.
+4. Через Rusticl device enumeration перевірити backend identity NOCL/CUDA
+   та PCI identity `10de:1c82`; потім vector-add із CPU checksum
+   та відповідний CTS subset.
+5. Image APIs, якщо вони ще не реалізовані, позначати як
+   `NOT_AVAILABLE` і не включати до acceptance.
 
 Цей шлях може дати відкриту реалізацію OpenCL frontend на GP107,
 але kernel-mode driver, PTX JIT та GPU firmware залишаються NVIDIA
