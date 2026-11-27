@@ -21,6 +21,17 @@ COUNT=$(printf '%s\n' "$BDFS" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')
 BDF=$(printf '%s\n' "$BDFS" | sed -n '1p')
 DRI_BDF=$(printf '%s' "$BDF" | tr ':.' '__')
 
+SYSFS_DRIVER="/sys/bus/pci/devices/$BDF/driver"
+[ -L "$SYSFS_DRIVER" ] || {
+    echo "GP107-VK-COMPUTE-NOT-AVAILABLE reason=nouveau-not-bound-to-target" >&2
+    exit 77
+}
+KERNEL_DRIVER=$(basename "$(readlink -f "$SYSFS_DRIVER")")
+[ "$KERNEL_DRIVER" = "nouveau" ] || {
+    echo "GP107-VK-COMPUTE-NOT-AVAILABLE reason=kernel-driver-$KERNEL_DRIVER expected-nouveau" >&2
+    exit 77
+}
+
 export GP107_EXPECTED_BDF="$BDF"
 export DRI_PRIME="pci-$DRI_BDF!"
 
