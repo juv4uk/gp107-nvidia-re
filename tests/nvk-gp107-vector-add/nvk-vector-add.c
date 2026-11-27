@@ -234,7 +234,7 @@ int main(int argc, char **argv)
             unsigned long parsed = strtoul(argv[++i], &end, 10);
             if (!end || end == argv[i] || *end != '\0' ||
                 (parsed != 257ul && parsed != 1048576ul)) {
-                fprintf(stderr, "element_count_INVALID (use 257 or 1048576)\n");
+                fprintf(stderr, "ELEMENT_COUNT_INVALID (use 257 or 1048576)\n");
                 return 2;
             }
             element_count = (uint32_t)parsed;
