@@ -8,7 +8,6 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BIN="$ROOT/build/capability-driver/gp107ctl"
-ASMBIN="$ROOT/build/capability-driver/gp107ctl-asm"
 WORK=$(mktemp -d)
 FIX="$WORK/sysfs"
 
@@ -158,25 +157,26 @@ grep -Fq 'USAGE-FAIL step=offset-required' "$WORK/no-offset.err" \
   || fail 'missing explicit-offset usage error'
 echo 'NEGATIVE-MMIO-OFFSET-REQUIRED-OK'
 
-step 'MMIO gate (opt-in required before any mapping)'
-if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
-    >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
-  fail 'MMIO-шлях спрацював без явного opt-in'
-fi
-grep -Fq 'MMIO-FAIL step=opt-in-required' "$WORK/noopt.err" \
-  || fail 'нема названого negative-маркера opt-in-required'
-echo 'NEGATIVE-MMIO-OPTIN-OK marker=step=opt-in-required'
+step 'physical MMIO is denied with and without --allow-mmio'
+for mode in no-opt-in allow-flag; do
+  if [ "$mode" = allow-flag ]; then
+    if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+        >"$WORK/mmio-$mode.out" 2>"$WORK/mmio-$mode.err"; then
+      fail '--allow-mmio unexpectedly authorized physical MMIO'
+    fi
+  else
+    if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
+        >"$WORK/mmio-$mode.out" 2>"$WORK/mmio-$mode.err"; then
+      fail 'physical MMIO unexpectedly succeeded without owner authorization'
+    fi
+  fi
+  grep -Fq 'MMIO-FAIL step=owner-authorization-required code=21' \
+      "$WORK/mmio-$mode.err" \
+    || fail "physical MMIO denial missing for $mode"
+done
+echo 'NEGATIVE-MMIO-OWNER-AUTH-OK allow-flag=not-authorization'
 
-step 'MMIO gate (bound kernel driver is refused)'
-if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/bound.out" 2>"$WORK/bound.err"; then
-  fail 'MMIO-шлях проігнорував bindings драйвера'
-fi
-grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
-  || fail 'нема названого negative-маркера driver-bound'
-echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
-
-step 'public C API enforces opt-in and driver binding independently of CLI'
+step 'public C API cannot bypass physical MMIO denial'
 cat > "$WORK/mmio-api-test.c" <<'EOF'
 #include <stdint.h>
 #include <stdio.h>
@@ -184,137 +184,54 @@ cat > "$WORK/mmio-api-test.c" <<'EOF'
 #include "gp107_identity.h"
 #include "gp107_mmio.h"
 
-int main(int argc, char **argv)
+int main(void)
 {
     char err[256] = {0};
     uint32_t value = 0;
-    int rc;
+    int rc = gp107_mmio_read32("/path/that-must-not-be-opened",
+                               "0000:01:00.0", 1, 0,
+                               &value, err, sizeof(err));
 
-    if (argc != 2)
-        return 64;
-
-    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 0, 0,
-                           &value, err, sizeof(err));
-    if (rc != GP107_ERR_OPTIN || strstr(err, "opt-in-required") == NULL) {
-        fprintf(stderr, "API-GATE-FAIL optin rc=%d err=%s\n", rc, err);
+    if (rc != GP107_ERR_NOT_AUTHORIZED ||
+        strstr(err, "owner-authorization-required") == NULL) {
+        fprintf(stderr, "MMIO-API-DENIAL-FAIL rc=%d err=%s\n", rc, err);
         return 1;
     }
-
-    err[0] = '\0';
-    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 1, 0,
-                           &value, err, sizeof(err));
-    if (rc != GP107_ERR_DRIVER_BOUND || strstr(err, "driver-bound") == NULL) {
-        fprintf(stderr, "API-GATE-FAIL driver rc=%d err=%s\n", rc, err);
-        return 1;
-    }
-
-    puts("MMIO-API-GATE-OK direct-call=guarded optin=required bound-driver=denied");
+    puts("MMIO-API-DENIAL-OK direct-call=denied");
     return 0;
 }
 EOF
 cc -std=c11 -Wall -Wextra -Werror -pedantic -D_POSIX_C_SOURCE=200809L \
   -I"$ROOT/lib" "$WORK/mmio-api-test.c" "$ROOT/lib/gp107_identity.c" \
   "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-api-test"
-"$WORK/mmio-api-test" "$FIX"
+"$WORK/mmio-api-test"
 
+step 'MMIO implementation contains no device-file or mapping calls'
+if grep -nE '\b(open|openat|mmap|munmap)[[:space:]]*\(' lib/gp107_mmio.c; then
+  fail 'MMIO implementation still contains physical access calls'
+fi
+echo 'MMIO-SOURCE-FIREWALL-OK no-open=no-map'
 
-step 'negative witness (undersized resource0 is refused)'
+step 'capability ledger denies physical MMIO regardless of CLI flag'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
-python3 - "$FIX/bus/pci/devices/0000:01:00.0/resource0" <<'PY'
-import sys
-p = sys.argv[1]
-b = bytearray(open(p, 'rb').read())
-open(p, 'wb').write(b[:64])
-PY
-if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/small.out" 2>"$WORK/small.err"; then
-  fail 'MMIO-шлях прийняв resource0 менше за вікно'
-fi
-grep -Fq 'MMIO-FAIL step=bar0-size-too-small code=19 size=0x40' "$WORK/small.err" \
-  || fail 'нема названого negative-маркера bar0-size-too-small'
-python3 - "$FIX/bus/pci/devices/0000:01:00.0/resource0" <<'PY'
-import sys
-p = sys.argv[1]
-open(p, 'wb').write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
-PY
-echo 'NEGATIVE-BAR0-SIZE-OK marker=step=bar0-size-too-small'
-
-step 'MMIO refuses an unaligned 32-bit offset'
-if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/unaligned.out" 2>"$WORK/unaligned.err"; then
-  fail 'MMIO accepted unaligned offset'
-fi
-grep -Fq 'MMIO-FAIL step=offset-unaligned' "$WORK/unaligned.err" \
-  || fail 'missing unaligned-offset failure marker'
-echo 'NEGATIVE-MMIO-ALIGNMENT-OK offset=0x2 denied'
-
-
-step 'BAR0 offset outside the 4 KiB aperture is refused'
-if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/offset.out" 2>"$WORK/offset.err"; then
-  fail 'MMIO accepted offset outside the mapped window'
-fi
-grep -Fq 'MMIO-FAIL step=offset-out-of-window' "$WORK/offset.err" \
-  || fail 'missing out-of-window failure marker'
-echo 'NEGATIVE-MMIO-OFFSET-OK offset=0x1000 denied'
-
-
-step 'MMIO read-only witness on synthetic resource0 (not hardware)'
-"$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
-for marker in \
-  '(kind . gp107-mmio-read)' \
-  '(offset . 0x0)' \
-  '(value . 0x1c8210de)' \
-  '(right . read-only)' \
-  '(boot0 . unproven)' \
-  '(summary . MMIO-READ-OK)'; do
-  grep -Fq "$marker" "$WORK/mmio.out" || fail "нема маркера: $marker"
-done
-echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
-
-step 'negative witness (offset past one-page window is refused)'
-if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/offset.out" 2>"$WORK/offset.err"; then
-  fail 'MMIO-шлях прийняв offset поза вікном'
-fi
-grep -Fq 'MMIO-FAIL step=offset-out-of-window code=17 offset=0x1000' "$WORK/offset.err" \
-  || fail 'нема названого negative-маркера offset-out-of-window'
-echo 'NEGATIVE-MMIO-OFFSET-OK marker=step=offset-out-of-window'
-
-step 'assembly read-only path equivalence (x86-64 only)'
-if [ -x "$ASMBIN" ]; then
-  "$ASMBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-asm.out"
-  cmp -s "$WORK/mmio.out" "$WORK/mmio-asm.out" \
-    || fail 'асемблерний read-only шлях відрізняється від C'
-  "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-c.out"
-  "$ASMBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-asm.out"
-  cmp -s "$WORK/ledger-c.out" "$WORK/ledger-asm.out" \
-    || fail 'ledger відрізняється між C і assembly builds'
-  if command -v objdump >/dev/null 2>&1; then
-    objdump -d "$ASMBIN" | grep -q 'lfence' \
-      || fail 'у asm-примітиві немає lfence'
-    echo 'ASM-STATIC-OK primitive=movl+lfence calling-convention=sysv-amd64'
+for mode in no-flag allow-flag; do
+  if [ "$mode" = allow-flag ]; then
+    "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-$mode.out"
   else
-    echo 'ASM-STATIC-SKIP reason=objdump-absent'
+    "$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-$mode.out"
   fi
-  echo 'ASM-EQUIV-OK fixture-read-and-ledger identical-to-C hardware=NOT-RUN'
-else
-  echo 'ASM-EQUIV-SKIP reason=non-x86_64-host'
-fi
-
-step 'capability ledger (unbound + no opt-in stays deferred)'
-"$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-deferred.out"
-grep -Fq '(mmio-read-software-gate . deferred) (reason . opt-in-required)' "$WORK/ledger-deferred.out" \
-  || fail 'ledger не лишив MMIO у deferred без opt-in'
-echo 'LEDGER-DEFERRED-OK marker=step=opt-in-required'
-
-step 'capability ledger (unbound + opt-in grants read-only only)'
-"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted.out"
-grep -Fq '(mmio-read-software-gate . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
-  || fail 'ledger не надав read-only MMIO після opt-in'
-grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
-  || fail 'ledger розширив права поза read-only'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+  grep -Fq '(mmio-read-software-gate . denied) (reason . owner-authorization-required)' \
+      "$WORK/ledger-$mode.out" \
+    || fail "ledger did not deny unbound MMIO for $mode"
+  grep -Fq '(owner-approval . not-inferred)' "$WORK/ledger-$mode.out" \
+    || fail "ledger inferred owner approval for $mode"
+  grep -Fq '(physical-mmio . not-authorized)' "$WORK/ledger-$mode.out" \
+    || fail "ledger omitted physical MMIO denial for $mode"
+done
+grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' \
+    "$WORK/ledger-allow-flag.out" \
+  || fail 'ledger expanded rights outside the permitted boundary'
+echo 'LEDGER-OWNER-AUTH-DENIED allow-flag=not-authorization'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
@@ -327,13 +244,7 @@ PY
 "$BIN" inventory --sysfs-root="$FIX" >"$WORK/io-bar.out"
 grep -Fq '(bar0 (raw . 0xee000001) (space . io) (width . 32-bit) (prefetch . no)' "$WORK/io-bar.out" \
   || fail 'I/O-прапорець BAR0 не декодовано'
-if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/io-mmio.out" 2>"$WORK/io-mmio.err"; then
-  fail 'MMIO accepted an I/O-space BAR0'
-fi
-grep -Fq 'MMIO-FAIL step=bar0-not-memory' "$WORK/io-mmio.err" \
-  || fail 'missing I/O-space BAR0 denial'
-echo 'NEGATIVE-BAR0-SPACE-OK io-space=denied'
+echo 'BAR0-SPACE-DECODE-OK io-space=observed physical-mmio=not-authorized'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
 import sys
 p = sys.argv[1]
@@ -354,4 +265,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 hardware-mmio=NOT-AUTHORIZED/NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-sysfs=only physical-mmio=NOT-AUTHORIZED/NOT-RUN"
