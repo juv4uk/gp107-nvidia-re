@@ -29,7 +29,7 @@ Ghidra двічі не вклався у startup (330 s, потім 600 s) на 
 - `evidence/rea-20261127/evidence-boot0-and-key-strings.json` — `sha256 83ea4b64d809f4f496c7f830150a78a2623b69ebb38519f449c192bebe6c446f`;
 - `evidence/rea-20261127/evidence-notification-boot0-raw.json` — `sha256 c799a98f10207ad83c4cd1b44aa2066303ae140f89956e25bce3e4e1ec70ee09`.
 
-## Statically proven — наявність рядків/символів у shipped-артефакті
+## Статично доведено — наявність рядків і символів у готовому артефакті
 
 | Факт | Свідоцтво | Evidence ID |
 |---|---|---|
@@ -91,7 +91,7 @@ RM має статичний механізм призначення notifier-і
 - Не робилось MMIO read/write, `nva`, custom reset, `Tested-by`, push/PR/tag/release.
 - Не використано Ghidra-псевдокод і не скопійовано vendor source чи NVIDIA-код.
 
-## Ukrainian one-liner
+## Коротко українською
 
 REA підняв coverage і дав статичні назви non-stall, channel→runlist та
 event/notification у пропрієтарному модулі, але не перетворив їх на runtime-факти:
