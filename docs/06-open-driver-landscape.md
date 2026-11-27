@@ -788,10 +788,13 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 
 NVIDIA Video Encode/Decode Support Matrix прямо перелічує GeForce GTX 1050 /
 1050 Ti як Pascal. У таблиці це покоління має NVENC 6th Gen та NVDEC 3rd Gen.
-Однак там є два рядки з однаковою маркетинговою назвою та різними значеннями
-у codec columns. Тому без точного board SKU/VBIOS не переносити точні
-параметри 10-bit, 4:4:4, lossless, B-frames або конкретні decode formats
-з одного рядка на інший.
+У поточній матриці два рядки NVENC для GeForce GTX 1050 / 1050 Ti
+(рядки 112–113) мають однакові значення у всіх показаних codec columns.
+Натомість два рядки NVDEC (рядки 478–479) мають різні значення в окремих
+codec columns, але матриця не вказує, який рядок відповідає конкретному
+subsystem ID / VBIOS варіанту. Тому для нашої плати NVENC generation у
+матриці однозначна, а точний NVDEC codec/profile mapping лишається
+непідтвердженим до встановлення board SKU/VBIOS identity.
 
 NVIDIA Video Codec Support Matrix підтверджує наявність відповідних
 апаратних поколінь; сумісність конкретної версії Video Codec SDK та драйвера
@@ -896,7 +899,7 @@ sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|se
 `FILE_PRESENT`, `SYMLINK_RESOLVED`, `LOAD_OBSERVED`, `UNPROVEN`.
 
 Джерела:
-- [NVIDIA Video Encode/Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix-new)
+- [NVIDIA Video Encode/Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-support-matrix)
 - [NVIDIA Video Codec SDK 13.1 FFmpeg guide — Turing+ support boundary](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/)
 - [Linux GP107 NVENC placeholder](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
 - [Linux GP107 NVDEC placeholder](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c)
