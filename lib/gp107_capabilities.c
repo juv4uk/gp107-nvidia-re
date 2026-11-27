@@ -24,7 +24,6 @@ static void append_line(char *out, size_t cap, const char *fmt, ...)
 int gp107_capability_report(const struct gp107_inventory *inv,
                             int allow_mmio, char *out, size_t cap)
 {
-    const char *state;
     const char *reason;
 
     if (inv == NULL || out == NULL || cap == 0) {
@@ -32,16 +31,9 @@ int gp107_capability_report(const struct gp107_inventory *inv,
     }
     out[0] = '\0';
 
-    if (inv->driver.bound) {
-        state = "denied";
-        reason = "driver-bound";
-    } else if (!allow_mmio) {
-        state = "deferred";
-        reason = "opt-in-required";
-    } else {
-        state = "granted";
-        reason = "read-only-window";
-    }
+    /* A CLI flag is not owner approval. Physical MMIO remains denied. */
+    (void)allow_mmio;
+    reason = inv->driver.bound ? "driver-bound" : "owner-authorization-required";
 
     append_line(out, cap, "((kind . gp107-capability-ledger)\n");
     append_line(out, cap, " (authority . gp107-research-not-abi)\n");
@@ -53,7 +45,7 @@ int gp107_capability_report(const struct gp107_inventory *inv,
                 inv->pci.cfg_bytes == GP107_CONFIG_BYTES ? "complete" : "partial");
     append_line(out, cap, " (rm-identity . deferred)"
                           " (reason . not-in-this-slice)\n");
-    append_line(out, cap, " (mmio-read-software-gate . %s) (reason . %s)\n", state, reason);
+    append_line(out, cap, " (mmio-read-software-gate . denied) (reason . %s)\n", reason);
     append_line(out, cap, " (owner-approval . not-inferred)\n");
     append_line(out, cap, " (physical-mmio . not-authorized)\n");
     append_line(out, cap, " (boot0 . unproven) (evidence . unproven)\n");
