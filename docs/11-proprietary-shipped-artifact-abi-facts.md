@@ -49,7 +49,9 @@ REA читає артефакти як дані.
   і 36M `libnvidia-glcore.so` **не дав результату через обмеження rizin**
   (`search interval size ... exceeds max region size 0xa00000`). Порожній вивід
   **не є** доказом відсутності — це часткове покриття. Ghidra-псевдокод не
-  використовувався навмисно (clean-room межа).
+  використовувався навмисно (clean-room межа). Пізніше coverage для `nvidia.ko`
+  піднято в `docs/15-rea-static-markers-nonstall-runlist-event.md`; там же
+  зафіксовано нові статичні маркери, які не змінюють runtime-статус.
 - Значення `BOOT0`, адреси регістрів, формат GPFIFO, вибір RUNLIST_ID,
   механізм ALLOW/BLOCK — лишаються `UNPROVEN`.
 - Жодного нового MMIO-читання, RM-запиту чи фізичного запуску не робилось.
