@@ -8,19 +8,18 @@
 
 ## 0. Межа owner-дозволу
 
-У цій сесії власник явно дозволив MMIO для першого коду. Дозвіл реалізовано
-**найвужче**:
+У цьому зрізі реалізовано лише програмний opt-in MMIO seam. Наявність коду
+або прапорця --allow-mmio не є дозволом на фізичне читання. Жоден BAR0
+offset поки не має доведеної read-safe семантики, тому публічний API закриває
+читання після identity/policy checks і не відкриває resource0:
 
-- MMIO-сеам є окремим модулем і не активний за замовчуванням;
-- потрібен явний прапорець `--allow-mmio`;
-- відмова, якщо пристрій має bound kernel driver (зараз `nvidia`);
-- тільки read-only mapping одного вирівняного вікна й читання 32-бітового слова;
-- жодного write mapping, RM-запиту, FIFO, doorbell, firmware чи reboot.
+- невідомий стан sysfs driver link відхиляється, а не прирівнюється до unbound;
+- C API сама перевіряє opt-in, BDF, binding, вирівнювання та розмір ресурсу;
+- після цих перевірок вона повертає read-safe-offset-unproven;
+- PROT_READ сам по собі не гарантує відсутності read-side effects.
 
-Фізичний MMIO на цій платі **не виконувався**: поточний boot пропрієтарний,
-`Kernel driver in use: nvidia`, `/proc/cmdline` без `wsm_open_driver=1`.
-Перехід у `wsm_open_driver=1`, unbind/зміна драйвера або фізичний aperture-тест
-потребують **окремої owner-дії**.
+Фізичний MMIO на цій платі не виконувався. Перехід у wsm_open_driver=1,
+unbind/зміна драйвера або фізичний aperture-тест потребують окремої owner-дії.
 
 ## 1. Що додано
 
@@ -28,7 +27,7 @@
 |---|---|
 | `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
 | `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
-| `lib/gp107_mmio.h/.c` | Опційний read-only 32-бітний aperture seam з двома воротами (opt-in + driver-unbound) |
+| `lib/gp107_mmio.h/.c` | Fail-closed opt-in seam; фізичний доступ deferred до доказу safe BAR0 register |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
 | `scripts/test-capability-driver.sh` | названі кроки, 5 негативних witness, firewall коду, best-effort host inventory |
@@ -43,7 +42,7 @@ int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
 int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
                             char *err, size_t errsz);
-int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
+int gp107_mmio_read32(const char *sysfs_root, const char *bdf, int allow_mmio,
                       uint32_t offset, uint32_t *value,
                       char *err, size_t errsz);
 ```
@@ -62,7 +61,7 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
 | 5 | Чужий BDF відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
 | 6 | MMIO без прапорця відхиляється до будь-якого mapping | **runtime-proven (fixture)** | `MMIO-FAIL step=opt-in-required code=15` |
 | 7 | MMIO з bound драйвером відхиляється | **runtime-proven (fixture)** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
-| 8 | Read-only 32-бітне читання з `resource0` | **runtime-proven (синтетичний файл), hardware NOT_RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом файлу |
+| 8 | Physical BAR0 read | **DEFERRED / NOT RUN** | немає доведеного read-safe offset; API не відкриває resource0 |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
@@ -86,9 +85,9 @@ make test-valid-cards-static   # старий базовий гейт не по�
    BOOT0-константа, атестація й authoritative pin;
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. три стани capability-ledger (`denied`/`deferred`/`granted`) і мутація
-   I/O-прапорця BAR0;
-6. два MMIO-негативи й один read-only позитив на синтетичному `resource0`;
+5. три стани capability-ledger і мутація I/O-прапорця BAR0;
+6. malformed driver-link, explicit-offset, alignment, resource-size і
+   safe-offset negative tests; фізичного resource0 read немає;
 7. best-effort реальний sysfs inventory (пропуск явно позначається, якщо
    пристрою немає).
 
@@ -100,15 +99,10 @@ make test-valid-cards-static   # старий базовий гейт не по�
 
 ## 4. Незавершене й найменший наступний крок
 
-- **Питання без відповіді:** який саме offset у BAR0 можна читати безпечно на
-  цій платі за відсутності bound драйвера? Поточний код не містить жодного
-  припущення про адресу регістру.
-- **Найменший крок:** після окремого owner-рішення про unbind/boot — повторити
-  той самий `mmio-read` на реальному пристрої з явним `--offset`, записавши
-  stdout/stderr як artifact з SHA-256 і позначивши результат як
-  `runtime-proven` або fail-closed. Без цього BOOT0 лишається `UNPROVEN`.
-- Окремо: мульти-GPU RM fixture для кореляції `PCI BDF ↔ RM gpu_id` не існує;
-  цей стан не можна вивести з одного пристрою.
+Потрібен bounded RE/source evidence про конкретний BAR0-регістр і його
+read-side effects. До цього фізичний mmio-read не запускати навіть після
+unbind; software прапорець не замінює owner authorization. BOOT0 лишається
+UNPROVEN.
 
-Межі: жодного transfer-коду, release/tag/publish, installer-змін, `Tested-by`,
-new harness чи запуску PR #21. Коміт і пуш виконуються завжди.
+Межі: жодного фізичного MMIO, RM-запиту, firmware, reboot, installer APPLY,
+release/tag/publish або запуску PR #21.
