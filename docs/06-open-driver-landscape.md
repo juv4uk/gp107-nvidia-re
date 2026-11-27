@@ -265,30 +265,31 @@ backend вимагає Vulkan extension/feature, якої GP107 не рекла�
 ### 5.1. `nouveau-dkms` від Twilight0 — watchlist, не кандидат для GTX 1050 Ti
 
 [`Twilight0/nouveau-dkms`](https://github.com/Twilight0/nouveau-dkms) —
-сторонній out-of-tree DKMS patch stack, а не офіційний upstream Nouveau.
-Його README прямо називає проєкт experimental і фіксує hardware-tested
-конфігурацію як Dell XPS 17 L702X із GeForce GT 555M / **GF106M (Fermi)**,
-PCI `10de:0dcd`, DDR3. Заявлені reclocking/Falcon, voltage, PCIe і
-memory features перевірені саме на цій платформі; автор попереджає, що
-інші board variants, memory types і chipsets можуть поводитися інакше.
+сторонній out-of-tree Nouveau DKMS patch stack, а не офіційний upstream
+і не окремий драйвер для Pascal. Його README позначає проєкт як
+experimental; єдина прямо зазначена hardware-tested платформа — Dell
+XPS 17 L702X із GeForce GT 555M / **GF106M (Fermi)**, PCI `10de:0dcd`,
+DDR3. Саме на цій платі перевірено його Falcon/reclocking/voltage/PCIe
+та memory features.
 
-Найважливіше для нашої карти: у його TODO generation matrix
-**Maxwell 2 & Pascal (`NV120–NV138`, включно з GP107/NV137)** позначені
-як **HS RSA-Signed ACR/PMU**; roadmap обмежується дослідженням signed
-PMU/ACR extraction, а не готовою Pascal реалізацією. Завершений код і
-параметри `NvFermiMemReclock` / `NvFermiOC` — Fermi-specific; їх не можна
-переносити на GP107 і не слід завантажувати цей DKMS module або його
-clock/governor scripts на GTX 1050 Ti.
+Водночас не слід називати **весь** patch stack «Fermi-only»: patch queue
+розділяє загальні kernel/DRM/TTM compatibility changes, Fermi-specific
+reclocking та окремі FIFO/EDID fixes. Загальні patches можуть бути
+цікавими для source review, але це не є доказом сумісності готового
+DKMS module із GP107.
 
-Стан репозиторію також потребує уважного version check: git history має
-release commit v2.4.2 від 2026-11-25 і CHANGELOG містить v2.4.2, але
-README заголовок усе ще показує v2.4.0. Орієнтуватися на конкретний
-commit/tag, а не лише на README banner.
+У TODO generation matrix **Maxwell 2 & Pascal (`NV120–NV138`, включно з
+GP107/NV137)** позначені як **HS RSA-Signed ACR/PMU**; для них вказано
+лише roadmap із дослідження signed PMU/ACR, не готовий Pascal reclocking.
+`NvFermiMemReclock`, `NvFermiOC`, custom Falcon executor і Fermi clock
+scripts — Fermi-specific; їх не переносити на GP107 і не запускати на
+GTX 1050 Ti. Висновок: сторонній DKMS module не є кандидатом для нашого
+Pascal KMD/reclocking; продовжувати upstream Nouveau/Mesa track.
 
-Висновок: це корисне джерело історичних Fermi/Kepler/Maxwell1
-reclocking-досліджень і питань щодо старого Falcon/ACR коду, але
-**не драйвер для GP107** і не заміна upstream Nouveau/NVK. Для GTX 1050 Ti
-продовжувати окремий upstream Nouveau/Mesa трек.
+Metadata inconsistency: git history має release commit v2.4.2 від
+2026-11-25 і CHANGELOG містить v2.4.2, але README banner усе ще показує
+v2.4.0. Для source review використовувати точний commit/tag, не banner.
+
 
 Джерела:
 - [nouveau-dkms README — tested GF106M hardware and experimental warning](https://github.com/Twilight0/nouveau-dkms/blob/master/README.md)
@@ -1479,3 +1480,101 @@ baseline потрібен для порівняння, але залишаєть
 - [Khronos: GeForce GTX 1050 Ti in NVIDIA OpenCL 3.0 conformance entry #377](https://www.khronos.org/conformance/adopters/conformant-products/opencl)
 - [Khronos: GTX 1050 Ti in Software Freedom Conservancy Vulkan 1.3 entry #908](https://www.khronos.org/conformance/adopters/conformant-products/vulkan)
 - [Mesa Rusticl build/runtime documentation](https://docs.mesa3d.org/rusticl.html)
+
+### 19.5. GP107 candidate: legacy FIFO non-stall event index (conditional source risk)
+
+Це **source-audit candidate**, а не підтверджений hardware bug на нашій
+GTX 1050 Ti. За pinned Linux source snapshot
+[`9437ee8b6cf607e883b36e44bd755968daaebd48`](https://github.com/torvalds/linux/commit/9437ee8b6cf607e883b36e44bd755968daaebd48)
+GP107 проходить через `nv137_chipset` → `gk104_top_new` + `gp100_fifo_new`.
+У таблиці `gp100_fifo` визначено `.nonstall = &gf100_fifo_nonstall`, але
+немає `.nonstall_ctor`. У `nvkm_fifo_oneinit()` це legacy path: коли
+constructor відсутній, `ret = 1`, після чого `nvkm_event_init(...,
+types_nr=1, index_nr=1, ...)` створює рівно один event index — `0`.
+
+Натомість `nvkm_uchan_uevent()` для
+`NVIF_CHAN_EVENT_V0_NON_STALL_INTR` безумовно передає `runl->id` у
+`nvkm_uevent_add()`. Event notifier запам'ятовує цей id. Коли userspace
+пізніше дозволяє notification (`NVIF_EVENT_V0_ALLOW`),
+`nvkm_event_ntfy_state()` викликає `nvkm_event_get()`; під час block
+викликається `nvkm_event_put()`. Обидві функції індексують
+`event->refs[index * types_nr + type]` **без перевірки меж**. З одним
+виділеним індексом будь-який non-zero `runl->id` може вийти за межі
+`event->refs[]`. Перевірка `id >= event->index_nr` у `nvkm_event_ntfy()`
+захищає пізніший notify path, але не попередні `get/put` при ALLOW/BLOCK.
+
+Це пояснює потенційний failure mode: out-of-bounds refcount access і
+зламаний/втрачений fence progress. Сам факт створення notification не
+одразу доводить OOB: `nvkm_event_ntfy_add()` починає з `allowed=0`;
+потрібен подальший allow/block transition. Не стверджувати runtime impact
+поки не доведено non-zero runlist саме для channel/engine, який реєструє
+non-stall event на GP107.
+
+### Upstream precedent і межа перенесення
+
+У вересні 2026 Risto Pajula запропонував fix у серії
+[`GK107 VDPAU regressions`](https://lore-kernel.gnuweeb.org/lkml/20260913201225.5975-1-or.pajula%40gmail.com/T/):
+для FIFO без per-runlist `nonstall_ctor` реєструвати global event з
+index `0`, тобто використовувати
+`runl->fifo->func->nonstall_ctor ? runl->id : 0`. Патч був мотивований
+legacy FIFO one-entry event і report про out-of-bounds `event->refs[]`
+та fence completion на Kepler (GK107/GK208B). Поточний pinned GP107
+`uchan.c` усе ще має безумовний `runl->id`; цей precedent не можна
+називати merged fix для GP107 і не можна ставити `Tested-by` без реального
+тесту. Maintainer окремо застеріг від AI-generated `Tested-by`.
+
+### Що довести на самій GTX 1050 Ti
+
+`gk104_top_parse()` читає runlist id з реального TOP table:
+`(data & 0x01e00000) >> 21`; `gk104_fifo_runl_ctor()` створює runlists
+за цими значеннями. Конкретні TOP runlist IDs не є константою в
+`nv137_chipset`, тому їх не можна вивести лише з chipset table.
+Потрібно побачити parsed TOP record для GR/compute та зв'язати його з
+runlist, на якій створюється channel/context.
+
+Локальний одноразовий trace boot дозволений лише після перевірки
+підтримки debug у встановленому kernel:
+```sh
+grep CONFIG_NOUVEAU_DEBUG /boot/config-$(uname -r)
+modinfo -p nouveau | grep -i debug
+```
+Якщо `CONFIG_NOUVEAU_DEBUG` має ceiling не нижче 5 (TRACE) і module
+parameter `debug` присутній, у окремому rollback-capable native Linux
+boot додати `nouveau.debug=trace`. Якщо одна з умов не виконана —
+не припускати, що trace увімкнувся; позначити `NOT_AVAILABLE`.
+
+Після boot зберегти:
+```sh
+cat /proc/cmdline
+sudo journalctl -b -k -o short-monotonic --no-pager > nouveau-top-trace.log
+grep -Ei 'top:|runlist|fifo|nouveau|nvkm' nouveau-top-trace.log
+```
+Потрібні parsed TOP records із engine/type/instance/runlist для `GR` та
+`CE*` (окремо `NVDEC`/`NVENC` лише для повної карти). Визначити, чи GR
+graphics/compute channel реально використовує non-zero `runl->id` і
+реєструє `NVIF_CHAN_EVENT_V0_NON_STALL_INTR`. Якщо trace не містить TOP
+records або probe завершується раніше — `NOT_MEASURED`, не припущення.
+
+### Рішення за результатом
+
+- Якщо GR/compute runlist id = `0`, цей конкретний one-entry indexing
+  risk не підтверджений для основного GP107 compute path; не переносити
+  Kepler VDPAU fix як GP107 bug.
+- Якщо GR/compute runlist id non-zero, це сильний source-level
+  reproducer candidate: підготувати вузький fix proposal, додати
+  bounds-safe test і перевірити exact distro/upstream source. Не
+  cherry-pick у системне ядро без review та контрольованого тесту.
+- Не використовувати `nva`, ручні MMIO reads/writes, reset/devinit/Falcon
+  scripts або `Tested-by` claims. Не змішувати цей candidate з GR/PRI
+  cold-boot workaround і atomic-KMS regression: це окремі проблеми.
+
+Source blobs (Linux snapshot `9437ee8b6cf607e883b36e44bd755968daaebd48`):
+- [GP107 chipset registration: `device/base.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
+- [GP100 FIFO function table: `fifo/gp100.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c)
+- [Legacy one-index event allocation: `fifo/base.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c)
+- [Unconditional runlist ID registration: `fifo/uchan.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
+- [Event ref indexing and bounds behavior: `core/event.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/core/event.c)
+- [TOP runlist parsing: `subdev/top/gk104.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c)
+- [GK104/GF100 runlist construction and interrupt: `fifo/gk104.c`](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c)
+- [Upstream Kepler fix proposal, patch 2](https://lore-kernel.gnuweeb.org/lkml/20260913201225.5975-3-or.pajula%40gmail.com/T/)
+
