@@ -23,11 +23,12 @@ capability-identity, read-only sysfs, опційний read-only aperture seam. 
 |---|---|---|
 | bound kernel driver | `denied` | `driver-bound` |
 | не bound, але немає `--allow-mmio` | `deferred` | `opt-in-required` |
-| не bound і є `--allow-mmio` | `granted` | `read-only-window` |
+| не bound і є `--allow-mmio` | `deferred` | `read-safe-offset-unproven` |
 
-`granted` означає **дозвіл на одне read-only 32-бітне читання**, а не право на
-запис, не RM-право й не GPU-завдання.
-
+У цьому зрізі MMIO `granted` не видається. `--allow-mmio` є лише програмним
+прапорцем запиту, а не доказом безпечного регістру чи owner-авторизацією.
+Поки read-safe offset не встановлений окремим RE/source evidence, стан
+залишається `deferred`.
 ## 2. Статус фактів
 
 | # | Факт | Статус | Свідок / межа |
@@ -37,7 +38,7 @@ capability-identity, read-only sysfs, опційний read-only aperture seam. 
 | 3 | Інтерпретація `0x030000` як «VGA display controller» і `0x80` як «PCI-to-PCI bridge header» — половина класу | **interpretation / UNPROVEN** | Код друкує сирі байти; назва типу заголовка не використовується для жодної дії |
 | 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, після мутації повертається `memory` | **runtime-proven (fixture)** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
 | 5 | Ledger з `nvidia` bound: `mmio-read=denied`, `rm-identity=deferred` | **runtime-proven (fixture + host)** | `LEDGER-BOUND-OK`, реальний `--allow-mmio` не запускався |
-| 6 | Ledger unbound без opt-in: `deferred`; з opt-in: `granted`, але `write/dispatch/rm = none` | **runtime-proven (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK` |
+| 6 | Ledger unbound без opt-in: `deferred`; з opt-in теж `deferred` через unknown safe register | **runtime-proven (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-OPTIN-STILL-DEFERRED-OK` |
 | 7 | `PCI BDF ↔ RM gpu_id`, RM class/runlist/notifier/fence, BOOT0 | **UNPROVEN** | У коді немає RM-шляху; BOOT0 не читався |
 | 8 | `0x137000A1` | **string-only** | константа відсутня у коді й у виводі |
 | 9 |Ledger є capability word у Lisp-машині / частина ABI | **UNPROVEN, не стверджується** | owner-рішення про ABI не ухвалено; S-вираз лише проєкція стану |
@@ -57,16 +58,12 @@ make test-capability-driver
 `CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` і `make test-valid-cards-static` не
-змінено. Фізичний MMIO на цій платі не виконувався: `nvidia` лишається bound.
+змінено. Фізичний MMIO на цій платі не виконувався. Крім bound `nvidia`, немає доведеного read-safe BAR0 offset; `--allow-mmio` цього не змінює.
 
 ## 4. Найменший наступний крок
 
-Питання без відповіді: який саме BAR0-offset є безпечним для читання на цій
-платі після unbind? Код свідомо не містить жодного припущення про адресу
-регістру. Найменший крок — після окремого owner-рішення про unbind/boot
-запустити вже наявний `gp107ctl mmio-read --offset=0x... --allow-mmio`,
-зберегти stdout/stderr як artifact з SHA-256 і позначити результат як
-`runtime-proven` або fail-closed. Без цього BOOT0 лишається `UNPROVEN`.
-
-Межі: жодного transfer-коду, release/tag/publish, `Tested-by`, installer-змін,
-RM-запитів чи запуску PR #21.
+Спершу потрібен bounded RE/source evidence про конкретний BAR0-регістр і
+його read-side effects. Поки цього немає, gp107ctl mmio-read повертає
+read-safe-offset-unproven і не відкриває resource0. Лише після такого
+доказу та окремої owner-дії можна розглядати вузький allow-list і hardware
+acceptance. BOOT0 лишається UNPROVEN.
