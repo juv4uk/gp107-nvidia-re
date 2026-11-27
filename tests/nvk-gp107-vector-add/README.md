@@ -131,8 +131,19 @@ exit "$rc"
   graphics stability, Rusticl/OpenCL, video decode/encode, reclocking, or
   performance.
 
+Current evidence state: `PHYSICAL_GPU_TEST=NOT_RUN`. Source/build validation
+does not change this label. The GitHub Actions workflow added with this test
+will compile and validate GLSL/SPIR-V and link the C harness without invoking
+the executable or requiring a GPU.
+
+Expected executable exit codes: `0` = exact-GP107 NVK vector-add PASS;
+`2` = preflight/device/Vulkan-stage failure (inspect the emitted stage);
+`3` = output or CPU checksum mismatch.
+
 Do not run this before the separate read-only GPU passport, a native Nouveau
 boot with rollback, and verification that the kernel package includes the
-required GP107 atomic-KMS fix. Never run it while the proprietary NVIDIA KMD
+required GP107 atomic-KMS fix. Also do not run it until issue #18 has closed
+the conditional FIFO/non-stall safety review or explicitly authorized a
+controlled diagnostic boot. Never run it while the proprietary NVIDIA KMD
 owns this GPU. No MMIO/register poking, firmware flashing, manual reset, or
 custom devinit/Falcon scripts are part of this test.
