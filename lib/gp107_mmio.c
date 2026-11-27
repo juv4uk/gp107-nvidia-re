@@ -79,8 +79,12 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
     (void)close(fd);
 
     p = (const volatile unsigned char *)map + offset;
+#ifdef GP107_USE_ASM
+    v = gp107_mmio_load32_asm((const volatile void *)p);
+#else
     v = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
         ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+#endif
     (void)munmap(map, GP107_MMIO_WINDOW);
     *value = v;
     return GP107_OK;

@@ -17,6 +17,10 @@
 
 #define GP107_MMIO_WINDOW 4096u
 
+/* x86-64 only: one volatile 32-bit load with a following load fence.
+ * Declared here so the C/assembly equivalence gate can compare paths. */
+uint32_t gp107_mmio_load32_asm(const volatile void *addr);
+
 int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
 
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,

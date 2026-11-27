@@ -8,6 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BIN="$ROOT/build/capability-driver/gp107ctl"
+ASMBIN="$ROOT/build/capability-driver/gp107ctl-asm"
 WORK=$(mktemp -d)
 FIX="$WORK/sysfs"
 
@@ -165,6 +166,27 @@ for marker in \
 done
 echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
 
+step 'assembly read-only path equivalence (x86-64 only)'
+if [ -x "$ASMBIN" ]; then
+  "$ASMBIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio-asm.out"
+  cmp -s "$WORK/mmio.out" "$WORK/mmio-asm.out" \
+    || fail 'асемблерний read-only шлях відрізняється від C'
+  "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-c.out"
+  "$ASMBIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-asm.out"
+  cmp -s "$WORK/ledger-c.out" "$WORK/ledger-asm.out" \
+    || fail 'ledger відрізняється між C і assembly builds'
+  if command -v objdump >/dev/null 2>&1; then
+    objdump -d "$ASMBIN" | grep -q 'lfence' \
+      || fail 'у asm-примітиві немає lfence'
+    echo 'ASM-STATIC-OK primitive=movl+lfence calling-convention=sysv-amd64'
+  else
+    echo 'ASM-STATIC-SKIP reason=objdump-absent'
+  fi
+  echo 'ASM-EQUIV-OK fixture-read-and-ledger identical-to-C hardware=NOT-RUN'
+else
+  echo 'ASM-EQUIV-SKIP reason=non-x86_64-host'
+fi
+
 step 'capability ledger (unbound + no opt-in stays deferred)'
 "$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-deferred.out"
 grep -Fq '(mmio-read . deferred) (reason . opt-in-required)' "$WORK/ledger-deferred.out" \
@@ -210,4 +232,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN"

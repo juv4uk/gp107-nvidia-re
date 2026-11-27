@@ -93,7 +93,7 @@ make test-valid-cards-static   # старий базовий гейт не по�
    пристрою немає).
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.

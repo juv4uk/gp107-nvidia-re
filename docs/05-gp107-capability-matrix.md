@@ -51,6 +51,7 @@ clean-room зондами справді виконано на цій машин
 | 28 | Userspace C11 capability-identity (`lib/`) з компільованими layout-assertами | **statically proven + runtime-proven на hostі** | `LAYOUT-OK identity=20 binding=68 inventory=128`, `gp107ctl inventory` → `10de:1c82 @ 0000:01:00.0`, driver `nvidia`; див. docs/29 |
 | 29 | Опційний read-only MMIO-сеам | **runtime-proven на синтетичному `resource0`; hardware MMIO NOT_RUN** | 6 негативних witness + read-only fixture; `nvidia` bound, фізичний aperture-тест не виконувався |
 | 30 | Декодування публічного PCI config-header і capability-ledger | **statically proven layout + runtime-proven значення на hostі** | `revision=0xa1`, `class=0x030000`, `command=0x0407`, BAR0 memory/32-bit/non-prefetch; ledger `mmio=denied reason=driver-bound`; див. docs/30 |
+| 31 | Власний x86-64 asm-примітив read-only MMIO | **statically proven + runtime-proven (fixture), hardware NOT_RUN** | `movl`+`lfence` у бінарнику, C/asm-виводи ідентичні на синтетичному `resource0`; див. docs/31 |
 
 ## Що реально дає репозиторій
 

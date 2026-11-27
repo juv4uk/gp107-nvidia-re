@@ -54,7 +54,7 @@ make test-capability-driver
 Окрім попередніх кроків, гейт перевіряє три стани ledger, декодування
 прапорців BAR0 на мутованому fixture і збереження compile-time розкладок.
 Фінальний маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` і `make test-valid-cards-static` не
 змінено. Фізичний MMIO на цій платі не виконувався: `nvidia` лишається bound.
