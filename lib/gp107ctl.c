@@ -145,21 +145,6 @@ int main(int argc, char **argv)
         return GP107_OK;
     }
 
-    rc = gp107_mmio_require_optin(allow, err, sizeof(err));
-    if (rc != GP107_OK) {
-        fprintf(stderr, "%s\n", err);
-        return rc;
-    }
-    rc = gp107_inventory_scan(root, expect, &inv, err, sizeof(err));
-    if (rc != GP107_OK) {
-        fprintf(stderr, "%s\n", err);
-        return rc;
-    }
-    rc = gp107_mmio_check_driver(&inv, err, sizeof(err));
-    if (rc != GP107_OK) {
-        fprintf(stderr, "%s\n", err);
-        return rc;
-    }
     rc = gp107_mmio_read32(root, expect, allow, offset,
                            &value, err, sizeof(err));
     if (rc != GP107_OK) {
