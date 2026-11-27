@@ -139,24 +139,31 @@ static int read_driver_link(const char *devdir,
                              struct gp107_driver_binding *out,
                              char *err, size_t errsz)
 {
-    char path[GP107_PATH_CAP];
     char target[GP107_PATH_CAP];
     ssize_t n;
     const char *base;
     size_t len;
+    int dirfd;
+    int saved;
 
     memset(out, 0, sizeof(*out));
-    if (join_path(path, sizeof(path), devdir, "driver") != 0) {
+
+    /* Anchor the lookup to an already-open device directory. ENOENT from
+     * readlinkat then means the driver entry itself is absent, not that an
+     * intermediate parent directory vanished. */
+    dirfd = open(devdir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dirfd < 0) {
+        saved = errno;
         return gp107_set_error(err, errsz,
-                               "IDENTITY-FAIL step=driver-binding-path code=%d",
-                               GP107_ERR_DRIVER_BINDING);
+                               "IDENTITY-FAIL step=driver-binding-open code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, saved);
     }
 
     errno = 0;
-    n = readlink(path, target, sizeof(target) - 1);
+    n = readlinkat(dirfd, "driver", target, sizeof(target) - 1);
+    saved = errno;
+    (void)close(dirfd);
     if (n < 0) {
-        int saved = errno;
-        /* A missing sysfs driver link is the one and only unbound witness. */
         if (saved == ENOENT) {
             return GP107_OK;
         }
