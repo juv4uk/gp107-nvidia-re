@@ -34,31 +34,15 @@ static int require_unbound(const struct gp107_inventory *inv,
     return GP107_OK;
 }
 
-static int map_read32(const char *sysfs_root, const char *bdf,
-                      uint32_t expected_size, uint32_t offset, uint32_t *value,
-                      char *err, size_t errsz)
+static int map_read32_fd(int fd, uint32_t expected_size,
+                         uint32_t offset, uint32_t *value,
+                         char *err, size_t errsz)
 {
-    char path[512];
-    int fd;
+    struct stat st;
     void *map;
     volatile const unsigned char *p;
     uint32_t v;
-    int n;
-    struct stat st;
 
-    n = snprintf(path, sizeof(path), "%s/bus/pci/devices/%s/resource0",
-                 sysfs_root, bdf);
-    if (n < 0 || (size_t)n >= sizeof(path)) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=path-too-long code=%d",
-                               GP107_ERR_PARSE);
-    }
-    fd = open(path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=resource0-open code=%d errno=%d",
-                               GP107_ERR_OPEN, errno);
-    }
     if (fstat(fd, &st) != 0) {
         int saved = errno;
         (void)close(fd);
@@ -102,6 +86,13 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
                       char *err, size_t errsz)
 {
     struct gp107_inventory inv;
+    struct stat devst;
+    char devpath[512];
+    char driver_target[GP107_PATH_CAP];
+    ssize_t link_len;
+    int dirfd = -1;
+    int fd = -1;
+    int n;
     int rc;
 
     if (err == NULL || errsz == 0) {
@@ -149,6 +140,64 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
                                "MMIO-FAIL step=offset-out-of-window code=%d offset=0x%x size=0x%x",
                                GP107_ERR_OFFSET, offset, inv.pci.bar0_size);
     }
-    return map_read32(sysfs_root, inv.bdf, inv.pci.bar0_size,
-                       offset, value, err, errsz);
+
+    n = snprintf(devpath, sizeof(devpath), "%s/bus/pci/devices/%s",
+                 sysfs_root, inv.bdf);
+    if (n < 0 || (size_t)n >= sizeof(devpath)) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=device-path-too-long code=%d",
+                               GP107_ERR_PARSE);
+    }
+
+    /* Pin the resolved PCI device directory, re-check binding, and open
+     * resource0 relative to that same directory fd. This narrows the TOCTOU
+     * window; it is not an atomic lock against a later kernel driver bind. */
+    dirfd = open(devpath, O_RDONLY | O_CLOEXEC);
+    if (dirfd < 0) {
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=device-dir-open code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, errno);
+    }
+    if (fstat(dirfd, &devst) != 0) {
+        int saved = errno;
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=device-dir-stat code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, saved);
+    }
+    if (!S_ISDIR(devst.st_mode)) {
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=device-dir-invalid code=%d",
+                               GP107_ERR_DRIVER_BINDING);
+    }
+
+    errno = 0;
+    link_len = readlinkat(dirfd, "driver", driver_target,
+                          sizeof(driver_target));
+    if (link_len >= 0) {
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=driver-bound code=%d",
+                               GP107_ERR_DRIVER_BOUND);
+    }
+    if (errno != ENOENT) {
+        int saved = errno;
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=driver-binding-recheck code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, saved);
+    }
+
+    fd = openat(dirfd, "resource0", O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
+        int saved = errno;
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "MMIO-FAIL step=resource0-open code=%d errno=%d",
+                               GP107_ERR_OPEN, saved);
+    }
+    (void)close(dirfd);
+
+    return map_read32_fd(fd, inv.pci.bar0_size, offset, value, err, errsz);
 }

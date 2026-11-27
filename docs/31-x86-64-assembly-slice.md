@@ -32,8 +32,8 @@ ret
 | # | Факт | Статус | Свідок / межа |
 |---:|---|---|---|
 | 1 | Примітив `movl (%rdi),%eax` + `lfence` + `ret` присутній у бінарнику | **statically proven** | `objdump -d gp107ctl-asm` показує `gp107_mmio_load32_asm` і `lfence`; маркер `ASM-STATIC-OK` |
-| 2 | Aсемблерний і C-шляхи дають ідентичний результат на синтетичному `resource0` | **runtime-proven (fixture)** | `ASM-EQUIV-OK fixture-read-and-ledger identical-to-C` |
-| 3 | Capability-ledger однаковий для обох збірок | **runtime-proven (fixture)** | `cmp` виводу `capabilities --allow-mmio`, без розбіжностей |
+| 2 | Aсемблерний і C-шляхи дають ідентичний результат на синтетичному `resource0` | **synthetic-fixture result** | `ASM-EQUIV-OK fixture-read-and-ledger identical-to-C` |
+| 3 | Capability-ledger однаковий для обох збірок | **synthetic-fixture result** | `cmp` виводу `capabilities --allow-mmio`, без розбіжностей |
 | 4 | Профіль збірки прив’язаний до `10de:1c82 @ 0000:01:00.0`, x86-64 | **design choice / statically proven** | константи в `lib/gp107_identity.h`, вивід `GP107-PROFILE-OK` |
 | 5 | Фізичний read апертури на реальній GP107 | **NOT RUN** | `nvidia` bound; жодного unbind/reboot/MMIO-тесту |
 | 6 | BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, причина розриву NVK↔NVIDIA | **UNPROVEN / string-only** | асемблер не додає жодного нового твердження |
@@ -51,7 +51,7 @@ ret
 - додано два негативні witness: урізаний `resource0` і offset `0x1000`;
 - синтетичний `resource0` збільшено до 4096 байт.
 
-Це **runtime-proven на fixture**; на реальному GP107 розмір BAR0 зчитано з
+Це **synthetic-fixture checks PASS**; на реальному GP107 розмір BAR0 зчитано з
 sysfs як `0x01000000`, але самий aperture-read не виконувався.
 
 ## 4. Що не змінилося

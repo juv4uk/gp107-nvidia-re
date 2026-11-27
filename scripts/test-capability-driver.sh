@@ -272,6 +272,17 @@ for marker in \
 done
 echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
 
+step 'MMIO refuses a resource0 symlink'
+mv "$FIX/bus/pci/devices/0000:01:00.0/resource0" "$FIX/bus/pci/devices/0000:01:00.0/resource0.real"
+ln -s resource0.real "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/resource-link.out" 2>"$WORK/resource-link.err"; then
+  fail 'MMIO API followed a resource0 symlink'
+fi
+grep -Fq 'MMIO-FAIL step=resource0-open' "$WORK/resource-link.err" || fail 'missing resource0 symlink denial'
+rm "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+mv "$FIX/bus/pci/devices/0000:01:00.0/resource0.real" "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+echo 'NEGATIVE-RESOURCE0-SYMLINK-OK'
+
 step 'negative witness (offset past one-page window is refused)'
 if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
     >"$WORK/offset.out" 2>"$WORK/offset.err"; then

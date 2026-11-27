@@ -139,29 +139,49 @@ static int read_driver_link(const char *devdir,
                             struct gp107_driver_binding *out,
                             char *err, size_t errsz)
 {
-    char path[GP107_PATH_CAP];
     char target[GP107_PATH_CAP];
+    struct stat st;
     ssize_t n;
     const char *base;
     size_t len;
+    int dirfd;
 
     memset(out, 0, sizeof(*out));
-    if (join_path(path, sizeof(path), devdir, "driver") != 0) {
+    /* Pin the resolved PCI device directory. ENOENT from readlinkat() then
+     * means its "driver" entry is absent, not that the parent disappeared. */
+    dirfd = open(devdir, O_RDONLY | O_CLOEXEC);
+    if (dirfd < 0) {
         return gp107_set_error(err, errsz,
-                               "IDENTITY-FAIL step=driver-path code=%d",
-                               GP107_ERR_PARSE);
+                               "IDENTITY-FAIL step=driver-parent-open code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, errno);
+    }
+    if (fstat(dirfd, &st) != 0) {
+        int saved = errno;
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-parent-stat code=%d errno=%d",
+                               GP107_ERR_DRIVER_BINDING, saved);
+    }
+    if (!S_ISDIR(st.st_mode)) {
+        (void)close(dirfd);
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-parent-not-directory code=%d",
+                               GP107_ERR_DRIVER_BINDING);
     }
 
     errno = 0;
-    n = readlink(path, target, sizeof(target));
+    n = readlinkat(dirfd, "driver", target, sizeof(target));
     if (n < 0) {
-        if (errno == ENOENT) {
+        int saved = errno;
+        (void)close(dirfd);
+        if (saved == ENOENT) {
             return GP107_OK;
         }
         return gp107_set_error(err, errsz,
                                "IDENTITY-FAIL step=driver-binding-read code=%d errno=%d",
-                               GP107_ERR_DRIVER_BINDING, errno);
+                               GP107_ERR_DRIVER_BINDING, saved);
     }
+    (void)close(dirfd);
     if (n == 0 || (size_t)n >= sizeof(target)) {
         return gp107_set_error(err, errsz,
                                "IDENTITY-FAIL step=driver-binding-truncated code=%d",

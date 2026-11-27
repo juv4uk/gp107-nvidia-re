@@ -40,7 +40,7 @@ approval і не дозвіл на фізичний доступ. Ledger дру�
 | 1 | Розкладки `32/68/140` байт | **statically proven** | `_Static_assert`; `LAYOUT-OK identity=32 binding=68 inventory=140` |
 | 2 | На hostі: `revision=0xa1`, `class=0x030000`, `header=0x80`, `command=0x0407`, BAR0 `0xee000000`, memory / 32-bit / non-prefetch | **runtime-proven** | `gp107ctl inventory` з реального sysfs `config` |
 | 3 | Інтерпретація `0x030000` як «VGA display controller» і `0x80` як «PCI-to-PCI bridge header» — половина класу | **interpretation / UNPROVEN** | Код друкує сирі байти; назва типу заголовка не використовується для жодної дії |
-| 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, після мутації повертається `memory` | **runtime-proven (fixture)** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
+| 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, після мутації повертається `memory` | **synthetic-fixture result** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
 | 5 | Ledger з `nvidia` bound: software gate `denied`, owner approval `not-inferred` | **software runtime (fixture + host)** | `LEDGER-BOUND-OK`; реальний `--allow-mmio` не запускався |
 | 6 | Ledger unbound без opt-in: software gate `deferred`; з opt-in: gate `granted`, але owner approval `not-inferred` і physical MMIO `not-authorized` | **software runtime (fixture)** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK`; жодного реального MMIO |
 | 7 | `PCI BDF ↔ RM gpu_id`, RM class/runlist/notifier/fence, BOOT0 | **UNPROVEN** | У коді немає RM-шляху; BOOT0 не читався |
