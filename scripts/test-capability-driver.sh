@@ -63,7 +63,7 @@ with open(os.path.join(dev, 'vendor'), 'w') as fh:
 with open(os.path.join(dev, 'device'), 'w') as fh:
     fh.write('0x1c82\n')
 with open(os.path.join(dev, 'resource0'), 'wb') as fh:
-    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(60))
+    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 
@@ -91,10 +91,12 @@ step 'capability ledger (bound driver denies MMIO, RM deferred)'
 for marker in \
   '(kind . gp107-capability-ledger)' \
   '(abi-pin . untouched)' \
-  '(pci-inventory . granted)' \
+  '(pci-inventory . observed)' \
   '(bar0-decode . complete)' \
   '(rm-identity . deferred) (reason . not-in-this-slice)' \
-  '(mmio-read . denied) (reason . driver-bound)' \
+  '(mmio-read-software-gate . denied) (reason . driver-bound)' \
+  '(owner-approval . not-inferred)' \
+  '(physical-mmio . not-authorized)' \
   '(boot0 . unproven) (evidence . unproven)' \
   '(rights (write . none) (dispatch . none) (rm . none))' \
   '(summary . CAPABILITY-LEDGER-OK)'; do
@@ -133,6 +135,80 @@ grep -Fq 'IDENTITY-FAIL step=bdf-mismatch' "$WORK/bdf.err" \
   || fail 'нема названого negative-маркера bdf-mismatch'
 echo 'NEGATIVE-BDF-OK marker=step=bdf-mismatch'
 
+step 'driver-link errors fail closed (not treated as unbound)'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+printf 'not-a-symlink\n' > "$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/baddriver.out" 2>"$WORK/baddriver.err"; then
+  fail 'еміттер прийняв некоректний driver entry як unbound'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-binding-read' "$WORK/baddriver.err" \
+  || fail 'нема named fail-closed marker для driver-binding-read'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+echo 'NEGATIVE-DRIVER-LINK-OK unknown=denied'
+
+
+step 'public C API enforces opt-in and driver binding (not only CLI)'
+cat > "$WORK/mmio-api-test.c" <<'EOF'
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include "gp107_identity.h"
+#include "gp107_mmio.h"
+
+int main(int argc, char **argv)
+{
+    char err[256] = {0};
+    uint32_t value = 0;
+    int rc;
+
+    if (argc != 2)
+        return 64;
+
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 0, 0,
+                           &value, err, sizeof(err));
+    if (rc != GP107_ERR_OPTIN || strstr(err, "opt-in-required") == NULL) {
+        fprintf(stderr, "API-GATE-FAIL optin rc=%d err=%s\n", rc, err);
+        return 1;
+    }
+
+    err[0] = '\0';
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 1, 0,
+                           &value, err, sizeof(err));
+    if (rc != GP107_ERR_DRIVER_BOUND || strstr(err, "driver-bound") == NULL) {
+        fprintf(stderr, "API-GATE-FAIL driver rc=%d err=%s\n", rc, err);
+        return 1;
+    }
+
+    puts("MMIO-API-GATE-OK direct-call=guarded optin=required bound-driver=denied");
+    return 0;
+}
+EOF
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I"$ROOT/lib" \
+  "$WORK/mmio-api-test.c" "$ROOT/lib/gp107_identity.c" \
+  "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-api-test"
+"$WORK/mmio-api-test" "$FIX"
+
+step 'BAR0 size and offset checks fail closed'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+cp "$FIX/bus/pci/devices/0000:01:00.0/resource0" "$WORK/resource0.saved"
+truncate -s 64 "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/shortbar.out" 2>"$WORK/shortbar.err"; then
+  fail 'MMIO accepted BAR0 smaller than 4 KiB'
+fi
+grep -Fq 'MMIO-FAIL step=bar0-size-unavailable' "$WORK/shortbar.err" \
+  || fail 'missing BAR-size failure marker'
+mv "$WORK/resource0.saved" "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/offset.out" 2>"$WORK/offset.err"; then
+  fail 'MMIO accepted an offset outside the 4 KiB window'
+fi
+grep -Fq 'MMIO-FAIL step=offset-out-of-window' "$WORK/offset.err" \
+  || fail 'missing offset-window failure marker'
+echo 'NEGATIVE-MMIO-BAR-BOUNDS-OK short-bar=denied offset-overflow=denied'
+
+
 step 'MMIO gate (opt-in required before any mapping)'
 if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
     >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
@@ -167,17 +243,19 @@ echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
 
 step 'capability ledger (unbound + no opt-in stays deferred)'
 "$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-deferred.out"
-grep -Fq '(mmio-read . deferred) (reason . opt-in-required)' "$WORK/ledger-deferred.out" \
+grep -Fq '(mmio-read-software-gate . deferred) (reason . opt-in-required)' "$WORK/ledger-deferred.out" \
   || fail 'ledger не лишив MMIO у deferred без opt-in'
 echo 'LEDGER-DEFERRED-OK marker=step=opt-in-required'
 
 step 'capability ledger (unbound + opt-in grants read-only only)'
 "$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted.out"
-grep -Fq '(mmio-read . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
+grep -Fq '(mmio-read-software-gate . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
   || fail 'ledger не надав read-only MMIO після opt-in'
 grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
   || fail 'ledger розширив права поза read-only'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+grep -Fq '(owner-approval . not-inferred)' \"$WORK/ledger-granted.out\" \\\n  || fail 'software gate помилково видає owner approval'
+grep -Fq '(physical-mmio . not-authorized)' \"$WORK/ledger-granted.out\" \\\n  || fail 'ledger позначив фізичний MMIO як авторизований'
+echo 'LEDGER-GRANTED-OK software-gate-only owner-approval=not-inferred physical-mmio=not-authorized'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
