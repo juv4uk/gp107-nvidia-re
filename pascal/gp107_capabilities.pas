@@ -29,21 +29,13 @@ function CapabilityReport(const inv: Tgp107Inventory;
 var
   state, reason, decode: string;
 begin
+  { CLI opt-in is not owner approval: physical MMIO always remains denied. }
+  allowMmio := 0;
+  state := 'denied';
   if inv.driver.bound <> 0 then
-  begin
-    state := 'denied';
-    reason := 'driver-bound';
-  end
-  else if allowMmio = 0 then
-  begin
-    state := 'deferred';
-    reason := 'opt-in-required';
-  end
+    reason := 'driver-bound'
   else
-  begin
-    state := 'granted';
-    reason := 'read-only-window';
-  end;
+    reason := 'owner-authorization-required';
 
   if inv.pci.cfg_bytes = CONFIG_BYTES then
     decode := 'complete'
