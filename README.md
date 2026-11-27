@@ -50,8 +50,9 @@ make -C probes
 sudo ./probes/01_min_cuinit          # or run as a user in the `video` group
 echo 0xc90046c8 | python3 scripts/decode_ioctl.py
 
-bash scripts/test-pascal-probe.sh    # FPC 3.2.2 pin + static-ELF + runtime witness (both probes)
-sudo ./pascal/02_bar_identity        # root witness: BAR0 mmap EINVAL, BOOT0 UNPROVEN
+make test                            # FPC 3.2.2 pin + static-ELF + runtime witness (both probes)
+make gate-root                       # optional root witness: mmap EINVAL, BOOT0 UNPROVEN
+sudo ./pascal/02_bar_identity        # ручний root-свідок
 ```
 
 ## Method and verification

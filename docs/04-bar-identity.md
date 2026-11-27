@@ -50,6 +50,8 @@ Ghidra 12.2 через REA. Псевдокод у репозиторій не п
 | Чи є в інвентарі рядків `BOOT_0`? | `ev_4668ff2598fe075d77989eeb7ec554c6b0ef35b1994183214b3a6cf6eb9d8bd0` | 0 збігів. Обмеження: це інвентар рядків Ghidra, а не довільні байти ELF |
 | Чи є імена RM-команд `NV2080_CTRL_CMD`? | `ev_514422e5d7733e0417243209387c8ed82d57d912dbc2734ef42a70c4b64773ac` | 0 збігів у інвентарі рядків — тобто шлях до BOOT0 через іменовану RM-команду тут не знайдено |
 | Чи є `PMC` / `BOOT_0` / `chipset` у рядках? | `ev_ec1aa014bf464a9d8d6a25fd044ed527e43ac1601cbc872e86d42c11add4eafe` | 0 збігів |
+| Чи є `GET_ARCH` / `ARCH_INFO` / `MC_ARCH` у рядках? | `ev_6da5600bbf853c468595fb3c1dcc8cbdcfd67b6d46f97fea67858a5ed59c6d0f`, `ev_72a09f3cdedeaff12c74f8a7cf417adb952bda8358200aea82306d48b3a284c0`, `ev_c0dafaf806f860fb94cadbeae00eff6466687b2c92aac7831d842b8d4273d85b` | 0 збігів |
+| Чи є процедури з іменем `nv2080`? | `ev_77772da4c98eabd6a457d9f0be88df38f693156c49e302348d8b71853ae121e1` | 0 збігів |
 | Де лежить `cuDeviceGetAttribute`? | `ev_9086e25fc2cef32fc2ad6e6ecdb46e5e4e13f5f26dffbf465b8435b4c2b67ef0` | `0x428050`, не thunk |
 | Чи доступна декомпіляція? | `ev_d21438e9640d1a1cabdc92cb47b41e5e14fce625ffb1d32d478ab31e0ed17343` | так, 920 UTF-16 code units; у репо не копіюється |
 
@@ -68,9 +70,14 @@ Ghidra 12.2 через REA. Псевдокод у репозиторій не п
 ## Відтворення
 
 ```bash
-bash scripts/test-pascal-probe.sh          # обидва пробники, green
-sudo ./pascal/02_bar_identity              # root-свідок: EINVAL, BOOT0 unproven
+make test                                  # обидва пробники, green, без sudo
+make gate-root                             # опційний root-свідок; за потреби SUDO_FLAGS=-S
+sudo ./pascal/02_bar_identity              # той самий root-свідок вручну
 ```
+
+`gate-root` **не входить** до базового `test`: основний гейт лишається
+детермінованим і виконується звичайним користувачем (`EACCES` → fail-closed).
+Root-свідок перевіряє іншу гілку: `open` OK → `mmap` `EINVAL` → `BOOT0 UNPROVEN`.
 
 Очікуваний фінальний рядок гейту:
 
