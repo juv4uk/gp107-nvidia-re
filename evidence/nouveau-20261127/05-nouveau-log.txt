@@ -1,0 +1,126 @@
+лис 27 07:10:21 WSM kernel: Command line: BOOT_IMAGE=/boot/vmlinuz-7.2.15+kali-amd64 root=UUID=66070137-2ae6-419f-89aa-526564d28d40 ro quiet modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm nouveau.debug=TOP=trace,FIFO=debug wsm_open_driver=1
+лис 27 07:10:21 WSM kernel: Kernel command line: BOOT_IMAGE=/boot/vmlinuz-7.2.15+kali-amd64 root=UUID=66070137-2ae6-419f-89aa-526564d28d40 ro quiet modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm nouveau.debug=TOP=trace,FIFO=debug wsm_open_driver=1
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: NVIDIA GP107 (137000a1)
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: bios: version 86.07.59.00.4c
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: pmu: firmware unavailable
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: vgaarb: deactivate vga console
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: preinit running...
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: preinit completed in 0us
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 00: 8006183e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 01: 80000003
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 02: 00400005
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 00.0 (      gr): addr 400000 fault  0 engine  0 runlist  0 intr 12 reset 12
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 03: 9c028c3e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 04: 8000004f
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 05: 001040ad
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 13.0 (      ce): addr 104000 fault 21 engine  7 runlist  0 intr  5 reset  6
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 06: a0030e3e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 07: 8000004f
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 08: 041040b5
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 13.1 (      ce): addr 104000 fault 22 engine  8 runlist  0 intr  6 reset  7
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 09: 94a3aa3e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0a: 8000004f
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0b: 081040dd
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 13.2 (      ce): addr 104000 fault 27 engine  5 runlist  5 intr  7 reset 21
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0c: 84289e3e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0d: 80000043
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0e: 00084015
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 10.0 (   nvdec): addr 084000 fault  2 engine  1 runlist  1 intr 17 reset 15
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0f: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 10: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 11: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 12: 8c679c3e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 13: 80000037
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 14: 00087095
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0d.0 (    sec2): addr 087000 fault 18 engine  3 runlist  3 intr 15 reset 14
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 15: 8848243e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 16: 8000003b
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 17: 001c80cd
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0e.0 (   nvenc): addr 1c8000 fault 25 engine  2 runlist  2 intr 16 reset 18
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 18: 9080a63e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 19: 8000003b
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 1a: 041cc08d
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 0e.1 (   nvenc): addr 1cc000 fault 17 engine  4 runlist  4 intr  1 reset 19
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 1b: 98c52c3e
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 1c: 8000004f
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 1d: 0c1040e5
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 13.3 (      ce): addr 104000 fault 28 engine  6 runlist  6 intr 10 reset 22
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 1e: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 1f: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 20: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 21: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 22: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 23: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 24: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 25: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 26: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 27: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 28: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 29: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 2a: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 2b: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 2c: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 2d: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 2e: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 2f: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 30: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 31: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 32: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 33: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 34: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 35: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 36: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 37: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 38: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 39: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 3a: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 3b: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 3c: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 3d: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 3e: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: 3f: 00000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fb: 4096 MiB GDDR5
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: reset running...
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: reset completed in 0us
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: init running...
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: top: init completed in 0us
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: VRAM: 4096 MiB
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: GART: 536870912 MiB
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: BIT table 'A' not found
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: BIT table 'L' not found
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: TMDS table version 2.0
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000000: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000000:15[      sw]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000000:07[     ce0]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000000:08[     ce1]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000005: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000005:05[     ce2]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000001: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000001:01[  nvdec0]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000003: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000003:03[    sec2]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000002: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000002:02[  nvenc0]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000004: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000004:04[  nvenc1]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000006: chan:000000
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: fifo:000006:06[     ce3]: 
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: MM: using COPY for buffer copies
+лис 27 07:10:25 WSM kernel: snd_hda_intel 0000:01:00.1: bound 0000:01:00.0 (ops nv50_audio_component_bind_ops [nouveau])
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: [drm] Registered 4 planes with drm panic
+лис 27 07:10:25 WSM kernel: [drm] Initialized nouveau 1.4.2 for 0000:01:00.0 on minor 0
+лис 27 07:10:25 WSM kernel: fbcon: nouveaudrmfb (fb0) is primary device
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: [drm] fb0: nouveaudrmfb frame buffer device
+лис 27 07:10:25 WSM kernel: nouveau 0000:01:00.0: drm: Disabling PCI power management to avoid bug
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:26 WSM kernel: nouveau 0000:01:00.0: fifo:000000:00[      gr]: 10031003: busy 0 faulted 0 chsw 0 save 0 load 0 tsgid 3 -> tsgid 3 
+лис 27 07:10:43 WSM kernel: NVRM: GPU 0000:01:00.0 is already bound to nouveau.
+лис 27 07:10:46 WSM kernel: NVRM: GPU 0000:01:00.0 is already bound to nouveau.
+лис 27 07:10:50 WSM kernel: NVRM: GPU 0000:01:00.0 is already bound to nouveau.

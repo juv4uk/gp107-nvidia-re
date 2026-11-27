@@ -1,0 +1,124 @@
+Module                  Size  Used by
+snd_seq_dummy          16384  0
+snd_hrtimer            16384  1
+snd_seq               118784  7 snd_seq_dummy
+snd_seq_device         16384  1 snd_seq
+nouveau              3358720  20
+qrtr                   57344  2
+rfkill                 45056  2
+mxm_wmi                12288  1 nouveau
+drm_gpuvm              57344  1 nouveau
+gpu_sched              77824  1 nouveau
+drm_ttm_helper         20480  2 nouveau
+ttm                   159744  2 drm_ttm_helper,nouveau
+drm_exec               12288  2 drm_gpuvm,nouveau
+drm_display_helper    315392  1 nouveau
+cec                    77824  1 drm_display_helper
+rc_core                77824  1 cec
+drm_client_lib         16384  1 nouveau
+drm_kms_helper        270336  4 drm_display_helper,drm_ttm_helper,drm_client_lib,nouveau
+i2c_algo_bit           16384  1 nouveau
+sunrpc                917504  1
+binfmt_misc            28672  1
+intel_rapl_msr         24576  0
+intel_rapl_common      53248  1 intel_rapl_msr
+x86_pkg_temp_thermal    16384  0
+intel_powerclamp       28672  0
+snd_hda_codec_alc882    20480  1
+nls_ascii              12288  1
+snd_hda_codec_realtek_lib    69632  1 snd_hda_codec_alc882
+coretemp               24576  0
+snd_soc_avs           245760  0
+snd_hda_codec_generic   131072  2 snd_hda_codec_realtek_lib,snd_hda_codec_alc882
+snd_hda_codec_nvhdmi    16384  1
+snd_hda_codec_hdmi     61440  1 snd_hda_codec_nvhdmi
+nls_cp437              16384  1
+snd_soc_hda_codec      24576  1 snd_soc_avs
+vfat                   28672  1
+kvm_intel             446464  0
+snd_hda_intel          65536  2
+fat                   118784  1 vfat
+snd_hda_ext_core       36864  2 snd_soc_avs,snd_soc_hda_codec
+snd_hda_codec         229376  8 snd_hda_codec_generic,snd_soc_avs,snd_hda_codec_hdmi,snd_soc_hda_codec,snd_hda_intel,snd_hda_codec_nvhdmi,snd_hda_codec_realtek_lib,snd_hda_codec_alc882
+mei_hdcp               28672  0
+mei_pxp                16384  0
+snd_hda_core          155648  8 snd_hda_codec_generic,snd_soc_avs,snd_hda_codec_hdmi,snd_soc_hda_codec,snd_hda_intel,snd_hda_ext_core,snd_hda_codec,snd_hda_codec_realtek_lib
+kvm                  1540096  1 kvm_intel
+snd_intel_dspcfg       49152  2 snd_soc_avs,snd_hda_intel
+snd_soc_core          466944  2 snd_soc_avs,snd_soc_hda_codec
+snd_intel_sdw_acpi     16384  1 snd_intel_dspcfg
+snd_compress           32768  2 snd_soc_avs,snd_soc_core
+irqbypass              16384  1 kvm
+snd_hwdep              24576  1 snd_hda_codec
+snd_pcm_dmaengine      20480  1 snd_soc_core
+snd_pcm               217088  8 snd_soc_avs,snd_hda_codec_hdmi,snd_hda_intel,snd_hda_codec,snd_compress,snd_soc_core,snd_hda_core,snd_pcm_dmaengine
+rapl                   20480  0
+intel_wmi_thunderbolt    12288  0
+intel_cstate           20480  0
+pcspkr                 12288  0
+snd_timer              57344  3 snd_seq,snd_hrtimer,snd_pcm
+intel_uncore          294912  0
+ee1004                 16384  0
+mei_me                 61440  2
+snd                   159744  19 snd_hda_codec_generic,snd_seq,snd_seq_device,snd_hda_codec_hdmi,snd_soc_hda_codec,snd_hwdep,snd_hda_intel,snd_hda_codec,snd_timer,snd_hda_codec_realtek_lib,snd_compress,snd_soc_core,snd_pcm
+intel_pmc_core        188416  0
+mei                   200704  5 mei_hdcp,mei_pxp,mei_me
+pmt_telemetry          16384  1 intel_pmc_core
+soundcore              16384  1 snd
+pmt_discovery          24576  1 pmt_telemetry
+pmt_class              20480  2 pmt_telemetry,pmt_discovery
+intel_pmc_ssram_telemetry    20480  1 intel_pmc_core
+joydev                 32768  0
+intel_pmc_pwrm_telemetry    12288  1 intel_pmc_ssram_telemetry
+intel_vsec             24576  3 intel_pmc_ssram_telemetry,intel_pmc_pwrm_telemetry,pmt_telemetry
+acpi_pad              184320  0
+evdev                  32768  15
+sg                     40960  0
+lp                     36864  0
+parport_pc             45056  0
+msr                    12288  0
+drm                   929792  13 gpu_sched,drm_kms_helper,drm_exec,drm_gpuvm,drm_display_helper,drm_ttm_helper,drm_client_lib,ttm,nouveau
+ppdev                  24576  0
+parport                86016  3 parport_pc,lp,ppdev
+i2c_dev                24576  0
+configfs               65536  1
+efi_pstore             12288  0
+efivarfs               32768  1
+autofs4                61440  2
+ext4                 1277952  1
+crc16                  12288  1 ext4
+mbcache                20480  1 ext4
+jbd2                  196608  1 ext4
+crc32c_cryptoapi       12288  0
+hid_generic            12288  0
+usbhid                 94208  0
+hid                   290816  2 usbhid,hid_generic
+uas                    32768  0
+usb_storage            94208  1 uas
+sd_mod                 98304  3
+ahci                   53248  3
+iTCO_wdt               12288  0
+libahci                61440  1 ahci
+xhci_pci               24576  0
+intel_pmc_bxt          16384  1 iTCO_wdt
+xhci_hcd              421888  1 xhci_pci
+nvme                   73728  0
+watchdog               53248  1 iTCO_wdt
+libata                499712  2 libahci,ahci
+nvme_core             266240  1 nvme
+usbcore               442368  5 xhci_hcd,usbhid,usb_storage,xhci_pci,uas
+scsi_mod              344064  5 sd_mod,usb_storage,uas,libata,sg
+aesni_intel           102400  0
+video                  81920  1 nouveau
+nvme_keyring           20480  1 nvme_core
+i2c_i801               32768  0
+gf128mul               12288  1 aesni_intel
+i2c_smbus              20480  1 i2c_i801
+nvme_auth              32768  1 nvme_core
+alx                    65536  0
+fan                    28672  0
+mdio                   12288  1 alx
+usb_common             20480  2 xhci_hcd,usbcore
+scsi_common            16384  6 scsi_mod,sd_mod,usb_storage,uas,libata,sg
+wmi                    36864  4 video,intel_wmi_thunderbolt,mxm_wmi,nouveau
+button                 28672  1 nouveau

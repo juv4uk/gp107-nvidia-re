@@ -1,0 +1,22 @@
+# Nouveau boot witness manifest
+capture-utc=2026-11-27T05:11:33Z
+bdf=0000:01:00.0
+icd=/usr/share/vulkan/icd.d/nouveau_icd.json
+boot0=UNPROVEN
+mmio-write=absent
+pr21-executable=NOT-RUN
+
+c858114d0b91d2f8fc5f4a334448f6d7861d9f07a254e51de6318e50394b30cd  /home/agents/nouveau-witness-20261127/00-status.txt
+0c6bfced87d4d064af4b29e637097198a26c5c1b9f43b55abda36c0ae33ec26c  /home/agents/nouveau-witness-20261127/01-cmdline.txt
+6cd6ac6518ebf36a27cb28f689c814210fc7e3a707b44262aa4505d068665702  /home/agents/nouveau-witness-20261127/02-lspci.txt
+bf6f1d2a9a77a38ecb273cb46b7f5aa5a307df96ea8b362d2a86a4a11e790805  /home/agents/nouveau-witness-20261127/03-lsmod.txt
+751e8386f4f7ce41514e9cc103920cd3caf3df8f993f4b50eb5a828099748e9c  /home/agents/nouveau-witness-20261127/04-kernel-log.txt
+27ffd1ee9cf2db1496e27da37f27edac098d327ad02a90edf617c2cbc0558513  /home/agents/nouveau-witness-20261127/05-nouveau-log.txt
+7093c1611fc48296323a44aab3ac9e1f93704e396b1948fd183628425953383a  /home/agents/nouveau-witness-20261127/06-debugfs-files.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/agents/nouveau-witness-20261127/06-debugfs.txt
+3b85f0251c7714d2dac08870b9cc23db0ba123967851fa966eedb132d6490c8d  /home/agents/nouveau-witness-20261127/07-pci-resource.txt
+faf3ee2af8e0e2f1f8dcede96ffa7b42ba6b563cbc31bcc9b16d110c2828ca37  /home/agents/nouveau-witness-20261127/08-mmio.txt
+2a0900d130171f1afd77cb9d77c9739c27f4d177d475f53f1d48f487b91941f7  /home/agents/nouveau-witness-20261127/09-vulkaninfo.txt
+d7c55ce0ac7fe31334fd7faa986ff79260b1d575c2ffccac3871ddedf66a2d23  /home/agents/nouveau-witness-20261127/10-ioctl.txt
+edf849caaa670090783a5cfeccef939257f23c933016ef6fc1ac6cf568ee9522  /home/agents/nouveau-witness-20261127/11-drm-ioctl.txt
+52490e58648fff709c4d2ac1e3b36f56bb5ba15b6c5b4695f381532e44987a07  /home/agents/nouveau-witness-20261127/99-manifest.txt

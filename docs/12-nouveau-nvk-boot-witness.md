@@ -1,6 +1,7 @@
 # 12 — Шаблон witness для одноразового boot на Nouveau/NVK
 
 **Статус шаблону: `TEMPLATE / NOT_RUN`.** Цей документ не є звітом про boot.
+Заповнений результат першого boot-свідка — у `13-nouveau-nvk-boot-witness-result.md`.
 Заповнюється **після** реальної сесії, коли користувач самостійно виконав
 rollback-capable boot і повернув логи. Агент не змінює boot, драйвер, firmware,
 `/etc/modprobe.d` чи `update-initramfs`, і не запускає PR #21 executable.

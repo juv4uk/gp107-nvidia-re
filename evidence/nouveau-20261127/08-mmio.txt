@@ -1,0 +1,3 @@
+resource0 open: NOT ATTEMPTED
+BOOT0: UNPROVEN
+MMIO-RIGHT: none
