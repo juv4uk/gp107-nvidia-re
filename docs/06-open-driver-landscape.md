@@ -8,13 +8,13 @@
 
 - PCI vendor/device: `10de:1c82`.
 - Власний Windows hardware ID, раніше зафіксований власником: `SUBSYS_33511462`, revision `A1`; у форматі PCI це subsystem vendor/device `1462:3351` (MSI).
-- Публічні PCI-записи та апаратні звіти пов'язують `1462:3351` з MSI GTX 1050 Ti Gaming X 4G. Це **ймовірна board SKU**, а не остаточно доведена ідентифікація: підтвердити наклейкою на платі або VBIOS board name/hash.
-- MSI для моделі GTX 1050 Ti GAMING X 4G вказує GP107-400, 4 GB GDDR5, 128-bit memory bus, 6-pin power connector і 75 W specification. Ці параметри застосовувати до нашої плати лише після підтвердження SKU.
+- LACT `res/device_ids.json` зіставляє комбінацію `10de:1c82 + 1462:3351` з назвою **MSI GTX 1050 Ti Gaming X**. Це database-correlated ідентифікація, сумісна з retail SKU MSI **GeForce GTX 1050 Ti GAMING X 4G**; стан позначається `MODEL_CORROBORATED`, а не остаточно `MODEL_PROVEN`. Підтвердити наклейкою або read-only VBIOS board name/hash.
+- Офіційні характеристики MSI для SKU GAMING X 4G: GP107-400, 4 GB GDDR5, 128-bit, 6-pin і 75 W. Це характеристики retail SKU, не runtime-вимірювання цієї плати. Не використовувати паспортні Silent/Gaming/OC clocks як доказ поточних частот.
 - Кодове ім'я: GP107, сімейство Pascal / NV130.
 - Архітектура обчислювальних ядер: `sm_61`.
 - Профіль цього репозиторію для пропрієтарного порівняння: Linux x86-64, NVIDIA R580 `580.196.11`, Kali Rolling, kernel `7.2.15+kali-amd64`, FPC 3.2.2.
 
-PCI ID перевіряється за [envytools PCI ID database](https://github.com/envytools/envytools/blob/master/docs/hw/pciid.rst). Точна плата/Subsystem ID, VBIOS та обсяг VRAM мають фіксуватися окремо: назва GTX 1050 Ti не ідентифікує виробника плати й варіант BIOS.
+PCI ID перевіряється за [envytools PCI ID database](https://github.com/envytools/envytools/blob/master/docs/hw/pciid.rst). Hardware ID `SUBSYS_33511462` / subsystem `1462:3351` — owner-observed; [LACT device database](https://github.com/ilya-zlobintsev/LACT/blob/master/res/device_ids.json) корелює його з MSI Gaming X, а [офіційна сторінка MSI](https://www.msi.com/Graphics-Card/GeForce-GTX-1050-Ti-GAMING-X-4G/Specification) описує SKU GAMING X 4G. VBIOS version/hash і наклейка залишаються остаточними локальними свідками.
 
 ## 2. Висновок: відкритий драйвер уже існує
 
@@ -29,6 +29,8 @@ PCI ID перевіряється за [envytools PCI ID database](https://githu
 Офіційна сторінка Nouveau описує Vulkan як підтримуваний на Kepler і новіших GPU; Mesa вказує мінімум Linux 6.6 для NVK. Важливо не переносити загальне формулювання Mesa про Vulkan 1.4 на Pascal без перевірки per-device API version: у поточному `src/nouveau/vulkan/nvk_physical_device.c` функція `nvk_get_vk_version()` повертає Vulkan 1.3 для всіх `cls_eng3d < TURING_A`, оскільки `hostImageCopy`, необхідний для Vulkan 1.4, у цій реалізації доступний лише на Turing+. GP107/Pascal належить до цієї гілки й тому має повідомляти **Vulkan 1.3**, а не 1.4. Окремо `nvk_is_conformant()` допускає discrete GPUs від Kepler до Ada, тож Pascal входить у conformant-набір, але з API version 1.3. Остаточний runtime proof для нашої плати — `apiVersion` із `vulkaninfo --summary` або Vulkan physical-device properties на реальному GP107.
 
 Поточний код для цього висновку зафіксований на snapshot commit [`41cf87c44dde834b1fcd5817bb6712f97875e891`](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c): перевірки `cls_eng3d < MAXWELL_A` → 1.2, `cls_eng3d < TURING_A` → 1.3, інакше → 1.4; окрема conformance-функція включає Kepler–Ada та Blackwell B.
+
+Незалежний conformance-свідок — [Khronos Vulkan Conformant Products, entry #908](https://www.khronos.org/conformance/adopters/conformant-products/vulkan): Software Freedom Conservancy, 2025-04-18, **Vulkan_1_3**, CTS Version **1.4.1.2**; перелік продуктів явно містить GeForce GTX 1050 Ti. CTS version — версія тестового набору, не версія Vulkan API. Не плутати з окремим NVIDIA-vendor entry #858 від 2024-12-27, який декларує Vulkan 1.4 для Pascal: це proprietary NVIDIA implementation, не NVK. Цей Khronos запис доводить conformance NVK/SFC на зазначеній конфігурації загалом, але не runtime саме нашої плати; локальний `vulkaninfo` лишається обов'язковим.
 
 Джерела:
 - [Nouveau — current status](https://nouveau.freedesktop.org/)
@@ -868,6 +870,8 @@ capability matrix.
 
 
 
+**Нюанс офіційної NVIDIA NVDEC matrix:** GTX 1050 / 1050 Ti зустрічається у двох однаково названих рядках з різними значеннями окремих codec/profile колонок. Не виводити 10-bit, 4:2:2 або 4:4:4 можливості нашої плати з узагальненої маркетингової назви. Потрібно звірити точний SKU/VBIOS, а потім перевірити фактичний decoder API на контрольному R580; жоден із цих hardware rows не є доказом Nouveau userspace decode.
+
 ## 16. Firmware та правильний вибір GP107 на гібридній системі
 
 ### 16.1. GP107 firmware inventory: GR bring-up не є reclocking firmware
@@ -1045,22 +1049,13 @@ glmark2
 а не GP107 acceleration. За headless/Wayland/remote session можливий
 інший результат — фіксувати session type.
 
-**Гібридна графіка Intel HD 530 + GP107.** На цій машині desktop може
-працювати через Intel GPU, тому звичайний `glxinfo` або перший Vulkan
-device не доводить, що тестується GTX 1050 Ti. Після отримання BDF з
-`lspci -Dnnk -d 10de:1c82` використовувати PCI selector Mesa
-(приклад для `0000:01:00.0`):
-```sh
-DRI_PRIME=pci-0000_01_00_0 glxinfo -B
-DRI_PRIME=pci-0000_01_00_0 glmark2
-DRI_PRIME=pci-0000_01_00_0! vulkaninfo --summary
-DRI_PRIME=pci-0000_01_00_0! vkcube
-```
-Замінити BDF у selector на фактично виявлений; не припускати, що він
-завжди `0000:01:00.0`. Для Vulkan суфікс `!` обмежує видимі застосунку
-пристрої вибраним GPU. У кожному виводі перевірити `deviceName`,
-`driverName` і PCI identity; якщо показано Intel або llvmpipe, це не
-GP107 runtime witness. Джерело: [Mesa `DRI_PRIME` documentation](https://docs.mesa3d.org/envvars.html).
+**Гібридна графіка Intel HD 530 + GP107.** Не копіювати BDF із
+прикладів у локальний runbook: єдиний авторитетний dynamic PCI selector
+для OpenGL/Vulkan міститься у [розділі 16.2](#162-intel-hd-530--gp107-примусовий-вибір-dgpu-в-mesa).
+Він отримує BDF через `lspci -Dnn -d 10de:1c82` і формує Mesa
+`DRI_PRIME=pci-<BDF>`; для Vulkan використовується суфікс `!`.
+У кожному виводі перевірити `deviceName`, `driverName` і PCI identity:
+Intel або llvmpipe не є GP107 runtime witness.
 
 **Vulkan:**
 ```sh
@@ -1161,3 +1156,115 @@ usernames, повну конфігурацію хоста або firmware binari
 - [llama.cpp Vulkan build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
 - [Linux Nouveau GP107 compute class](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
 - [Mesa NVK Vulkan API version selection](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+
+
+## 19. Compute paths для GP107: що відкрите, а що залежить від R580
+
+Для GTX 1050 Ti існують кілька різних compute/API шляхів. Не об'єднувати
+їх під ярликом «відкритий драйвер»: вони мають різні kernel backends,
+userspace frontends та залежності від NVIDIA proprietary driver.
+
+| Шлях | Kernel/runtime backend | Open-source частина | Статус для GP107 |
+|---|---|---|---|
+| NVK Vulkan compute | Nouveau kernel + Mesa NVK/NAK | Відкритий kernel і userspace driver | Khronos Vulkan 1.3 conformance entry містить GTX 1050 Ti; наша плата runtime UNPROVEN |
+| Nouveau Gallium → Rusticl/OpenCL | Nouveau kernel + Gallium | Відкритий kernel/userspace OpenCL frontend | `nouveau` має upstream Rusticl support, але потребує opt-in; GP107 runtime/CTS UNPROVEN |
+| NOCL → Rusticl/OpenCL → CUDA | NVIDIA proprietary R580 KMD + CUDA Driver API | Відкриті Mesa Gallium/Rusticl/NOCL шари; закритий CUDA driver backend | Перспективний окремий експеримент; GP107/SM61 runtime UNPROVEN; NOCL merge/build availability треба перевірити |
+| NVIDIA OpenCL ICD | NVIDIA proprietary KMD + userspace ICD | Закритий vendor stack | Khronos OpenCL 3.0 entry #377 (2021-09-08) містить GTX 1050 Ti; використовувати як vendor control, не як open-driver evidence |
+
+### 19.1. NVK Vulkan compute — відкритий шлях без CUDA
+
+Після успішного NVK device enumeration перевірити Vulkan compute не лише
+графічним `vkcube`, а невеликим Vulkan compute sample з readback та
+CPU checksum. Для Pascal очікуваний advertised API — Vulkan 1.3;
+Khronos SFC entry #908 засвідчує Vulkan 1.3 conformance на GTX 1050 Ti,
+але не є runtime свідком нашої плати. За потреби наступний workload —
+окремий llama.cpp Vulkan build, тільки після базового device/compute test.
+Не порівнювати Vulkan API version з NVIDIA proprietary Vulkan 1.4 entry.
+
+### 19.2. Nouveau Gallium → Mesa Rusticl → OpenCL
+
+Це повністю відкритий шлях на рівні kernel/userspace driver, але його
+GP107 OpenCL runtime і conformance ще не доведені. Rusticl використовує
+Gallium, не CUDA; пристрої не експонуються автоматично. Порядок перевірки:
+
+```sh
+RUSTICL_ENABLE=nouveau clinfo -l
+RUSTICL_ENABLE=nouveau clinfo
+```
+
+Якщо видно саме GP107/Nouveau device, виконати власний vector-add,
+перевірити результат CPU checksum, потім потрібний OpenCL CTS subset.
+Якщо немає device — перевірити, чи пакет Mesa зібраний з Rusticl і чи
+цей конкретний Nouveau build доступний; порожній `clinfo` без opt-in
+не є тестом несумісності. Не трактувати Rusticl як CUDA compatibility.
+
+### 19.3. NOCL: відкритий OpenCL frontend поверх закритого CUDA driver
+
+**NOCL** (раніше CLUDA) — compute-only Gallium driver для Rusticl,
+що реалізує OpenCL поверх NVIDIA CUDA Driver API. Це не Nouveau KMD,
+не Nova і не відкритий шлях до firmware/MMIO. Він може бути корисним
+саме для цієї Pascal карти, бо використовує наявний proprietary R580
+CUDA driver backend, але поки це окремий development track.
+
+У презентації Karol Herbst на XDC 2026 (2026-09-28) зафіксовано:
+- NOCL реалізує OpenCL 3.1; автор повідомив про понад 99% CTS pass rate
+  на тестованій конфігурації, але конкретна GTX 1050 Ti там не названа;
+- потрібен CUDA Driver API 6.5 або новіший; автор зазначив підтримку
+  всіх CUDA-capable GPU «in theory» — це не GP107 runtime proof;
+- `libcuda.so` завантажується через `dlopen` із proprietary driver;
+  CUDA SDK потрібен для build-time, але CUDA toolkit не є runtime backend;
+- compiler path: NIR passes → PTX → CUDA JIT;
+- image support ще має суттєву прогалину: CUDA використовує unified
+  image/sampler handle, тоді як OpenCL/Vulkan потребують independent
+  image/sampler representation. Це обмежує image workloads і є однією
+  з незавершених ділянок.
+
+Phoronix 2026-09-29 повідомляв, що Mesa GitLab MR !37831 ще очікував
+merge. Прямий GitLab MR у цьому проході повертав anti-bot access page,
+а свіжішого незалежного підтвердження merge не знайдено; тому точний
+стан MR треба перевірити перед build, не припускаючи, що NOCL уже є
+в Mesa release. Не створювати системний build наосліп.
+
+**Якщо MR merged або є придатний тестовий branch**, локальний агент має:
+1. В окремому worktree/prefix зафіксувати Mesa commit і MR head.
+2. Перевірити build dependencies/flags NOCL у самому source tree і
+   версію CUDA SDK, яку очікує саме цей commit; не використовувати
+   system Mesa як build destination.
+3. Переконатися, що R580 надає CUDA Driver API і Pascal device
+   compute capability 6.1. Не припускати, що `CUDA 6.5+` у презентації
+   гарантує сучасний NOCL build або кожну функцію API на R580.
+4. Через Rusticl device enumeration перевірити, що backend названий
+   NOCL/CUDA, а PCI identity — `10de:1c82`; потім vector-add із CPU
+   checksum та відповідний CTS subset.
+5. Окремо відзначити image APIs як `NOT_AVAILABLE`/непідтримані,
+   якщо вони ще не реалізовані.
+
+Цей шлях може дати відкриту реалізацію OpenCL frontend на GP107,
+але kernel-mode driver, PTX JIT та GPU firmware залишаються NVIDIA
+proprietary. Не рахувати його як повністю відкритий NVIDIA driver.
+
+### 19.4. NVIDIA OpenCL ICD — контрольний закритий baseline
+
+Khronos OpenCL Conformant Products містить NVIDIA entry #377 від
+2021-09-08 із **OpenCL_3_0**; product list прямо включає GeForce GTX 1050 Ti
+на NVIDIA proprietary Linux OpenCL driver. Це доводить vendor conformance
+для сімейства/заявленої конфігурації, не runtime поточної плати та не
+сумісність NOCL.
+
+Для порівняльного vendor control під R580:
+```sh
+nvidia-smi --query-gpu=name,pci.bus_id,driver_version --format=csv
+clinfo -l
+clinfo
+```
+Після ідентифікації NVIDIA OpenCL platform виконати той самий vector-add
+і відповідний CTS subset, які будуть використані для Rusticl/NOCL. Цей
+baseline потрібен для порівняння, але залишається повністю proprietary.
+
+Джерела:
+- [XDC 2026: NOCL talk and slides](https://indico.freedesktop.org/event/12/contributions/542/)
+- [NOCL presentation: architecture, status, CTS, CUDA API and image limitations](https://indico.freedesktop.org/event/12/contributions/542/attachments/350/507/nocl.html)
+- [Phoronix: NOCL MR status as reported 2026-09-29](https://www.phoronix.com/news/NOCL-OpenCL-CUDA)
+- [Khronos: GeForce GTX 1050 Ti in NVIDIA OpenCL 3.0 conformance entry #377](https://www.khronos.org/conformance/adopters/conformant-products/opencl)
+- [Khronos: GTX 1050 Ti in Software Freedom Conservancy Vulkan 1.3 entry #908](https://www.khronos.org/conformance/adopters/conformant-products/vulkan)
+- [Mesa Rusticl build/runtime documentation](https://docs.mesa3d.org/rusticl.html)
