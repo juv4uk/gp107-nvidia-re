@@ -25,16 +25,19 @@ lspci -Dnnk -d 10de:1c82 >"$OUT/02-lspci.txt" 2>&1 || true
 lsmod >"$OUT/03-lsmod.txt" 2>&1 || true
 printf 'bdf=%s binding=%s\n' "$BDF" "$BINDING" | tee "$OUT/04-binding.txt"
 printf 'icd=%s\n' "${BENCH_ICD:-default}" | tee "$OUT/05-icd.txt"
-if command -v vulkaninfo >/dev/null 2>&1; then
-  vulkaninfo --summary >"$OUT/06-vulkaninfo.txt" 2>&1 || true
-fi
 
+# The ICD must be selected BEFORE identity capture: 06-vulkaninfo.txt has to
+# describe the very same driver that is timed in 08-run.log.
 if [ -n "${BENCH_ICD:-}" ]; then
   export VK_ICD_FILENAMES="$BENCH_ICD"
 else
   unset VK_ICD_FILENAMES || true
 fi
 export BENCH_BDF="$BDF"
+
+if command -v vulkaninfo >/dev/null 2>&1; then
+  vulkaninfo --summary >"$OUT/06-vulkaninfo.txt" 2>&1 || true
+fi
 
 echo "== kernel log before"
 capture_kernel "$OUT/07-kernel-before.txt"

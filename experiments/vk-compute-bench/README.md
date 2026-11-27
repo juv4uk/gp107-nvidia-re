@@ -1,8 +1,9 @@
 # Clean-room Vulkan compute benchmark (GP107, обидва ICD)
 
 Один і той самий бінарник для відкритого і закритого драйвера. На відміну від
-`nvk-compute-smoke`, він **не фільтрує** драйвер: перевіряє плату за sysfs
-(`10de:1c82 @ 0000:01:00.0`), а потім **записує**, який Vulkan- ICD відповів.
+`nvk-compute-smoke`, він **не фільтрує** драйвер: перевіряє плату за sysfs і
+через `VK_EXT_pci_bus_info` (`10de:1c82 @ 0000:01:00.0`), а потім **записує**,
+який Vulkan-ICD відповів.
 
 ## Що міряє
 
@@ -11,8 +12,10 @@
 - час одного `vkQueueSubmit` + `vkWaitForFences` (fence signaled, без readback у циклі);
 - `min / median / mean` у ns і медіанну пропускну здатність для 12 байт/елемент
   (2 читання + 1 запис);
-- перед таймінгом — обов’язкова перевірка GPU-результату з CPU-еталоном
-  ( poisoned C = `0xDEADBEEF`, checksum, `mismatch=0`).
+- до і **після** таймінгу — обов’язкова перевірка GPU-результату з CPU-еталоном
+  (poisoned C = `0xDEADBEEF`, checksum, `mismatch=0`);
+- `run.sh` встановлює `VK_ICD_FILENAMES` до `vulkaninfo --summary`, щоб
+  identity-лог належав тому самому ICD, що й вимір.
 
 Межа: це **HOST_VISIBLE|HOST_COHERENT шлях**, тобто PCIe/CPU-мапований
 шлях, а не пікова VRAM-пропускна здатність. У часову мітку входить і

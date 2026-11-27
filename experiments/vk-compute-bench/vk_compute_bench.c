@@ -1,10 +1,11 @@
 /* Clean-room Vulkan compute benchmark for the same GP107 board under two ICDs.
  *
  * Driver-agnostic by design: it asserts the physical board by sysfs BDF
- * (10de:1c82 @ 0000:01:00.0), then RECORDS whichever Vulkan driver answers —
- * NVK or NVIDIA proprietary — instead of filtering one of them out.
- * No vendor headers, no vendor code, no PR #21 executable, no MMIO access.
- * Timing is submit + fence wait only: no readback inside the timed loop.
+ * (10de:1c82 @ 0000:01:00.0) AND by VK_EXT_pci_bus_info, then RECORDS
+ * whichever Vulkan driver answers — NVK or NVIDIA proprietary — instead of
+ * filtering one of them out. No vendor headers, no vendor code, no PR #21
+ * executable, no MMIO access. Timing is submit + fence wait only: no readback
+ * inside the timed loop; correctness is checked before AND after the loop.
  */
 #define _POSIX_C_SOURCE 200809L
 #include <dlfcn.h>
@@ -47,6 +48,14 @@ static double ns_now(void) {
 static int cmp_double(const void *a, const void *b) {
     double x = *(const double *)a, y = *(const double *)b;
     return (x < y) ? -1 : (x > y) ? 1 : 0;
+}
+
+static void parse_bdf(uint32_t *domain, uint32_t *bus, uint32_t *device,
+                      uint32_t *function) {
+    const char *bdf = getenv("BENCH_BDF");
+    if (!bdf) bdf = "0000:01:00.0";
+    if (sscanf(bdf, "%8x:%4x:%4x.%4x", domain, bus, device, function) != 4)
+        fail("bdf-parse", bdf);
 }
 
 static void board_identity(char *binding, size_t cap) {
@@ -148,8 +157,10 @@ int main(void) {
     LOAD(createInstance, vkCreateInstance, NULL);
     VkApplicationInfo app = { VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL,
         "wsm-cleanroom-bench", 1, "clean-room", 1, VK_API_VERSION_1_3 };
+    /* BDF identity must come from Vulkan too; fail closed if unavailable. */
+    const char *instance_exts[] = { "VK_EXT_pci_bus_info" };
     VkInstanceCreateInfo ici = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL,
-        0, &app, 0, NULL, 0, NULL };
+        0, &app, 0, NULL, 1, instance_exts };
     VkInstance inst = NULL;
     VkResult r = createInstance(&ici, NULL, &inst);
     if (r != VK_SUCCESS) vkfail("create-instance", r);
@@ -196,21 +207,32 @@ int main(void) {
     r = enumerateDevices(inst, &ndev, devices);
     if (r != VK_SUCCESS) vkfail("enumerate-2", r);
 
+    uint32_t want_domain = 0, want_bus = 0, want_device = 0, want_function = 0;
+    parse_bdf(&want_domain, &want_bus, &want_device, &want_function);
+
     VkPhysicalDevice gpu = NULL;
     VkPhysicalDeviceProperties2Min props2 = {0};
     VkPhysicalDeviceDriverProperties drv = {0};
+    VkPhysicalDevicePCIBusInfoPropertiesEXT pci = {0};
     for (uint32_t i = 0; i < ndev; i++) {
         VkPhysicalDeviceProperties2Min p = {0};
         VkPhysicalDeviceDriverProperties d = {0};
+        VkPhysicalDevicePCIBusInfoPropertiesEXT b = {0};
         p.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         p.pNext = &d;
         d.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
+        d.pNext = &b;
+        b.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT;
         getProps2(devices[i], &p);
-        if (p.properties.vendorID == 0x10de && p.properties.deviceID == 0x1c82) {
-            gpu = devices[i]; props2 = p; drv = d; break;
+        if (p.properties.vendorID == 0x10de && p.properties.deviceID == 0x1c82 &&
+            b.pciDomain == want_domain && b.pciBus == want_bus &&
+            b.pciDevice == want_device && b.pciFunction == want_function) {
+            gpu = devices[i]; props2 = p; drv = d; pci = b; break;
         }
     }
-    if (!gpu) fail("device-filter", "no 10de:1c82 physical device");
+    if (!gpu) fail("pci-bdf", "no 10de:1c82 physical device at BENCH_BDF");
+    printf("BENCH-PCI-RECORD bdf=%04x:%02x:%02x.%x match=yes\n",
+           pci.pciDomain, pci.pciBus, pci.pciDevice, pci.pciFunction);
     printf("BENCH-DRIVER-RECORD id=%u name=%s info=%s device=%s api=0x%08x\n",
            (unsigned)drv.driverID, drv.driverName, drv.driverInfo,
            props2.properties.deviceName, props2.properties.apiVersion);
@@ -405,6 +427,18 @@ int main(void) {
             if (getFenceStatus(dev, fence) != VK_SUCCESS) fail("fence-status", "not signaled");
             if (k >= cases[c].warmup) samples[k - cases[c].warmup] = dt;
         }
+
+        /* Correctness again AFTER the timed loop: a fast but stale/wrong
+         * result must not be reported as a benchmark PASS. */
+        uint32_t mismatch_after = 0;
+        for (uint32_t i = 0; i < elements; i++)
+            if (C[i] != a_val(i) + b_val(i)) { mismatch_after = 1; break; }
+        uint32_t got_after = fnv1a((const unsigned char *)C, bytes);
+        printf("BENCH-CORRECT-AFTER elements=%u mismatch=%u checksum=0x%08x\n",
+               elements, mismatch_after, got_after);
+        if (mismatch_after) fail("correctness-after", "result changed or is wrong");
+        if (got_after != got) fail("checksum-after", "post-loop checksum differs");
+
         qsort(samples, cases[c].iters, sizeof samples[0], cmp_double);
         double sum = 0;
         for (uint32_t k = 0; k < cases[c].iters; k++) sum += samples[k];

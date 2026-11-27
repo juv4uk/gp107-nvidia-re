@@ -70,6 +70,7 @@ typedef uint32_t VkDeviceCreateFlags2_unused;
 #define VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO 42
 #define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 1000059001
 #define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES 1000196000
+#define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT 1000212000
 
 #define VK_DRIVER_ID_MESA_NVK 24
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY 4
@@ -179,6 +180,12 @@ typedef struct VkPhysicalDeviceDriverProperties {
     char driverInfo[VK_MAX_DRIVER_INFO_SIZE];
     VkConformanceVersion conformanceVersion;
 } VkPhysicalDeviceDriverProperties;
+
+/* VK_EXT_pci_bus_info: clean-room BDF assertion, not an MMIO capability. */
+typedef struct VkPhysicalDevicePCIBusInfoPropertiesEXT {
+    VkStructureType sType; void* pNext;
+    uint32_t pciDomain, pciBus, pciDevice, pciFunction;
+} VkPhysicalDevicePCIBusInfoPropertiesEXT;
 
 typedef struct VkMemoryType { VkMemoryPropertyFlags propertyFlags; uint32_t heapIndex; } VkMemoryType;
 typedef struct VkMemoryHeap { VkDeviceSize size; VkMemoryHeapFlags flags; } VkMemoryHeap;

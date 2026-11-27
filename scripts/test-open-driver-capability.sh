@@ -112,6 +112,14 @@ check_all() {
   step 'autostart фікс присутній'
   need 'ConditionKernelCommandLine=!wsm_open_driver=1' "$DOC16" 'doc 16'
   need 'ConditionResult=no' "$DOC16" 'doc 16'
+
+  step 'evidence-артефакти звіряються за SHA-256 з маніфестами'
+  bash "$ROOT/scripts/test-evidence-manifest.sh" \
+    evidence/nouveau-20261127/99-manifest.txt \
+    experiments/vk-compute-bench/artifacts-nouveau-rep1/99-manifest.txt \
+    experiments/vk-compute-bench/artifacts-nouveau-rep2/99-manifest.txt \
+    experiments/vk-compute-bench/artifacts-nouveau-rep3/99-manifest.txt \
+    >/dev/null || fail 'SHA-256 маніфестів не збігається'
 }
 
 # --- Основний прохід -------------------------------------------------------
@@ -142,6 +150,18 @@ fi
 grep -Fq 'OPEN-DRIVER-GATE-FAIL:' "$WORK/neg-compute.err" \
   || fail 'нема названого negative-маркера для compute'
 
+step 'negative witness (підмінений артефакт відхилено за SHA-256)'
+NEGDIR="$WORK/neg-manifest"
+mkdir -p "$NEGDIR"
+cp "$ROOT"/evidence/nouveau-20261127/* "$NEGDIR"/
+printf 'tampered witness\n' >"$NEGDIR/01-cmdline.txt"
+if bash "$ROOT/scripts/test-evidence-manifest.sh" "$NEGDIR/99-manifest.txt" \
+    >/dev/null 2>"$WORK/neg-manifest.err"; then
+  fail ' gate прийняв артефакт із підміненим вмістом'
+fi
+grep -Fq 'MANIFEST-FAIL:' "$WORK/neg-manifest.err" \
+  || fail 'нема названого negative-маркера для SHA-256'
+
 # --- Research-контракт -----------------------------------------------------
 cat <<'CONTRACT'
 ((kind . wsm-open-driver-capability-research)
@@ -167,4 +187,4 @@ cat <<'CONTRACT'
  (bounds (human-attestation . none) (tested-by . none) (abi-authority . none)))
 CONTRACT
 
-echo "OPEN-DRIVER-GATE-OK fpc=unrequired abi-pin=untouched boot0=unproven mmio=none pr21=NOT-RUN negative=3"
+echo "OPEN-DRIVER-GATE-OK fpc=unrequired abi-pin=untouched boot0=unproven mmio=none pr21=NOT-RUN manifest=sha256-verified negative=4"
