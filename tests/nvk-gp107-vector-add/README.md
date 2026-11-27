@@ -74,11 +74,16 @@ Mesa's Vulkan device enumeration to that PCI device:
 
 ```sh
 BDF=0000:01:00.0
+# These flags explicitly opt into two different side-effect boundaries.
+# Do not add them until the corresponding owner approvals and issue #18 gates
+# have been completed.
 DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
-  ./nvk-vector-add --bdf "$BDF" --elements 257 --spv vector_add.spv
+  ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
+  --allow-gpu-submit --elements 257 --spv vector_add.spv
 
 DRI_PRIME_DEBUG=1 DRI_PRIME="pci-$BDF!" \
-  ./nvk-vector-add --bdf "$BDF" --elements 1048576 --spv vector_add.spv
+  ./nvk-vector-add --bdf "$BDF" --allow-temp-gr-channel-init \
+  --allow-gpu-submit --elements 1048576 --spv vector_add.spv
 ```
 
 The example BDF is illustrative only. The executable independently checks
@@ -117,6 +122,21 @@ for N in 257 1048576; do
   test "$rc" -eq 0 || exit "$rc"
 done
 ```
+
+## Fail-closed execution gates
+
+The executable refuses to call `vkCreateInstance()` or `vkEnumeratePhysicalDevices()` unless **both** explicit command-line acknowledgements are present:
+
+- `--allow-temp-gr-channel-init`: acknowledges that NVK physical-device discovery may open the Nouveau render node read/write, initialize VM/NVIF state, and allocate/free a temporary GR channel plus engine subchannel objects.
+- `--allow-gpu-submit`: acknowledges that the program proceeds beyond enumeration to Vulkan device/queue creation and a real compute submit/readback.
+
+Without both flags, the process prints `ENUMERATION_NOT_AUTHORIZED`, states that no Vulkan instance or physical device was enumerated, and exits with code 4 before Vulkan instance creation. This is a guard against accidental execution, not a substitute for the separate owner approval, issue #18 evidence gates, exact kernel/Mesa provenance, or rollback plan. **Do not pass either flag now.**
+
+Exact upstream Mesa release pin: `upstream-mesa-26.3.1`, commit `fec8830e9c94b1d67f3d8469467d5529fb2978cd`, tarball SHA-256 `4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961`.
+
+On that release, physical-device discovery calls `nvkmd_nouveau_try_create_pdev()` → `nouveau_ws_device_new()`; it opens the DRM render node with `O_RDWR`, initializes VM/NVIF state, creates a temporary `NOUVEAU_FIFO_ENGINE_GR` context, queries engine classes and destroys the context. Kernel channel setup also creates a separate KILLED event and allows it; this is not the FIFO NONSTALL event. The `NON_STALL_INTR` object is created without ALLOW and remains `allowed=0`. There is no Mesa `DRM_NOUVEAU_EXEC` on this discovery path. The exact source review is recorded in [issue #18](https://github.com/juv4uk/gp107-nvidia-re/issues/18#issuecomment-7209842238).
+
+Device/queue creation is a different boundary: on the same exact Mesa 26.3.1 tag, NVK queue initialization builds initial engine state and reaches `nvk_queue_push()` / exec. It is therefore not an acceptable no-submit probe.
 
 ## Enumeration is not strictly read-only
 
