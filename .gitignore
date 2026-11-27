@@ -1,0 +1,7 @@
+*.o
+*.strace
+*.trace
+*.log
+probes/01_min_cuinit
+__pycache__/
+*.pyc
