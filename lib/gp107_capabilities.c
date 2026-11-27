@@ -44,7 +44,7 @@ int gp107_capability_report(const struct gp107_inventory *inv,
                 inv->pci.cfg_bytes == GP107_CONFIG_BYTES ? "complete" : "partial");
     append_line(out, cap, " (rm-identity . deferred)"
                           " (reason . not-in-this-slice)\n");
-    append_line(out, cap, " (mmio-read-software-gate . %s) (reason . %s)\n", state, reason);
+    append_line(out, cap, " (mmio-read-software-gate . denied) (reason . %s)\n", reason);
     append_line(out, cap, " (owner-approval . not-inferred)\n");
     append_line(out, cap, " (physical-mmio . not-authorized)\n");
     append_line(out, cap, " (boot0 . unproven) (evidence . unproven)\n");
