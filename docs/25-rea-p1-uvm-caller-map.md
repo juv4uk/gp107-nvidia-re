@@ -15,7 +15,7 @@ call-site**.
 | `UPSTREAM_EXISTS` | Nouveau/NVKM UVM-еквіваленти, NVK/NAK | implementation authority, не реверсити |
 | `UNIQUE_GAP` | імпортні call-site `nvUvmInterface*` у R580 `nvidia-uvm.ko`, GPFIFO/sec2/semaphore helper-и | ціль цього звіту |
 
-Issue #18 лишається `RUNLIST_ID_NOT_OBSERVED`; issue #28 не змінено; pin-и v8/v9 не чіпались.
+Фізичний TOP trace з `docs/13` доводить `TOP_GR_RUNLIST_OBSERVED=0`; також спостережено інші engine runlist-и (`CE2=5`, інші engine ID 1/2/3/4/6). Невідомими лишаються `CHANNEL_INSTANCE_CORRELATION=PARTIAL/UNPROVEN` та `NONSTALL_EVENT_SUBSCRIPTION`, `ALLOW`, `REFCOUNT`, notifier/fence lifecycle (`UNPROVEN`). Issue #18 не закрито; issue #28 не змінено; pin-и v8/v9 не чіпались.
 
 ## 1. Тарґет, метод, Evidence
 
