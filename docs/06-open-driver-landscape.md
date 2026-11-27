@@ -712,16 +712,19 @@ llama.cpp документує CMake-параметр `-DGGML_VULKAN=ON`. Це �
 - у гілці `FECS alive` код прямо залишає FIFO + QMD submission як TODO, а результат також обчислює на CPU;
 - тому `vector_add_test() = PASS` підтверджує CPU арифметику та readback буфера, **не GPU dispatch**.
 
-У проєкті також присутні MMIO write/reset/devinit helper-и; його `RESEARCH.md` описує hardware lockup після експериментальних writes. Не запускати його write/reset/devinit/Falcon-код на робочій GTX 1050 Ti. Використовувати лише як джерело дослідницьких питань і перехресну документацію.
+У проєкті також присутні виконувані MMIO write/reset/devinit helper-и. Це не пасивні read-only probes; не запускати його write/reset/devinit/Falcon-код на робочій GTX 1050 Ti. Використовувати лише як джерело дослідницьких питань і перехресну документацію.
 
 Публічні NVIDIA class headers визначають:
 - `PASCAL_COMPUTE_A = 0xC0C0`;
 - `PASCAL_COMPUTE_B = 0xC1C0`;
 - `MAXWELL_COMPUTE_B = 0xB1C0`.
 
-Це доводить існування різних class IDs у документації, але **не визначає автоматично**, який compute class та які методи дозволені на конкретному GP107. Потрібен окремий доказ GPU→class mapping з upstream Nouveau або апаратного witness; не переносити GP106 assumption на GP107.
+Для GP107 це вже не припущення: Linux Nouveau `gp107.c` у перевіреному upstream snapshot явно обирає `PASCAL_B` для 3D і `PASCAL_COMPUTE_B` для compute. Отже target class mapping GP107 підтверджений вихідним кодом: **`0xC1C0`**, не Maxwell `0xB1C0`. У суміжному `TheTom/pascal-egpu/PLAN.md` рядок 521/528 називає Maxwell Compute B для Pascal, що суперечить його ж `RESEARCH.md` (GP106 → Pascal Compute B) та Linux GP107 mapping. Не копіювати це значення в наші probes.
+
+Це лише source-proven class selection у Nouveau; воно не доводить, що сторонній userspace code може самостійно запустити kernel на GP107. Для GPU dispatch усе ще потрібні доведені channel/context, signed FECS/GPCCS firmware, GPFIFO/QMD та synchronization.
 
 Джерела:
+- [Linux GP107 GR class selection — Pascal 3D and Compute B](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
 - [TheTom/pascal-egpu README and source](https://github.com/TheTom/pascal-egpu)
 - [compute_dispatch.py — CPU fallback and TODO dispatch](https://github.com/TheTom/pascal-egpu/blob/main/hw/compute_dispatch.py)
 - [Pascal Compute A header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc0c0.h)
