@@ -51,8 +51,8 @@ make -C "$ROOT/pascal" gp107ctl-pascal >/dev/null
 echo 'FPC-COMPILE-OK version=3.2.2 layout=32/68/140'
 
 step 'synthetic sysfs fixture (single card, nvidia bound)'
-mkdir -p "$FIX/bus/pci/devices/0000:01:00.0"
-python3 - "$FIX/bus/pci/devices/0000:01:00.0" <<'PY'
+mkdir -p "$FIX/bus/pci/devices" "$FIX/devices/0000:01:00.0"
+python3 - "$FIX/devices/0000:01:00.0" <<'PY'
 import os
 import sys
 
@@ -67,14 +67,27 @@ cfg[0x0e] = 0x80
 cfg[0x10:0x14] = bytes((0x00, 0x00, 0x00, 0xee))
 with open(os.path.join(dev, 'config'), 'wb') as fh:
     fh.write(cfg)
-with open(os.path.join(dev, 'vendor'), 'w') as fh:
-    fh.write('0x10de\n')
-with open(os.path.join(dev, 'device'), 'w') as fh:
-    fh.write('0x1c82\n')
+for name, value in {
+    'vendor': '0x10de',
+    'device': '0x1c82',
+    'revision': '0xa1',
+    'subsystem_vendor': '0x1462',
+    'subsystem_device': '0x3351',
+}.items():
+    with open(os.path.join(dev, name), 'w') as fh:
+        fh.write(value + '\n')
+with open(os.path.join(dev, 'uevent'), 'w') as fh:
+    fh.write(
+        'PCI_CLASS=030000\n'
+        'PCI_ID=10DE:1C82\n'
+        'PCI_SUBSYS_ID=1462:3351\n'
+        'PCI_SLOT_NAME=0000:01:00.0\n'
+    )
 with open(os.path.join(dev, 'resource0'), 'wb') as fh:
     fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
-ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+ln -s "$FIX/devices/0000:01:00.0" "$FIX/bus/pci/devices/0000:01:00.0"
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/devices/0000:01:00.0/driver"
 
 step 'fixture identity (single card is accepted)'
 GP107_SYSFS_ROOT=unused "$BIN" inventory --sysfs-root="$FIX" >"$WORK/inv.out"
@@ -314,6 +327,118 @@ rm "$RESOURCE"
 mv "$WORK/resource0-target" "$RESOURCE"
 echo 'NEGATIVE-RESOURCE0-SYMLINK-OK nofollow=yes'
 
+
+step 'BDF directory symlink substitution is rejected before resource0 open'
+DECOY="$FIX/devices/0000:02:00.0"
+mkdir -p "$DECOY"
+cp -a "$FIX/devices/0000:01:00.0/." "$DECOY/"
+python3 - "$DECOY" <<'PY'
+import os
+import sys
+
+dev = sys.argv[1]
+cfg_path = os.path.join(dev, 'config')
+cfg = bytearray(open(cfg_path, 'rb').read())
+cfg[0:4] = bytes((0x86, 0x80, 0x34, 0x12))
+cfg[0x08] = 0x01
+with open(cfg_path, 'wb') as fh:
+    fh.write(cfg)
+for name, value in {
+    'vendor': '0x8086',
+    'device': '0x1234',
+    'revision': '0x01',
+    'subsystem_vendor': '0x0000',
+    'subsystem_device': '0x0000',
+}.items():
+    with open(os.path.join(dev, name), 'w') as fh:
+        fh.write(value + '\n')
+with open(os.path.join(dev, 'uevent'), 'w') as fh:
+    fh.write(
+        'PCI_CLASS=030000\n'
+        'PCI_ID=8086:1234\n'
+        'PCI_SUBSYS_ID=0000:0000\n'
+        'PCI_SLOT_NAME=0000:02:00.0\n'
+    )
+PY
+cat > "$WORK/mmio-bdf-swap-test.c" <<'EOF'
+#include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include "gp107_identity.h"
+#include "gp107_mmio.h"
+
+extern int __real_open(const char *pathname, int flags, ...);
+static unsigned int device_directory_opens;
+
+static int has_suffix(const char *text, const char *suffix)
+{
+    size_t text_len = strlen(text);
+    size_t suffix_len = strlen(suffix);
+    return text_len >= suffix_len &&
+           strcmp(text + text_len - suffix_len, suffix) == 0;
+}
+
+int __wrap_open(const char *pathname, int flags, ...)
+{
+    static const char suffix[] = "/bus/pci/devices/0000:01:00.0";
+    const char *replacement;
+    mode_t mode = 0;
+    va_list ap;
+
+    if (has_suffix(pathname, suffix)) {
+        device_directory_opens++;
+        if (device_directory_opens == 2) {
+            replacement = getenv("GP107_SWAP_TARGET");
+            if (replacement == NULL || unlink(pathname) != 0 ||
+                symlink(replacement, pathname) != 0) {
+                fprintf(stderr, "RACE-TEST-FAIL step=swap errno=%d\n", errno);
+                return -1;
+            }
+        }
+    }
+
+    if ((flags & O_CREAT) != 0) {
+        va_start(ap, flags);
+        mode = (mode_t)va_arg(ap, int);
+        va_end(ap);
+        return __real_open(pathname, flags, mode);
+    }
+    return __real_open(pathname, flags);
+}
+
+int main(int argc, char **argv)
+{
+    char err[512] = {0};
+    uint32_t value = 0;
+    int rc;
+
+    if (argc != 2) {
+        return 64;
+    }
+    rc = gp107_mmio_read32(argv[1], GP107_EXPECTED_BDF, 1, 0,
+                           &value, err, sizeof(err));
+    if (device_directory_opens != 2 ||
+        rc != GP107_ERR_BDF ||
+        strstr(err, "pinned-bdf-mismatch") == NULL) {
+        fprintf(stderr,
+                "RACE-TEST-FAIL opens=%u rc=%d err=%s\n",
+                device_directory_opens, rc, err);
+        return 1;
+    }
+    puts("PINNED-DIR-IDENTITY-OK bdf-swap=denied resource0-open=not-reached");
+    return 0;
+}
+EOF
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Werror -pedantic -Wl,--wrap=open -I"$ROOT/lib" "$WORK/mmio-bdf-swap-test.c" "$ROOT/lib/gp107_identity.c" "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-bdf-swap-test"
+GP107_SWAP_TARGET="$DECOY" "$WORK/mmio-bdf-swap-test" "$FIX"
+rm "$FIX/bus/pci/devices/0000:01:00.0"
+ln -s "$FIX/devices/0000:01:00.0" "$FIX/bus/pci/devices/0000:01:00.0"
 
 step 'MMIO refuses an unaligned 32-bit offset'
 if "$BIN" mmio-read --offset=0x2 --allow-mmio --sysfs-root="$FIX" \
