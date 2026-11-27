@@ -36,14 +36,14 @@ ABI-pin не змінено.
 |---:|---|---|---|
 | 1 | Розкладки `32/68/140` байт | **statically proven** | `_Static_assert`; `LAYOUT-OK identity=32 binding=68 inventory=140` |
 | 2 | На дослідному host: `revision=0xa1`, `class=0x030000`, `header=0x80`, `command=0x0407`, BAR0 `0xee000000`, memory / 32-bit / non-prefetch | **runtime-proven** | `gp107ctl inventory` через sysfs config |
-| 3 | Назва `0x030000) як VGA display controller та інтерпретація `header=0x80) | **interpretation / UNPROVEN** | Код виводить сирі байти; семантика не керує діями |
+| 3 | Назва `0x030000` як VGA display controller та інтерпретація `header=0x80) | **interpretation / UNPROVEN** | Код виводить сирі байти; семантика не керує діями |
 | 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, потім відновлюється | **runtime-proven (fixture)** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
 | 5 | Ledger з `nvidia` bound відмовляє в MMIO | **runtime-proven (fixture + host inventory)** | `mmio-read=denied reason=driver-bound` |
 | 6 | Ledger з unbound fixture відмовляє і без, і з `--allow-mmio` | **runtime-proven (fixture)** | `owner-authorization-required`; прапорець не змінює стан |
 | 7 | Невалідний або обрізаний `driver` symlink не прирівнюється до unbound | **runtime-proven (fixture)** | `driver-link-unknown` / `driver-link-invalid` |
 | 8 | Прямий C API виклик не відкриває і не мапить ресурс | **runtime-proven (synthetic direct caller)** | `NOT_AUTHORIZED`; у `gp107_mmio.c` немає mapping call |
 | 9 | `PCI BDF ↔ RM gpu_id`, RM class/runlist/notifier/fence, BOOT0 | **UNPROVEN** | У цьому кодовому зрізі немає RM-шляху; BOOT0 не читався |
-| 10 | `0x137000A1) | **string-only** | Константа відсутня у коді й у виводі |
+| 10 | `0x137000A1` | **string-only** | Константа відсутня у коді й у виводі |
 | 11 | Ledger є capability word у Lisp-машині / частина ABI | **UNPROVEN, не стверджується** | Owner-рішення про ABI не ухвалено; S-вираз лише проєкція стану |
 
 Збіг `revision=0xa1` із молодшим байтом відомого рядка лишається
