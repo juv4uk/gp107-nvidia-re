@@ -1275,7 +1275,7 @@ userspace frontends та залежності від NVIDIA proprietary driver.
 |---|---|---|---|
 | NVK Vulkan compute | Nouveau kernel + Mesa NVK/NAK | Відкритий kernel і userspace driver | Khronos Vulkan 1.3 conformance entry містить GTX 1050 Ti; наша плата runtime UNPROVEN |
 | Nouveau Gallium → Rusticl/OpenCL | Nouveau kernel + Gallium | Відкритий kernel/userspace OpenCL frontend | `nouveau` має upstream Rusticl support, але потребує opt-in; GP107 runtime/CTS UNPROVEN |
-| NOCL → Rusticl/OpenCL → CUDA | NVIDIA proprietary R580 KMD + CUDA Driver API | Відкриті Mesa Gallium/Rusticl/NOCL шари; закритий CUDA driver backend | Перспективний окремий експеримент; GP107/SM61 runtime UNPROVEN; NOCL merge/build availability треба перевірити |
+| NOCL → Rusticl/OpenCL → CUDA | NVIDIA proprietary R580 KMD + CUDA Driver API | Відкриті Mesa Gallium/Rusticl/NOCL шари; закритий CUDA driver backend | Reviewed MR snapshot: SM61 blocked by SM86 target; live MR state NOT_VERIFIED |
 | NVIDIA OpenCL ICD | NVIDIA proprietary KMD + userspace ICD | Закритий vendor stack | Khronos OpenCL 3.0 entry #377 (2021-09-08) містить GTX 1050 Ti; використовувати як vendor control, не як open-driver evidence |
 
 ### 19.1. NVK Vulkan compute — відкритий шлях без CUDA
@@ -1331,6 +1331,22 @@ merge. Прямий GitLab MR у цьому проході повертав anti
 а свіжішого незалежного підтвердження merge не знайдено; тому точний
 стан MR треба перевірити перед build, не припускаючи, що NOCL уже є
 в Mesa release. Не створювати системний build наосліп.
+
+**SM61 gate для GP107:** технічний огляд MR !37831 від 2026-09-08
+зафіксував hardcoded `SM86` у reviewed snapshot і відсутність
+SM-aware lowering у NIR→PTX generator. Якщо модуль має PTX `.target sm_86`,
+його не можна JIT-компілювати назад на GP107/SM61: NVIDIA визначає
+сумісність PTX target як same-or-higher compute capability. CUDA 12.9
+ще підтримує `sm_61`/`compute_61`, але це вимагає повноцінного
+target-aware NIR→PTX lowering та перевірки інструкцій, а не механічної
+заміни константи. Отже статус — `NOT_SUPPORTED_BY_REVIEWED_SNAPSHOT`;
+поточний MR head/state залишається `NOT_VERIFIED` до прямої GitLab перевірки.
+Детальна координація: [issue #3, PTX/SM61 audit](https://github.com/juv4uk/gp107-nvidia-re/issues/3#issuecomment-7209199916).
+
+Джерела:
+- [NVIDIA PTX target compatibility semantics](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html)
+- [NVIDIA CUDA 12.9: allowed `sm_61` / `compute_61` targets](https://docs.nvidia.com/cuda/archive/12.9.0/cuda-compiler-driver-nvcc/index.html)
+- [ITN review of NOCL MR !37831 and SM86 limitation (2026-09-08)](https://itn.lv/programmatura/mesa-draiveris-nocl-dod-opencl-uz-nvidia-cuda-luxmark-57-702-pret-64-009/)
 
 **Якщо MR merged або є придатний тестовий branch**, локальний агент має:
 1. В окремому worktree/prefix зафіксувати Mesa commit і MR head.
