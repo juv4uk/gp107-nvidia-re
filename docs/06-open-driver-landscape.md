@@ -89,9 +89,8 @@ Pascal GP107 не має GSP, тому **не включати NVK Vulkan Video 
 ### Vulkan compute: llama.cpp як application-level тест
 
 Після успішних NVK device enumeration, Vulkan graphics smoke test і
-перевірки базового compute pipeline можна додати [llama.cpp Vulkan backend]
-(https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md) як
-практичний workload. Проєкт офіційно документує збірку через
+перевірки базового compute pipeline можна додати [llama.cpp Vulkan backend](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
+як практичний workload. Проєкт офіційно документує збірку через
 `GGML_VULKAN` і просить спочатку перевірити loader через `vulkaninfo`.
 
 Приклад збірки в окремому тестовому worktree:
@@ -101,7 +100,7 @@ cmake --build build-vulkan --config Release -j"$(nproc)"
 ./build-vulkan/bin/llama-cli --list-devices
 ```
 
-Перший workload має бути невеликим GGUF quantized моделем із невеликою
+Перший workload має бути невеликою квантизованою GGUF-моделлю із невеликою
 кількістю GPU layers, а не повним offload одразу. У логах обов'язково
 переконатися, що обраний пристрій — саме GP107 через NVK, а не CPU fallback
 або інший GPU. Зберігати модель/quantization, context, кількість offloaded
