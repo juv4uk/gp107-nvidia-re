@@ -7,8 +7,9 @@ program rm_arch_info;
   opens resource0 and never claims a direct hardware register read.
 
   The GPU node is NOT hard-coded: it comes from the minor_number reported
-  by NV_ESC_CARD_INFO for the unique PCI 10de:1c82 card. Ambiguity (0 or
-  more than 1 match) is a hard failure, never a guess.
+  by NV_ESC_CARD_INFO for the target PCI 10de:1c82 card. A zero or multiple
+  target matches are a hard failure. Also reject valid_cards <> 1 while no
+  PCI BDF <-> RM gpu_id mapping is proven; never guess the RM target id.
 
   The cuInit LD_PRELOAD trace on this host showed the required sequence:
     open /dev/nvidia<N> (must stay open), NV_ESC_SYS_PARAMS,
