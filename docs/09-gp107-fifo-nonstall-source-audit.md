@@ -47,6 +47,16 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 виду `fifo: 000000NN: ...`. Для них потрібен `nouveau.debug=FIFO=debug`.
 `RUNL_TRACE()` додає `running`/`stopped`.
 
+### Імена debug-subdevice: перевірено по parser path
+
+`nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому правильний selector — **`FIFO=debug`**, не `PFIFO=debug`.
+
+У тому самому `layout.h` немає subdevice з ім'ям `client`; `CLIENT=debug` не вибирає окремий NVKM context і не вмикає client logging. Тому не додавати його як нібито дієвий прапорець.
+
+`nvkm_fifo_oneinit()` створює `nonstall.event` із `&fifo->engine.subdev`, тобто trace-події `nvkm_event_*` також ідуть через `fifo`. `nvkm_event_ntfy_add()`, `nvkm_event_get()` і `nvkm_event_put()` мають `nvkm_trace()` записи (`event: ntfy add`, `event: incr/decr`). Якщо першого проходу `FIFO=debug` недостатньо, можливий **окремий, більш гучний** rollback boot із `nouveau.debug=TOP=trace,FIFO=trace` для збору цих event-level повідомлень.
+
+Важливе обмеження: `event: ntfy add` сам по собі показує event ID/bits та runlist index, але не ідентифікує `struct nvkm_chan`. Тому навіть `FIFO=trace` не є автоматичним доказом, що саме GR/compute user channel підписався на `NVIF_CHAN_EVENT_V0_NON_STALL_INTR`. Для такого висновку потрібен окремий channel-level witness на `nvkm_uchan_uevent()` (тип події + `runl->id` + ідентичність каналу/групи) — лише після перевірки доступності символу/BTF/kprobe/fentry у цільовому kernel або підготовки вузької trace-only instrumentation. До цього не запускати workload чи patch test.
+
 Це читання вже існуючого kernel-logging шляху. Ми не викликаємо `nva`, не
 читаємо BAR0/MMIO напряму, не пишемо регістри й не змінюємо firmware.
 
@@ -58,13 +68,31 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 1. Перевірити зібраний level і параметри модуля:
 
    ```bash
-   uname -r
-   grep -E 'CONFIG_NOUVEAU_DEBUG(=|_DEFAULT)' /boot/config-"$(uname -r)"
-   modinfo nouveau | grep -E '^(parm|description):.*(debug|config)'
-   lspci -vv -d 10de:1c82 | sed -n '1,40p'
-   cat /sys/bus/pci/devices/0000:01:00.0/vendor
-   cat /sys/bus/pci/devices/0000:01:00.0/device
+   set -eu
+   KREL=$(uname -r)
+   printf 'KERNEL=%s\n' "$KREL"
+   if [ -r "/boot/config-$KREL" ]; then
+     CONFIG="/boot/config-$KREL"
+   elif [ -r /proc/config.gz ]; then
+     zcat /proc/config.gz | grep -E '^CONFIG_NOUVEAU_DEBUG(=|_)' || true
+     CONFIG='(captured from /proc/config.gz above)'
+   else
+     echo 'KERNEL_CONFIG_UNAVAILABLE'; exit 2
+   fi
+   [ "$CONFIG" = '(captured from /proc/config.gz above)' ] ||
+     grep -E '^CONFIG_NOUVEAU_DEBUG(=|_)' "$CONFIG"
+   modinfo -p nouveau | grep '^debug:' || { echo 'NOUVEAU_DEBUG_PARAMETER_UNAVAILABLE'; exit 2; }
+   BDFS=$(lspci -Dnn -d 10de:1c82 | awk '{print $1}')
+   COUNT=$(printf '%s\n' "$BDFS" | sed '/^$/d' | wc -l)
+   [ "$COUNT" -eq 1 ] || { echo "GP107_BDF_COUNT=$COUNT"; exit 2; }
+   BDF=$(printf '%s\n' "$BDFS" | sed -n '1p')
+   SYSFS="/sys/bus/pci/devices/$BDF"
+   [ -r "$SYSFS/vendor" ] && [ -r "$SYSFS/device" ] || { echo 'GP107_SYSFS_IDENTITY_UNAVAILABLE'; exit 2; }
+   printf 'GP107_BDF=%s vendor=%s device=%s\n' "$BDF" "$(cat "$SYSFS/vendor")" "$(cat "$SYSFS/device")"
+   lspci -Dnnk -s "$BDF"
    ```
+
+   Перевірити, що `CONFIG_NOUVEAU_DEBUG` у фактичному config дорівнює щонайменше `5` (TRACE). Якщо конфігурацію зчитано із `/proc/config.gz`, збережіть повний вихід у evidence bundle. Не виводити PASS, якщо параметр або config недоступні.
 
    Очікуваний BDF тут лише приклад із нашого однокарткового witness;
    для іншого хоста BDF треба взяти з `lspci`, не підставляти.
@@ -85,8 +113,23 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 3. Після завантаження з Nouveau зібрати лог:
 
    ```bash
-   dmesg -T | grep -E 'nouveau .*(top|fifo):' > /tmp/opencode/gp107-top-fifo.log
+   OUT="$HOME/gp107-trace-$BDF-$(date +%Y%m%d-%H%M%S)"
+   mkdir -p "$OUT"
+   uname -a > "$OUT/uname.txt"
+   cat /proc/cmdline > "$OUT/cmdline.txt"
+   lspci -Dnnk -s "$BDF" > "$OUT/lspci.txt"
+   modinfo -p nouveau > "$OUT/nouveau-module-params.txt"
+   if [ -r "/boot/config-$(uname -r)" ]; then
+     cp "/boot/config-$(uname -r)" "$OUT/kernel.config"
+   elif [ -r /proc/config.gz ]; then
+     zcat /proc/config.gz > "$OUT/kernel.config"
+   fi
+   sudo journalctl -b -k -o short-monotonic --no-pager > "$OUT/kernel.log"
+   grep -Ei 'nouveau.*(top:|fifo:|event:)|runlist|nvkm' "$OUT/kernel.log" > "$OUT/relevant-lines.log" || true
+   printf 'EVIDENCE_DIR=%s\n' "$OUT"
    ```
+
+   Зберігати `kernel.log` повністю; `relevant-lines.log` — лише індекс для читання, не заміна оригіналу. У першому проході очікувані TOP/FIFO записи; `CLIENT`-рядки не очікуються, бо в NVKM layout немає CLIENT subdevice.
 
    Шукати в `gp107-top-fifo.log`:
 
@@ -100,10 +143,11 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
 4. Порядок кваліфікації witness:
 
-   - `RUNLIST_ID_NOT_OBSERVED`, якщо розібраного `runlist` рядка немає;
-   - `RUNLIST_ID_ZERO`, якщо GR/compute має `runlist 0`;
-   - `RUNLIST_ID_NONZERO_OBSERVED`, лише якщо є рядок із конкретним ID;
-   - окремо `NONSTALL_EVENT_SUBSCRIPTION_OBSERVED` — поки `NOT_OBSERVED`;
+   - `TOP_GR_RUNLIST_OBSERVED=N` — лише inventory із decoded TOP record; це не channel witness;
+   - `RUNLIST_ID_NOT_OBSERVED`, якщо потрібного TOP record немає;
+   - `CHANNEL_RUNLIST_CORRELATED` — тільки коли конкретний GR/compute user channel прив'язаний source-backed/runtime до цього runlist;
+   - `NONSTALL_EVENT_SUBSCRIPTION_OBSERVED` — лише коли channel-level trace доводить виклик `nvkm_uchan_uevent()` із `args->v0.type == NVIF_CHAN_EVENT_V0_NON_STALL_INTR` та відповідним `runl->id`; інакше лишати `NONSTALL_EVENT_SUBSCRIPTION_NOT_OBSERVED`;
+   - TOP row із `runlist 0` чи nonzero сам по собі не переводить channel/event стани в ZERO/ACTIVE;
    - жодного `Tested-by` від агента/LLM.
 
 ## 4. Поточний стан на цій hosted-машині
