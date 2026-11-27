@@ -18,9 +18,10 @@ unit nv_rm;
 
   Understanding questions for this fragment:
     1) Why is GPU_ATTACH_IDS needed before NV01_DEVICE_0 is allocated?
-    2) Why must an opened /dev/nvidia0 fd stay open during the RM sequence?
+    2) Why must the opened /dev/nvidia<N> fd stay open during the RM sequence?
     3) What breaks if NVOS64.params_size is hand-typed instead of SizeOf()?
     4) Why does arch=0x130/impl=0x7 still not prove the BOOT0 register?
+    5) Why is explicit NVOS00/RM_FREE not the same claim as "fd close frees all"?
 }
 
 {$mode objfpc}{$H+}{$codepage utf8}

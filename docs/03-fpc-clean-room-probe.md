@@ -75,3 +75,28 @@ NV_ESC_CARD_INFO і fail-closed відмовляється при будь-як�
 arch/implementation, який **не** є BOOT0 і не надає права на MMIO.
 Перенесення в `wsm-os-lisp` як обмеженої `PciConfig`/`Mmio` capability
 лишається за owner-рішенням та звіркою ABI v8→v9 у `wsm-target-contract`.
+
+## Lifecycle RM-обʼєктів (G3)
+
+`03_rm_arch_info.pas` більше не покладається на закриття fd як на механізм
+звільнення RM-обʼєктів. Після успішного або частково успішного створення
+ланцюжка `NV01_ROOT_CLIENT` → `NV01_DEVICE_0` → `NV20_SUBDEVICE_0` виконавець
+робить явний `NV_ESC_RM_FREE` (`NVOS00_PARAMETERS`, 16 байт) у зворотному
+порядку: subdevice → device → root client. Якщо `ioctl` або `status` схибив,
+друкується `RM-FREE-FAIL`, `RM-CLEANUP-FAIL`, і гейт падає; твердження
+«fd close звільняє все» тут **не стверджується**.
+
+Для перевірки часткових шляхів гейт інʼєктує змінну
+`WSM_RM_FAIL_STEP=after_alloc_client|after_alloc_device|after_alloc_subdev`
+окремо від звичайного прогону. Очікувані результати: 1, 2 або 3 успішних
+звільнення відповідно, `RM-CLEANUP-COMPLETE`, ненульовий код виходу та
+маркер `RM-ARCH-FAIL step=INJECT-...`. У звичайному прогоні змінна
+видаляється через `env -u`.
+
+| Факт | Стан | Свідок |
+|---|---|---|
+| `SizeOf(Tnvos00)=16` | **статично, компілятором** | `TAssertNvos00`; хибний розклад ламає збірку |
+| `NV_ESC_RM_FREE` з `h_root/h_parent/h_old/status` звільняє створені обʼєкти з `status=0` | **runtime-proven** на R580/GP107 | маркери `RM-FREE-OK object=... status=0`, `RM-CLEANUP-COMPLETE objects=3` |
+| Зворотний порядок звільнення | **runtime-proven + firewalls** | вивід трьох `RM-FREE-OK` у порядку subdev → device → client; gate перевіряє порядок у коді |
+| Cleanup після часткової відмови | **runtime-proven через інʼєкцію** | три окремі прогони з 1/2/3 звільненнями |
+| Причина будь-якого `NV_ERR_*` або внутрішня поведінка RM при звільненні | **UNPROVEN** | тут перевірено лише спостережувані `ioctl`/`status`, не вихідний код RM |

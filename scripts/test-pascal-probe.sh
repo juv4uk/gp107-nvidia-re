@@ -160,9 +160,21 @@ fi
 
 # 8) Runtime witness: RM arch info is a SEPARATE channel from BOOT0/MMIO.
 #    The GPU fd must stay open and GPU_ATTACH_IDS must succeed first; a
-#    failure here is a hard failure, never a guessed arch value.
+#    failure here is a hard failure, never a guessed arch value. Explicit
+#    NV_ESC_RM_FREE must be observed in reverse creation order; fd close is
+#    NOT claimed to free RM objects.
+step 'RM lifecycle firewall (explicit NV_ESC_RM_FREE, reverse order)'
+grep -Fq 'RmIOC(NV_ESC_RM_FREE, SizeOf(free_pars))' \
+  pascal/03_rm_arch_info.pas || fail 'нема явного NV_ESC_RM_FREE'
+order=$(strip_pascal_comments pascal/03_rm_arch_info.pas \
+        | grep -F 'FreeRmObject(' \
+        | grep -oE "'NV20_SUBDEVICE_0'|'NV01_DEVICE_0'|'NV01_ROOT_CLIENT'" \
+        | tr -d "'" | paste -sd, -)
+[ "$order" = 'NV20_SUBDEVICE_0,NV01_DEVICE_0,NV01_ROOT_CLIENT' ] \
+  || fail "порядок звільнення не зворотний: $order"
+
 step 'runtime witness (03_rm_arch_info)'
-timeout 20s "./$RM_BIN" >"$RM_OUT"
+timeout 20s env -u WSM_RM_FAIL_STEP "./$RM_BIN" >"$RM_OUT"
 cat "$RM_OUT"
 for marker in \
   'NV_ESC_CARD_INFO target   : 10DE:1C82 @ 0000:01:00.0 minor=0' \
@@ -170,8 +182,30 @@ for marker in \
   'GPU_ATTACH_IDS            : gpu=0x100 status=0 deviceInstance=0 subDeviceInstance=0' \
   'NV2080_CTRL_MC_GET_ARCH_INFO: arch=0x00000130 impl=0x00000007 rev=0x000000A1 subrev=0x02' \
   'BOOT0: UNPROVEN (RM arch info is a separate channel)' \
-  'RM-ARCH-OK'; do
+  'RM-ARCH-OK' \
+  'RM-FREE-OK object=NV20_SUBDEVICE_0 status=0' \
+  'RM-FREE-OK object=NV01_DEVICE_0 status=0' \
+  'RM-FREE-OK object=NV01_ROOT_CLIENT status=0' \
+  'RM-CLEANUP-COMPLETE objects=3'; do
   grep -Fq "$marker" "$RM_OUT" || fail "нема маркера: $marker"
+done
+
+step 'negative witness (partial-failure RM cleanup)'
+for spec in after_alloc_client:1 after_alloc_device:2 after_alloc_subdev:3; do
+  inj=${spec%%:*}
+  expected=${spec##*:}
+  inj_out="$WORK/rm-$inj.out"
+  if timeout 20s env WSM_RM_FAIL_STEP="$inj" "./$RM_BIN" >"$inj_out" 2>&1; then
+    fail "інʼєкція $inj не завершилася відмовою"
+  fi
+  cat "$inj_out"
+  grep -Fq "RM-ARCH-FAIL step=INJECT-$inj injected=fail" "$inj_out" \
+    || fail "нема маркера інʼєкції: $inj"
+  grep -Fq "RM-CLEANUP-COMPLETE objects=$expected" "$inj_out" \
+    || fail "частковий cleanup для $inj звільнив не $expected обʼєктів"
+  if grep -Fq 'RM-CLEANUP-FAIL' "$inj_out"; then
+    fail "cleanup для $inj містить RM-CLEANUP-FAIL"
+  fi
 done
 
 # 9) Binary proof for ALL probes: static ELF, no DT_NEEDED entries.
