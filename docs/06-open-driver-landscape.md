@@ -1036,22 +1036,35 @@ NVDEC userspace API.
    залежність; наявність GR/ACR/SEC2 blobs не відкриває Pascal reclocking
    і не обходить NVIDIA signature policy.
 
-Read-only перевірка на окремому native Nouveau boot:
+Поточний upstream manifest `linux-firmware/WHENCE` перелічує для GP107
+окремі GR FECS/GPCCS blobs, `sw_ctx`/`sw_nonctx`, shared GP102 ACR/SEC2
+links і NVDEC scrubber link. Це shipped-assets inventory, не доказ, що
+локальний kernel запросив/завантажив ці файли. Офіційний manifest:
+[GP107 section](https://kernel.googlesource.com/pub/scm/linux/kernel/git/firmware/linux-firmware/+/refs/heads/main/WHENCE#L6147-L6169).
+`nvidia/gp107/nvdec/scrubber.bin` — framebuffer/VPR cleanup firmware,
+не H.264/HEVC codec firmware.
+
+**Read-only inventory дозволений і під поточним R580, до Nouveau boot:**
 
 ```sh
-modinfo -F firmware nouveau | grep -E '^nvidia/(gp107|gp102)/'
-FWROOT=/lib/firmware
-[ -d /usr/lib/firmware/nvidia/gp107 ] && FWROOT=/usr/lib/firmware
-find -L "$FWROOT/nvidia/gp107" "$FWROOT/nvidia/gp102" -type f -printf '%p %s bytes\n' 2>/dev/null | sort
-ls -l "$FWROOT/nvidia/gp107/gr" "$FWROOT/nvidia/gp107/sec2" "$FWROOT/nvidia/gp107/acr" 2>&1
-sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|sec2|acr'
+dpkg-query -W -f='${binary:Package}\t${Version}\n' firmware-nvidia-graphics 2>/dev/null || true
+for FWROOT in /lib/firmware /usr/lib/firmware; do
+  [ -d "$FWROOT/nvidia/gp107" ] || continue
+  echo "FIRMWARE_ROOT=$FWROOT"
+  find "$FWROOT/nvidia/gp107" -type f -o -type l | sort
+  find -L "$FWROOT/nvidia/gp107" -type f -print0 | sort -z | xargs -0 -r sha256sum
+  find "$FWROOT/nvidia/gp107" -type l -exec sh -c 'for f do printf "%s -> %s\\n" "$f" "$(readlink -f "$f")"; done' sh {} +
+done
+modinfo -F firmware nouveau 2>/dev/null | grep -E '^nvidia/(gp107|gp102)/' | sort -u || true
 ```
 
-`modinfo` показує оголошені firmware dependencies; фактичні запити
-та їхній результат потрібно підтвердити kernel journal. Зафіксувати
-версію linux-firmware package і SHA-256 наявних blobs, якщо вони
-встановлені. Не завантажувати вручну firmware з proprietary driver,
-не патчити підпис, не прошивати VBIOS та не змінювати firmware.
+Розділяти три стани: `FIRMWARE_FILE_PRESENT`,
+`FIRMWARE_REQUEST_DECLARED` (вивід `modinfo`) і
+`FIRMWARE_REQUEST_OBSERVED` (kernel journal під час окремого
+схваленого Nouveau boot). Поки Nouveau не завантажений,
+`FIRMWARE_REQUEST_OBSERVED=NOT_OBSERVED`. Не завантажувати firmware
+вручну з proprietary driver, не патчити підпис, не прошивати VBIOS
+та не змінювати firmware.
 
 ### 16.2. Intel HD 530 + GP107: примусовий вибір dGPU в Mesa
 
@@ -1134,9 +1147,64 @@ nvidia-smi --query-gpu=name,pci.bus_id,pci.device_id,pci.sub_device_id,vbios_ver
 Якщо утиліта/драйвер недоступні — записати `NOT_AVAILABLE`, не
 встановлювати proprietary driver лише заради отримання цього виводу.
 
+### A.1. Точний Kali kernel source і BTF/kprobe preflight — лише читання
+
+Перед будь-яким Nouveau boot зіставити running binary kernel із source
+package/patch set. Для owner-observed Kali package `7.2.15-1kali1`
+офіційний tracker вказував такі контрольні SHA-256:
+- `.dsc`: `2ff00fa1fbfaaecea51ba975fc8db2c702252608ead7c36176958bafb563018f`
+- `.orig.tar.xz`: `1ce410448c433a807735e38f7e1c8ee48026467faa44e9c4e60072a1f99e971d`
+- Debian patch tarball: `e33bf1dd657dc679d8100848d4cba02308281493b7cf11922303dd184edc2348`
+- [Kali tracker migration notice](https://pkg.kali.org/news/722988/linux-7215-1kali1-migrated-to-kali-rolling/).
+
+Це package-source lead, а не самодостатній доказ, що running
+`7.2.15+kali-amd64` саме з нього побудований. Зіставити через
+`dpkg-query -S`, package version, source version, kernel build ID,
+module path/hash та `.dsc` checksum. Source extraction дозволений
+лише в окремий scratch directory після перевірки SHA; нічого не
+встановлювати й не перебудовувати.
+
+Read-only capability preflight (не attach і не завантажувати Nouveau):
+
+```sh
+KREL=$(uname -r)
+CFG="/boot/config-$KREL"
+if [ -r "$CFG" ]; then
+  grep -E '^(CONFIG_(KPROBES|KPROBE_EVENTS|FTRACE|FUNCTION_TRACER|DEBUG_INFO_BTF|DEBUG_INFO_BTF_MODULES|BPF|BPF_SYSCALL|TRACING))=' "$CFG" || true
+elif [ -r /proc/config.gz ]; then
+  zcat /proc/config.gz | grep -E '^(CONFIG_(KPROBES|KPROBE_EVENTS|FTRACE|FUNCTION_TRACER|DEBUG_INFO_BTF|DEBUG_INFO_BTF_MODULES|BPF|BPF_SYSCALL|TRACING))=' || true
+fi
+test -r /sys/kernel/btf/vmlinux && echo VMLINUX_BTF_PRESENT || echo VMLINUX_BTF_ABSENT
+test -r /sys/kernel/tracing/available_filter_functions && echo FTRACE_FILTER_LIST_PRESENT || true
+MOD=$(modinfo -n nouveau 2>/dev/null || true)
+printf 'NOUVEAU_MODULE_FILE=%s\\n' "$MOD"
+if [ -n "$MOD" ] && [ -r "$MOD" ]; then
+  readelf -SW "$MOD" | grep -E '\\.BTF|\\.BTF\\.ext' || true
+  nm -n "$MOD" 2>/dev/null | grep -w nvkm_uchan_uevent || true
+  sha256sum "$MOD"
+fi
+command -v bpftool || true
+command -v bpftrace || true
+```
+
+Відсутність `/sys/kernel/btf/nouveau` або module symbols у tracefs
+очікувана, коли Nouveau не завантажений; не завантажувати модуль, щоб
+«побачити» їх. Звітити окремо PRESENT/ABSENT/UNKNOWN для кожного
+прапорця/артефакту. Жодного kprobe/ftrace/BPF attach, tracefs write,
+`perf probe`, `bpftrace` program або callback trigger на цьому етапі.
+
+На 2026-11-27 local gate: `ATOMIC_KMS_BACKPORT=UNVERIFIED`,
+`RUNLIST_ID_NOT_OBSERVED`, `NONSTALL_EVENT_SUBSCRIPTION_NOT_OBSERVED`,
+`PHYSICAL_GPU_TEST=NOT_RUN`. Поки ці стани не змінені фактичними
+доказами, наступний дозвільний крок — лише цей read-only inventory.
+
 ### B. Native Nouveau boot — окреме тестове завантаження
 
-До запуску workloads:
+**Не виконувати цей boot зараз.** Він потребує окремого погодження
+власника після точного Kali binary/source/atomic-KMS review,
+read-only BTF/kprobe preflight і плану відновлення до R580. Не
+змінювати permanent GRUB/modprobe/initramfs і не видаляти NVIDIA
+driver.
 ```sh
 uname -a
 cat /proc/cmdline
@@ -1481,6 +1549,57 @@ baseline потрібен для порівняння, але залишаєть
 - [Khronos: GTX 1050 Ti in Software Freedom Conservancy Vulkan 1.3 entry #908](https://www.khronos.org/conformance/adopters/conformant-products/vulkan)
 - [Mesa Rusticl build/runtime documentation](https://docs.mesa3d.org/rusticl.html)
 
+### 19.6. Mesa 26.3.1: enumeration, channel allocation і compute submit — різні межі
+
+Точний upstream tag `upstream-mesa-26.3.1`:
+commit `fec8830e9c94b1d67f3d8469467d5529fb2978cd`,
+tarball SHA-256
+`4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961`.
+[Upstream tag](https://android.googlesource.com/platform/external/mesa3d/+/refs/tags/upstream-mesa-26.3.1),
+[release notes](https://docs.mesa3d.org/relnotes/26.3.1.html).
+
+На цьому source snapshot NVK physical-device discovery проходить
+`nvkmd_nouveau_try_create_pdev()` → `nouveau_ws_device_new()`.
+Він відкриває DRM render node з `O_RDWR`, ініціалізує VM/NVIF,
+створює тимчасовий `NOUVEAU_FIFO_ENGINE_GR` context/channel,
+запитує engine classes і знищує context. Отже
+`vkEnumeratePhysicalDevices()` та `vulkaninfo --summary` із NVK
+**не є read-only preflight** і не повинні запускатися на цій карті
+до окремого owner approval та перевірки exact kernel/Mesa package.
+
+Під час channel initialization kernel створює
+`NVIF_CHAN_EVENT_V0_NON_STALL_INTR` object, але він лишається
+`allowed=0`; це не означає ALLOW/BLOCK transition і не доводить
+`nvkm_event_get/put` reference-count path. Інший
+`NVIF_CHAN_EVENT_V0_KILLED` event дозволяється окремо. На цій
+NVK discovery гілці немає Mesa-side `DRM_NOUVEAU_EXEC`/GPFIFO
+workload submit, але є VM/NVIF, DRM channel, BO/subchannel allocation
+та teardown: це `ENUMERATION_WITH_TEMP_GR_CHANNEL_INIT`, не
+«пасивне читання».
+
+Не використовувати `vkCreateDevice()` / compute queue creation як
+no-submit тест: у тому самому Mesa tag `nvk_queue_create()`
+викликає `nvk_queue_init_context_state()`, яка доходить до
+`nvk_queue_push()` / exec та відправляє початковий engine state.
+Тобто compute queue creation вже перетинає GPU-submit boundary.
+
+У canonical [PR #21](https://github.com/juv4uk/gp107-nvidia-re/pull/21)
+є compile-only C11 + GLSL vector-add harness. Він перевіряє
+`10de:1c82`, точний PCI BDF, `VK_DRIVER_ID_MESA_NVK`, compute queue,
+dispatch, fence, host readback та CPU checksum для 257 і 1,048,576
+елементів. Executable за замовчуванням зупиняється **до**
+`vkCreateInstance()`/`vkEnumeratePhysicalDevices()`; окремі
+`--allow-temp-gr-channel-init`, `--enumeration-only` та
+`--allow-gpu-submit` acknowledgements не передавати до закриття
+issue #18 і окремого погодження власника. CI лише компілює/валідує
+shader і C program; `PHYSICAL_GPU_TEST=NOT_RUN`.
+
+У Mesa 26.3.1 project-level release notes кажуть Vulkan 1.4, але
+`VkPhysicalDeviceProperties.apiVersion` залежить від driver. У
+прикріпленому NVK source Pascal/GP107
+(`MAXWELL_A <= cls_eng3d < TURING_A`) повертає Vulkan 1.3;
+це source-prediction, а не runtime результат нашої карти.
+
 ### 19.5. GP107 candidate: legacy FIFO non-stall event index (conditional source risk)
 
 Це **source-audit candidate**, а не підтверджений hardware bug на нашій
@@ -1532,16 +1651,20 @@ legacy FIFO one-entry event і report про out-of-bounds `event->refs[]`
 Потрібно побачити parsed TOP record для GR/compute та зв'язати його з
 runlist, на якій створюється channel/context.
 
-Локальний одноразовий trace boot дозволений лише після перевірки
-підтримки debug у встановленому kernel:
+Локальний одноразовий trace boot можливий лише після gate
+з §18.A.1, точного package source review і окремого погодження власника.
+Перевірити:
 ```sh
 grep CONFIG_NOUVEAU_DEBUG /boot/config-$(uname -r)
 modinfo -p nouveau | grep -i debug
 ```
 Якщо `CONFIG_NOUVEAU_DEBUG` має ceiling не нижче 5 (TRACE) і module
-parameter `debug` присутній, у окремому rollback-capable native Linux
-boot додати `nouveau.debug=trace`. Якщо одна з умов не виконана —
-не припускати, що trace увімкнувся; позначити `NOT_AVAILABLE`.
+parameter `debug` присутній, вузький перший trace boot використовує
+`nouveau.debug=TOP=trace,FIFO=debug` — без глобального TRACE і без
+`CLIENT` у першому проході. `TOP` дає raw + decoded inventory;
+`FIFO=debug` лишає рівень FIFO нижчим і достатнім для першого запису.
+Якщо будь-яка умова не виконана — `NOT_AVAILABLE`, не припускати,
+що trace увімкнувся.
 
 Після boot зберегти:
 ```sh
