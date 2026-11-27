@@ -240,8 +240,7 @@ int main(int argc, char **argv)
             "BDF_ARGUMENT_INVALID (expected DDDD:BB:DD.F)");
 
     uint32_t loader_version = VK_API_VERSION_1_0;
-    if (vkEnumerateInstanceVersion)
-        VK_TRY(vkEnumerateInstanceVersion(&loader_version), "vkEnumerateInstanceVersion");
+    VK_TRY(vkEnumerateInstanceVersion(&loader_version), "vkEnumerateInstanceVersion");
     REQUIRE(loader_version >= VK_API_VERSION_1_1, 2,
             "VULKAN_1_1_LOADER_REQUIRED loader=%u.%u.%u",
             VK_VERSION_MAJOR(loader_version), VK_VERSION_MINOR(loader_version),
@@ -288,10 +287,14 @@ int main(int argc, char **argv)
     }
     free(physical_devices);
 
-    REQUIRE(matching_devices == 1 && physical != VK_NULL_HANDLE, 2,
-            matching_devices == 0 ? "GP107_NOT_FOUND pci_id=10de:1c82"
-                                  : "GP107_AMBIGUOUS matching_devices=%u",
-            matching_devices);
+    if (matching_devices != 1 || physical == VK_NULL_HANDLE) {
+        if (matching_devices == 0)
+            fprintf(stderr, "GP107_NOT_FOUND pci_id=10de:1c82\\n");
+        else
+            fprintf(stderr, "GP107_AMBIGUOUS matching_devices=%u\\n",
+                    matching_devices);
+        return 2;
+    }
 
     REQUIRE(has_device_extension(physical, VK_EXT_PCI_BUS_INFO_EXTENSION_NAME), 2,
             "PCI_IDENTITY_UNAVAILABLE missing=%s", VK_EXT_PCI_BUS_INFO_EXTENSION_NAME);
