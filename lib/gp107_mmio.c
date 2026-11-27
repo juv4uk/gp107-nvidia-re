@@ -9,6 +9,11 @@
 #include <unistd.h>
 
 #ifdef GP107_USE_ASM
+/* Private assembly primitive; not exported in gp107_mmio.h. */
+extern uint32_t gp107_mmio_load32_asm(const volatile void *addr);
+#endif
+
+#ifdef GP107_USE_ASM
 /* Private assembly load primitive; not exposed as public API. */
 extern uint32_t gp107_mmio_load32_asm(const volatile void *addr);
 #endif
@@ -53,6 +58,10 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
     int rc;
     struct stat st;
 
+    if (err == NULL || errsz == 0) {
+        return GP107_ERR_USAGE;
+    }
+    err[0] = '\0';
     if (sysfs_root == NULL || expect_bdf == NULL || value == NULL) {
         return gp107_set_error(err, errsz,
                                "MMIO-FAIL step=bad-argument code=%d",
