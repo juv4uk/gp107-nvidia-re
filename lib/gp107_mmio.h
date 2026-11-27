@@ -7,24 +7,15 @@
 #include "gp107_identity.h"
 
 /*
- * Optional read-only aperture seam. Owner-authorized in the session that
- * created this slice, but deliberately inert unless the caller passes an
- * explicit opt-in flag AND no kernel driver is bound to the device.
+ * Optional read-only aperture seam. Software-gated research code only:
+ * physical MMIO, driver unbind and alternate boot are not authorized.
+ * The sole public operation enforces opt-in, PCI identity, binding, BAR-space,
+ * BAR-size and offset checks internally. Its allow flag is not owner approval.
  *
- * No write mapping, no RM requests, no FIFO, no doorbell, no firmware,
- * no BOOT0 constant and no register name is encoded here.
+ * No write mapping, RM requests, FIFO, doorbell, firmware or BOOT0 value.
  */
 
 #define GP107_MMIO_WINDOW 4096u
-
-/* x86-64 only: one volatile 32-bit load with a following load fence.
- * Declared here so the C/assembly equivalence gate can compare paths. */
-uint32_t gp107_mmio_load32_asm(const volatile void *addr);
-
-int gp107_mmio_require_optin(int allow, char *err, size_t errsz);
-
-int gp107_mmio_check_driver(const struct gp107_inventory *inv,
-                            char *err, size_t errsz);
 
 /* The public operation enforces opt-in, inventory identity and driver
  * binding itself; callers cannot bypass the gates by skipping CLI checks. */
