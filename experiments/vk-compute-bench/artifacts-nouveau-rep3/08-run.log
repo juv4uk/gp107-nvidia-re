@@ -1,0 +1,12 @@
+BENCH-BOARD-OK bdf=0000:01:00.0 vendor=0x10de device=0x1c82 binding=nouveau
+BENCH-DRIVER-RECORD id=24 name=NVK info=Mesa 26.1.6-1 device=NVIDIA GeForce GTX 1050 Ti (NVK GP107) api=0x00403162
+BENCH-ICD-RECORD icd=/usr/share/vulkan/icd.d/nouveau_icd.json
+BENCH-MEMORY-RECORD memType=1 path=HOST_VISIBLE|HOST_COHERENT
+BENCH-CORRECT elements=4096 mismatch=0 checksum=0xc8d96145
+BENCH-CASE elements=4096 bytes_per_buffer=16384 groups=64 warmup=20 iters=200 min_ns=30963 median_ns=36167 mean_ns=333921 median_gb_s=1.3590 traffic_bytes=49152
+BENCH-CORRECT elements=1048576 mismatch=0 checksum=0xb1008545
+BENCH-CASE elements=1048576 bytes_per_buffer=4194304 groups=16384 warmup=10 iters=50 min_ns=1271996 median_ns=1465332 mean_ns=2836756 median_gb_s=8.5871 traffic_bytes=12582912
+BENCH-CORRECT elements=8388608 mismatch=0 checksum=0xce9d3f79
+BENCH-CASE elements=8388608 bytes_per_buffer=33554432 groups=131072 warmup=5 iters=20 min_ns=11233323 median_ns=14083088 mean_ns=13687251 median_gb_s=7.1478 traffic_bytes=100663296
+BENCH-OK board=10de:1c82@0000:01:00.0 driver_id=24 driver_name=NVK binding=nouveau pr21=NOT-RUN mmio=none
+BENCH_RC=0
