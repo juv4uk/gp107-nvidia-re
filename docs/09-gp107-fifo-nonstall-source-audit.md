@@ -7,6 +7,7 @@
 Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (release 2026-11-23).
 Посилання нижче — на commit-pinned public kernel source, не на vendor source й не на Ghidra-псевдокод.
 
+
 Для порівняння upstream stable `v7.2.15` (той самий numerically named baseline, що й користувацький kernel string) — окремий immutable tag; це **не** доводить, що `7.2.15+kali-amd64` містить ідентичний source/backport set. Kali package source і його patches залишаються окремою перевіркою.
 
 ## 1. Що вже доведено з source (`statically proven, source`)
@@ -16,8 +17,8 @@ Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda
 | GP107 (`nv137_chipset`) обирає `gp100_fifo_new()` і `gk104_top_new()` | `drivers/gpu/drm/nouveau/nvkm/engine/device/base.c` | chipset dispatch |
 | `gp100_fifo` задає `.nonstall = &gf100_fifo_nonstall`, але не має `nonstall_ctor` | `drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c` | умова для `index_nr = 1` |
 | `nvkm_fifo_oneinit()` ставить `ret = 1` і викликає `nvkm_event_init(..., index_nr = 1, ...)` | `drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c` | event має лише один index |
-| `nvkm_uchan_uevent()` для `NVIF_CHAN_EVENT_V0_NON_STALL_INTR` викликає `nvkm_uevent_add(..., &runl->fifo->nonstall.event, runl->id, ...)` | `drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c` | індекс береться з `runl->id`, а не з `0` |
-| `nvkm_event_get()` / `nvkm_event_put()` індексують `refs[index * types_nr + type]` без локальної межової перевірки | `drivers/gpu/drm/nouveau/nvkm/core/event.c` | шлях підписки/відписки не захищений `nvkm_event_ntfy()` |
+| `nvkm_uchan_uevent()` для `NVIF_CHAN_EVENT_V0_NON_STALL_INTR` передає `runl->id` у `nvkm_uevent_add()` | `drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c` | generic path використовує per-runlist ID без перевірки legacy `nonstall_ctor` |
+| `nvkm_event_get()` / `nvkm_event_put()` індексують `refs[index * types_nr + type]` без локальної межової перевірки | `drivers/gpu/drm/nouveau/nvkm/core/event.c` | refs зачіпаються при enable/disable transition, а не при простому створенні notifier object |
 | `gk104_top_parse()` читає hardware TOP table і заповнює `info->runlist` з `ENUM` слова | `drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c` | runtime ID надходить з TOP table |
 | `gk104_fifo_runl_ctor()` створює runlists за `tdev->runlist` | `drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c` | `runl->id == tdev->runlist` |
 | `nouveau_channel_ctor()` ставить `args->runlist = __ffs64(runm)`; `nvkm_uchan_new()` шукає `nvkm_runl_get(fifo, args->v0.runlist, 0)` | `drivers/gpu/drm/nouveau/nouveau_chan.c`, `nvkm/engine/fifo/uchan.c` | канал користувача прив'язаний до конкретного runlist ID |
@@ -25,6 +26,29 @@ Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda
 Висновок із source: **якщо** канал, який підписується на non-stall interrupt, має
 `runl->id != 0`, індекс event може вийти за межі одноелементного масиву.
 Це умовний source lead, не доведена поведінка плати.
+
+
+### Event object registration ≠ active non-stall subscription
+
+`nouveau_fence_context_new()` для Pascal створює `NVIF_CHAN_EVENT_V0_NON_STALL_INTR` через `nvif_event_ctor()`. `nvkm_uchan_uevent()` передає запит у `nvkm_uevent_add()`, а `nvkm_event_ntfy_add()` записує `ntfy->id`/`bits` та встановлює `allowed=0`. Саме створення notifier object не викликає `nvkm_event_get()`/`put()` і не змінює `refs[]`.
+
+Пізніше `nouveau_fence_enable_signaling()` окремо викликає `nvif_event_allow()`. Лише перехід notifier state у `nvkm_event_ntfy_state()` може викликати `nvkm_event_get()`; вимкнення — `nvkm_event_put()`. Тому evidence потрібно розділяти:
+
+- `CHANNEL_NONSTALL_EVENT_ENTRY_OBSERVED` — callback отримав тип `NON_STALL_INTR` і channel/runlist context;
+- `NONSTALL_EVENT_OBJECT_REGISTERED` — callback/`nvkm_uevent_add()` завершився успішно; notifier ще `allowed=0`;
+- `NONSTALL_EVENT_ALLOWED` — окремо спостережено успішний `NVIF_EVENT_V0_ALLOW`;
+- `RUNLIST_REFCOUNT_UPDATED` — окремо спостережено `nvkm_event_get()`/`put()` з фактичним index;
+- `FENCE_PROGRESS_OBSERVED` — окремий runtime witness завершення fence/interrupt; не виводити з попередніх станів.
+
+Попередня назва `NONSTALL_EVENT_SUBSCRIPTION_OBSERVED` занадто неоднозначна і не повинна використовуватися як доказ активної підписки.
+
+### Upstream candidate fix: legacy FIFO global index
+
+13.09.2026 Risto Pajula надіслав [PATCH 2/2 — use global nonstall event on legacy FIFO](https://lists.openwall.net/linux-kernel/2026/09/13/864). Запропонована зміна передає `runl->id` лише якщо `runl->fifo->func->nonstall_ctor` існує; для legacy FIFO без per-runlist constructor використовує глобальний index `0`.
+
+Це прямо релевантно GP107: `nv137_chipset` обирає `gp100_fifo_new()`, а GP100 FIFO має глобальний non-stall event без `nonstall_ctor`. Patch 2/2 — generic FIFO fix; patch 1 тієї серії про GK107 legacy video context mapping є Kepler-specific і не переноситься на Pascal.
+
+Статус patch 2/2 — **proposed / review pending, не merged** станом на останню перевірку: pinned upstream `v7.2.15`, `v7.3.6` і mainline snapshot `9437ee8b6cf607e883b36e44bd755968daaebd48` усе ще містять безумовний `runl->id`. Сторонні runtime-перевірки цієї серії були GK107/GK208B, не GP107. Не додавати LLM-derived `Tested-by`; не називати patch інтегрованим у Kali.
 
 ## 2. Чому logging може дати ID без direct MMIO
 
@@ -51,7 +75,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 
 ### Імена debug-subdevice: перевірено по parser path
 
-`nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому для pinned Linux `9437ee8...` і stable `gregkh/linux:v7.2.15` source-correct selector — **`FIFO=debug`**. Офіційна [сторінка параметрів Nouveau](https://nouveau.freedesktop.org/KernelModuleParameters.html) досі перелічує engine name `PFIFO`; це документаційна/legacy назва. Для конкретного kernel вирішальним є його source: якщо distro несе відмінний `layout.h`/parser, selector треба підтвердити за цим пакетом перед boot. Для профільного Kali `7.2.15+kali-amd64` перевірений upstream stable `v7.2.15` має token `fifo`.
+`nvkm_subdev_type[]` у `nvkm/core/subdev.c` генерується через `#ptr` із `include/nvkm/core/layout.h`. Для `NVKM_ENGINE_FIFO` останній аргумент — `fifo`, а `__nvkm_subdev_ctor()` записує це ім'я в `subdev->name`; `nvkm_dbgopt()` порівнює selector саме з цим ім'ям без урахування регістру. Тому для upstream reference `gregkh/linux:v7.2.15` (`497791a0a96b866d90add64041c47acdff49cae6`) source-correct selector — **`FIFO=debug`**. Офіційна [сторінка параметрів Nouveau](https://nouveau.freedesktop.org/KernelModuleParameters.html) досі перелічує engine name `PFIFO`; це документаційна/legacy назва. Для конкретного kernel вирішальним є його source: якщо distro несе відмінний `layout.h`/parser, selector треба підтвердити за цим пакетом перед boot. Для профільного Kali `7.2.15+kali-amd64` перевірений upstream stable `v7.2.15` має token `fifo`.
 
 `CLIENT` не є окремим записом у `layout.h`, але це **окремий підтримуваний debug selector**, не subdevice alias: `nvkm/core/client.c` встановлює `client->debug = nvkm_dbgopt(dbg, "CLIENT")`. Макрос `nvkm_printk_ok(s,u,l)` у `include/nvkm/core/subdev.h` враховує як debug level subdevice, так і переданий user/client context. Тому `CLIENT=debug` є технічно підтримуваним, але **не входить до першого boot**: початковий trace має залишатися вузьким і містити лише TOP та FIFO selectors. За окремої потреби його можна перевірити в наступному спеціальному проході для client-aware повідомлень; відсутність таких рядків нічого не доводить щодо каналу чи події.
 
@@ -110,29 +134,32 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    основний boot entry. Перед цим перевірити `modinfo nouveau` та
    `CONFIG_NOUVEAU_DEBUG >= 5` саме для обраного kernel. Зберегти окремий
    rollback entry; proprietary NVIDIA driver не повинен одночасно володіти GPU.
-3. Після завантаження з Nouveau зібрати лог:
+3. **Після reboot повторно визначити BDF у новій shell** і лише потім зібрати лог. Змінна з кроку 1 не переживає reboot:
 
    ```bash
    set -eu
-   # New shell after reboot: rediscover the GPU; the pre-boot BDF variable is gone.
    BDFS=$(lspci -Dnn -d 10de:1c82 | awk '{print $1}')
    COUNT=$(printf '%s\n' "$BDFS" | sed '/^$/d' | wc -l)
    [ "$COUNT" -eq 1 ] || { echo "GP107_BDF_COUNT_AFTER_BOOT=$COUNT"; exit 2; }
    BDF=$(printf '%s\n' "$BDFS" | sed -n '1p')
    SYSFS="/sys/bus/pci/devices/$BDF"
-   [ "$(cat "$SYSFS/vendor")" = '0x10de' ] || { echo 'GP107_VENDOR_MISMATCH'; exit 2; }
-   [ "$(cat "$SYSFS/device")" = '0x1c82' ] || { echo 'GP107_DEVICE_MISMATCH'; exit 2; }
-   LSPCI=$(lspci -Dnnk -s "$BDF")
-   DRIVER=$(printf '%s\n' "$LSPCI" | sed -n 's/^[[:space:]]*Kernel driver in use: //p')
-   [ "$DRIVER" = 'nouveau' ] || { echo "GP107_DRIVER_NOT_NOUVEAU=${DRIVER:-none}"; exit 2; }
+   [ -r "$SYSFS/vendor" ] && [ -r "$SYSFS/device" ] || {
+     echo 'GP107_SYSFS_IDENTITY_UNAVAILABLE_AFTER_BOOT'; exit 2;
+   }
+   VENDOR=$(cat "$SYSFS/vendor")
+   DEVICE=$(cat "$SYSFS/device")
+   [ "$VENDOR" = '0x10de' ] && [ "$DEVICE" = '0x1c82' ] || {
+     echo "GP107_SYSFS_IDENTITY_MISMATCH vendor=$VENDOR device=$DEVICE"; exit 2;
+   }
+   printf 'GP107_BDF_AFTER_BOOT=%s vendor=%s device=%s\n' "$BDF" "$VENDOR" "$DEVICE"
+   lspci -Dnnk -s "$BDF"
+
    OUT="$HOME/gp107-trace-$BDF-$(date +%Y%m%d-%H%M%S)"
    mkdir -p "$OUT"
    uname -a > "$OUT/uname.txt"
    cat /proc/cmdline > "$OUT/cmdline.txt"
-   printf '%s\n' "$LSPCI" > "$OUT/lspci.txt"
-   printf 'GP107_BDF=%s vendor=10de device=1c82 driver=%s\n' "$BDF" "$DRIVER" > "$OUT/device-identity.txt"
+   lspci -Dnnk -s "$BDF" > "$OUT/lspci.txt"
    modinfo -p nouveau > "$OUT/nouveau-module-params.txt"
-   cat /sys/module/nouveau/parameters/debug > "$OUT/loaded-debug-parameter.txt" 2>/dev/null || true
    if [ -r "/boot/config-$(uname -r)" ]; then
      cp "/boot/config-$(uname -r)" "$OUT/kernel.config"
    elif [ -r /proc/config.gz ]; then
@@ -160,9 +187,15 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    - `TOP_GR_RUNLIST_OBSERVED=N` — лише inventory із decoded TOP record; це не channel witness;
    - `RUNLIST_ID_NOT_OBSERVED`, якщо потрібного TOP record немає;
    - `CHANNEL_RUNLIST_CORRELATED` — тільки коли конкретний GR/compute user channel прив'язаний source-backed/runtime до цього runlist;
-   - `NONSTALL_EVENT_SUBSCRIPTION_OBSERVED` — лише коли channel-level trace доводить виклик `nvkm_uchan_uevent()` із `args->v0.type == NVIF_CHAN_EVENT_V0_NON_STALL_INTR` та відповідним `runl->id`; інакше лишати `NONSTALL_EVENT_SUBSCRIPTION_NOT_OBSERVED`;
-   - TOP row із `runlist 0` чи nonzero сам по собі не переводить channel/event стани в ZERO/ACTIVE;
+   - `NONSTALL_EVENT_OBJECT_REGISTERED` — лише коли callback `nvkm_uchan_uevent()` із `args->v0.type == NVIF_CHAN_EVENT_V0_NON_STALL_INTR` завершився успішно; це ще не ALLOW;
+   - `NONSTALL_EVENT_ALLOWED` — тільки за окремим witness успішного `NVIF_EVENT_V0_ALLOW`;
    - жодного `Tested-by` від агента/LLM.
+
+### Mesa/NVK trigger caution
+
+NVK physical-device enumeration є лише **candidate trigger** для тимчасового GR channel: на перевіреному Mesa mirror snapshot (`e24dc5bd1e7fe6101bdc866fb16a15a8fcae1aae`, 2026-05-29) `nvkmd_nouveau_try_create_pdev()` → `nouveau_ws_device_new()` створює тимчасовий winsys context, який згодом знищується. Цей шлях може пройти через DRM channel allocation і Pascal NONSTALL event-object construction без GPFIFO push submit, але він не є strictly read-only/zero-side-effect: є channel/BO/VM/object allocations та окрема KILLED-event ALLOW. Цей Mesa snapshot старший за 26.3.1; до використання треба звірити точний source package/commit установленої Mesa 26.3.1.
+
+`vkCreateDevice`/queue creation не є no-submit probe: на переглянутому Mesa 26.1.8 NVK queue path створює exec context, ініціалізує initial engine state і передає push через Nouveau exec. Точний target version source 26.3.1 усе ще треба зафіксувати, але до такого звіряння не запускати `vkCreateDevice`, `vulkaninfo --summary`, queue creation, vector-add чи fence wait як probe.
 
 ## 4. Поточний стан на цій hosted-машині
 
@@ -172,8 +205,8 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 | NVK як ICD для цієї плати | у списку device лише proprietary NVIDIA + llvmpipe CPU | `NOT_RUN/UNPROVEN` |
 | nouveau debug log | не збиралось; GPU під `nvidia.ko` | `NOT_RUN` |
 | TOP runlist IDs | не спостерігались | `RUNLIST_ID_NOT_OBSERVED` |
-| non-stall event subscription | не спостерігалась | `NOT_OBSERVED` |
-| patch 2/2 у mainline/stable | у pinned snapshot `uchan.c` досі `runl->id`; merged-стан окремого backport не доведений | `source-only` |
+| NONSTALL object registration / ALLOW / refcount | не спостерігались на Nouveau | `NOT_RUN` |
+| patch 2/2 у mainline/stable | у pinned upstream commit `497791a0a96b866d90add64041c47acdff49cae6` файл `uchan.c` досі передає `runl->id`; merged-стан окремого downstream backport у Kali не перевірений | `source-only` |
 
 Мінімальний compute harness для подальшого NVK witness ведеться окремо в
 [Draft PR #21](https://github.com/juv4uk/gp107-nvidia-re/pull/21) і тут не
@@ -205,3 +238,27 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 - Не називати `vkcube`/графічний Vulkan compute witness.
 - Не переносити цей source audit у SENS/CML/wsm-os-lisp і не міняти ABI-pin.
 - Не змінювати системний driver, конфігурацію хоста або завантаження без owner-дії.
+
+
+## 7. Reproducible upstream source references
+
+All links below resolve against upstream stable tag `v7.2.15`, commit
+[497791a0a96b866d90add64041c47acdff49cae6](https://github.com/gregkh/linux/commit/497791a0a96b866d90add64041c47acdff49cae6):
+
+- [GP107 chipset dispatch](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
+- [Nouveau debug module parameter](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nouveau_drm.c)
+- [Debug selector parser](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/core/option.c)
+- [CLIENT selector](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/core/client.c)
+- [FIFO debug layout token](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/include/nvkm/core/layout.h)
+- [NVKM subdevice name construction](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/core/subdev.c)
+- [TOP parser and decoded runlist output](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c)
+- [FIFO non-stall event construction](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c)
+- [GP100 FIFO implementation](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c)
+- [FIFO runlist debug macros](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/runl.h)
+- [GP FIFO runlist construction](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c)
+- [NVIF user-channel event callback](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
+- [Event references and notification subscription](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nvkm/core/event.c)
+- [DRM channel runlist selection](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nouveau_chan.c)
+- [Fence non-stall event subscription request](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nouveau_fence.c)
+
+Reference-source caveat: distro kernel packages can carry patches beyond this upstream snapshot. The one-shot preflight must still validate the installed target kernel's config, module parameter, and source/build provenance before any boot change.
