@@ -196,7 +196,7 @@ int main(int argc, char **argv)
     }
 
     err[0] = '\0';
-    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 1, 0,
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 0, 1,
                            &value, err, sizeof(err));
     if (rc != GP107_ERR_DRIVER_BOUND || strstr(err, "driver-bound") == NULL) {
         fprintf(stderr, "API-GATE-FAIL driver rc=%d err=%s\n", rc, err);
