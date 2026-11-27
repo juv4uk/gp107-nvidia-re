@@ -7,9 +7,10 @@
 #include "gp107_identity.h"
 
 /*
- * Optional read-only aperture seam. Owner-authorized in the session that
- * created this slice, but deliberately inert unless the caller passes an
- * explicit opt-in flag AND no kernel driver is bound to the device.
+ * Optional read-only aperture seam. This code is not authorization to
+ * perform a physical MMIO read; an explicit owner action and a documented
+ * read-safe register are still required. It is inert unless the caller passes
+ * an opt-in flag AND fresh sysfs inventory confirms no kernel driver is bound.
  *
  * No write mapping, no RM requests, no FIFO, no doorbell, no firmware,
  * no BOOT0 constant and no register name is encoded here.
