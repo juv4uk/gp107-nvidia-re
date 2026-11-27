@@ -36,6 +36,7 @@ enum gp107_status {
     GP107_ERR_DRIVER_BOUND = 16,
     GP107_ERR_OFFSET       = 17,
     GP107_ERR_MAP          = 18,
+    GP107_ERR_SIZE         = 19,
     GP107_ERR_DRIVER_LINK  = 20,
     GP107_ERR_RESOURCE_SIZE = 21,
     GP107_ERR_ALIGNMENT     = 22,

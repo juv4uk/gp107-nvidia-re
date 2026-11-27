@@ -1,6 +1,7 @@
 CC      ?= cc
 CFLAGS  ?= -O2 -Wall -Wextra -Werror -std=c11 -pedantic -D_POSIX_C_SOURCE=200809L
 ARCH    := $(shell uname -m)
+ASFLAGS ?= -c
 BIN     := ../build/capability-driver/gp107ctl
 ASM_BIN := ../build/capability-driver/gp107ctl-asm
 ASM_OBJ := ../build/capability-driver/gp107_mmio_asm.o
@@ -19,7 +20,7 @@ $(BIN): $(SRC) $(HDR)
 
 $(ASM_OBJ): gp107_mmio_asm.S
 	mkdir -p ../build/capability-driver
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(ASFLAGS) -o $@ $<
 
 $(ASM_BIN): $(SRC) $(HDR) $(ASM_OBJ)
 	$(CC) $(CFLAGS) -DGP107_USE_ASM=1 -o $@ $(SRC) $(ASM_OBJ)

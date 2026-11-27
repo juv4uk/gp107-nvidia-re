@@ -150,9 +150,8 @@ static int read_driver_link(const char *devdir,
     int dirfd;
 
     memset(out, 0, sizeof(*out));
-    /* Pin the PCI device directory first. ENOENT from readlinkat() then means
-     * only that this directory has no "driver" entry, not that the device
-     * directory itself disappeared between two pathname lookups. */
+    /* Pin the PCI device directory. Only ENOENT from readlinkat() on this
+     * opened directory confirms that its "driver" entry is absent. */
     dirfd = open(devdir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
     if (dirfd < 0) {
         return gp107_set_error(err, errsz,
@@ -169,7 +168,7 @@ static int read_driver_link(const char *devdir,
             return GP107_OK;
         }
         return gp107_set_error(err, errsz,
-                               "IDENTITY-FAIL step=driver-link-read code=%d errno=%d",
+                               "IDENTITY-FAIL step=driver-binding-read code=%d errno=%d",
                                GP107_ERR_DRIVER_LINK, saved);
     }
     (void)close(dirfd);
