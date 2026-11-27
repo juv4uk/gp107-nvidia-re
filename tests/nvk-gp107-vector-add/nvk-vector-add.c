@@ -250,7 +250,8 @@ int main(int argc, char **argv)
         } else {
             fprintf(stderr,
                     "usage: %s --bdf DDDD:BB:DD.F --allow-temp-gr-channel-init "
-                    "--allow-gpu-submit [--elements 257|1048576] [--spv file.spv]\n",
+                    "[--enumeration-only | --allow-gpu-submit] "
+                    "[--elements 257|1048576] [--spv file.spv]\n",
                     argv[0]);
             return 2;
         }
