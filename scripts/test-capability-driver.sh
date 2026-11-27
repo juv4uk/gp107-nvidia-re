@@ -104,6 +104,10 @@ for marker in \
   grep -Fq "$marker" "$WORK/ledger-bound.out" || fail "нема маркера: $marker"
 done
 echo 'LEDGER-BOUND-OK mmio=denied rm=deferred'
+boot0_count="$(grep -Fc '(boot0 . unproven) (evidence . unproven)' "$WORK/ledger-bound.out" || true)"
+[ "$boot0_count" -eq 1 ] || fail "ledger must contain exactly one boot0 witness (got $boot0_count)"
+grep -Fq '\\n' "$WORK/ledger-bound.out" && fail 'ledger contains a literal \\n escape'
+echo 'LEDGER-FORMAT-OK boot0-count=1 literal-escape=absent'
 
 step 'negative witness (second matching card is ambiguous)'
 mkdir -p "$FIX/bus/pci/devices/0000:02:00.0"
@@ -203,7 +207,7 @@ int main(int argc, char **argv)
     return 0;
 }
 EOF
-cc -std=c11 -Wall -Wextra -Werror -pedantic -I"$ROOT/lib" \
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Werror -pedantic -I"$ROOT/lib" \
   "$WORK/mmio-api-test.c" "$ROOT/lib/gp107_identity.c" \
   "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-api-test"
 "$WORK/mmio-api-test" "$FIX"
