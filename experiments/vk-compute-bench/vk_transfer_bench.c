@@ -98,6 +98,11 @@ static VkResult make_buf(
     if (r != VK_SUCCESS) return r;
     VkMemoryRequirements req = {0};
     getReqs(dev, *buf, &req);
+    if (memType >= 32u || (req.memoryTypeBits & (1u << memType)) == 0) {
+        fprintf(stderr, "TRANSFER-MEMORY-TYPE-INCOMPATIBLE type=%u bits=0x%08x\\n",
+                memType, req.memoryTypeBits);
+        return -8; /* VK_ERROR_FEATURE_NOT_PRESENT: requested type is not allowed */
+    }
     VkMemoryAllocateInfo mai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL,
         req.size, memType };
     r = allocateMemory(dev, &mai, NULL, mem);
@@ -156,7 +161,7 @@ int main(void) {
     PFN_vkCmdBindPipeline cmdBindPipeline = NULL;
     PFN_vkCmdBindDescriptorSets cmdBindDescriptorSets = NULL;
     PFN_vkCmdDispatch cmdDispatch = NULL;
-    PFN_vkCmdCopyBuffer cmdCopyBuffer = NULL;
+    PFN_vkCmdCopyBuffer cmdCopyBuffer = NULL;\n    PFN_vkCmdPipelineBarrier cmdPipelineBarrier = NULL;
     PFN_vkEndCommandBuffer endCommandBuffer = NULL;
     PFN_vkCreateFence createFence = NULL;
     PFN_vkResetFences resetFences = NULL;
@@ -257,7 +262,7 @@ int main(void) {
     LOAD(cmdBindPipeline, vkCmdBindPipeline, inst);
     LOAD(cmdBindDescriptorSets, vkCmdBindDescriptorSets, inst);
     LOAD(cmdDispatch, vkCmdDispatch, inst);
-    LOAD(cmdCopyBuffer, vkCmdCopyBuffer, inst);
+    LOAD(cmdCopyBuffer, vkCmdCopyBuffer, inst);\n    LOAD(cmdPipelineBarrier, vkCmdPipelineBarrier, inst);
     LOAD(endCommandBuffer, vkEndCommandBuffer, inst);
     LOAD(createFence, vkCreateFence, inst);
     LOAD(resetFences, vkResetFences, inst);
@@ -405,11 +410,41 @@ int main(void) {
     }
     cmdCopyBuffer(cb[0], hostA, devA, 1, &cp);
     cmdCopyBuffer(cb[1], hostB, devB, 1, &cp);
+
+    /* Transfer writes from the two H2D submissions must be visible to shader reads. */
+    VkMemoryBarrier h2dToCompute = {
+        VK_STRUCTURE_TYPE_MEMORY_BARRIER, NULL,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT
+    };
+    cmdPipelineBarrier(cb[2], VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
+        1, &h2dToCompute, 0, NULL, 0, NULL);
     cmdBindPipeline(cb[2], VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     cmdBindDescriptorSets(cb[2], VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout,
                          0, 1, &set, 0, NULL);
     cmdDispatch(cb[2], (elements + LOCAL_SIZE - 1) / LOCAL_SIZE, 1, 1);
+
+    /* Shader writes to devC must be visible to the following transfer read. */
+    VkMemoryBarrier computeToD2h = {
+        VK_STRUCTURE_TYPE_MEMORY_BARRIER, NULL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT
+    };
+    cmdPipelineBarrier(cb[3], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        1, &computeToD2h, 0, NULL, 0, NULL);
     cmdCopyBuffer(cb[3], devC, hostC, 1, &cp);
+
+    /* Make transfer writes available/visible to host reads after fence wait. */
+    VkMemoryBarrier d2hToHost = {
+        VK_STRUCTURE_TYPE_MEMORY_BARRIER, NULL,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_HOST_READ_BIT
+    };
+    cmdPipelineBarrier(cb[3], VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_HOST_BIT, 0,
+        1, &d2hToHost, 0, NULL, 0, NULL);
     for (uint32_t i = 0; i < NPH; i++) {
         r = endCommandBuffer(cb[i]);
         if (r != VK_SUCCESS) vkfail("end-command-buffer", r);
