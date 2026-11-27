@@ -365,10 +365,13 @@ main(int argc, char **argv)
         }
     }
 
-    if (!contains_nvk_name(driver_properties.driverName)) {
+    if (driver_properties.driverID != VK_DRIVER_ID_MESA_NVK ||
+        !contains_nvk_name(driver_properties.driverName)) {
         fprintf(stderr,
-                "GP107-VK-COMPUTE-FAIL reason=not-nvk driverName=%s driverInfo=%s\n",
-                driver_properties.driverName, driver_properties.driverInfo);
+                "GP107-VK-COMPUTE-FAIL reason=not-mesa-nvk driverName=%s driverId=%u driverInfo=%s\\n",
+                driver_properties.driverName,
+                (unsigned int)driver_properties.driverID,
+                driver_properties.driverInfo);
         goto cleanup;
     }
 
@@ -867,7 +870,7 @@ main(int argc, char **argv)
         uint32_t *c = (uint32_t *)((unsigned char *)mapped + stride * 2u);
 
         for (i = 0; i < ITEM_COUNT; i++) {
-            uint32_t expected = a[i] + b[i];
+            uint32_t expected = (i * 3u) + (i + 7u);
 
             if (c[i] != expected) {
                 fprintf(stderr,
