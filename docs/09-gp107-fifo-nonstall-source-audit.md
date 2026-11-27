@@ -4,8 +4,8 @@
 Він **не** стверджує помилку на нашій платі й не є hardware witness.
 Поточний стан: `SOURCE_CONFIRMED_CONDITIONAL / GP107_RUNLIST_ID_NOT_OBSERVED / BOARD_RUNTIME_UNPROVEN`.
 
-Pinned source: Linux `gregkh/linux` `linux-7.3.y`, зріз перевірено 2026-11-27.
-Посилання нижче — на public kernel source, не на vendor source й не на Ghidra-псевдокод.
+Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (release 2026-11-23).
+Посилання нижче — на commit-pinned public kernel source, не на vendor source й не на Ghidra-псевдокод.
 
 ## 1. Що вже доведено з source (`statically proven, source`)
 
@@ -111,12 +111,26 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 3. Після завантаження з Nouveau зібрати лог:
 
    ```bash
+   set -eu
+   # New shell after reboot: rediscover the GPU; the pre-boot BDF variable is gone.
+   BDFS=$(lspci -Dnn -d 10de:1c82 | awk '{print $1}')
+   COUNT=$(printf '%s\n' "$BDFS" | sed '/^$/d' | wc -l)
+   [ "$COUNT" -eq 1 ] || { echo "GP107_BDF_COUNT_AFTER_BOOT=$COUNT"; exit 2; }
+   BDF=$(printf '%s\n' "$BDFS" | sed -n '1p')
+   SYSFS="/sys/bus/pci/devices/$BDF"
+   [ "$(cat "$SYSFS/vendor")" = '0x10de' ] || { echo 'GP107_VENDOR_MISMATCH'; exit 2; }
+   [ "$(cat "$SYSFS/device")" = '0x1c82' ] || { echo 'GP107_DEVICE_MISMATCH'; exit 2; }
+   LSPCI=$(lspci -Dnnk -s "$BDF")
+   DRIVER=$(printf '%s\n' "$LSPCI" | sed -n 's/^[[:space:]]*Kernel driver in use: //p')
+   [ "$DRIVER" = 'nouveau' ] || { echo "GP107_DRIVER_NOT_NOUVEAU=${DRIVER:-none}"; exit 2; }
    OUT="$HOME/gp107-trace-$BDF-$(date +%Y%m%d-%H%M%S)"
    mkdir -p "$OUT"
    uname -a > "$OUT/uname.txt"
    cat /proc/cmdline > "$OUT/cmdline.txt"
-   lspci -Dnnk -s "$BDF" > "$OUT/lspci.txt"
+   printf '%s\n' "$LSPCI" > "$OUT/lspci.txt"
+   printf 'GP107_BDF=%s vendor=10de device=1c82 driver=%s\n' "$BDF" "$DRIVER" > "$OUT/device-identity.txt"
    modinfo -p nouveau > "$OUT/nouveau-module-params.txt"
+   cat /sys/module/nouveau/parameters/debug > "$OUT/loaded-debug-parameter.txt" 2>/dev/null || true
    if [ -r "/boot/config-$(uname -r)" ]; then
      cp "/boot/config-$(uname -r)" "$OUT/kernel.config"
    elif [ -r /proc/config.gz ]; then
@@ -163,6 +177,23 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
 [Draft PR #21](https://github.com/juv4uk/gp107-nvidia-re/pull/21) і тут не
 дублюється. Його build/CI перевірено без GPU; dispatch/readback на цій платі
 не виконувався.
+
+## 6. Незмінні посилання на pinned source
+
+Усі наведені нижче файли взяті з одного immutable stable release commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (`v7.3.6`):
+
+- [NV130 / GP107 device dispatch](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
+- [GP100 FIFO function table](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c)
+- [FIFO non-stall event initialization](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c)
+- [user-channel event callback](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c)
+- [event reference and notification paths](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/event.c)
+- [TOP table parsing](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c)
+- [runlist creation](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c)
+- [channel runlist selection](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nouveau_chan.c)
+- [NVKM layout / FIFO token](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/include/nvkm/core/layout.h)
+- [subdevice name generation](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/subdev.c)
+- [CLIENT debug selector](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/nvkm/core/client.c)
+- [client-aware logging macro](https://github.com/gregkh/linux/blob/1a0388846138eda9f6eb4258ff227a223afc2f52/drivers/gpu/drm/nouveau/include/nvkm/core/subdev.h)
 
 ## 5. Межі
 
