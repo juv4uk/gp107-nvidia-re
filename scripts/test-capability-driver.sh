@@ -148,6 +148,24 @@ ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 echo 'NEGATIVE-DRIVER-LINK-OK unknown=denied'
 
 
+step 'MMIO gate (opt-in required before any mapping)'
+if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
+    >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
+  fail 'MMIO-шлях спрацював без явного opt-in'
+fi
+grep -Fq 'MMIO-FAIL step=opt-in-required' "$WORK/noopt.err" \
+  || fail 'нема названого negative-маркера opt-in-required'
+echo 'NEGATIVE-MMIO-OPTIN-OK marker=step=opt-in-required'
+
+step 'MMIO gate (bound kernel driver is refused)'
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/bound.out" 2>"$WORK/bound.err"; then
+  fail 'MMIO-шлях проігнорував bindings драйвера'
+fi
+grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
+  || fail 'нема названого negative-маркера driver-bound'
+echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
+
 step 'public C API enforces opt-in and driver binding (not only CLI)'
 cat > "$WORK/mmio-api-test.c" <<'EOF'
 #include <stdint.h>
@@ -209,26 +227,7 @@ grep -Fq 'MMIO-FAIL step=offset-out-of-window' "$WORK/offset.err" \
 echo 'NEGATIVE-MMIO-BAR-BOUNDS-OK short-bar=denied offset-overflow=denied'
 
 
-step 'MMIO gate (opt-in required before any mapping)'
-if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
-    >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
-  fail 'MMIO-шлях спрацював без явного opt-in'
-fi
-grep -Fq 'MMIO-FAIL step=opt-in-required' "$WORK/noopt.err" \
-  || fail 'нема названого negative-маркера opt-in-required'
-echo 'NEGATIVE-MMIO-OPTIN-OK marker=step=opt-in-required'
-
-step 'MMIO gate (bound kernel driver is refused)'
-if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
-    >"$WORK/bound.out" 2>"$WORK/bound.err"; then
-  fail 'MMIO-шлях проігнорував bindings драйвера'
-fi
-grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
-  || fail 'нема названого negative-маркера driver-bound'
-echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
-
 step 'MMIO read-only witness on synthetic resource0 (not hardware)'
-rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
 "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
 for marker in \
   '(kind . gp107-mmio-read)' \
@@ -253,8 +252,10 @@ grep -Fq '(mmio-read-software-gate . granted) (reason . read-only-window)' "$WOR
   || fail 'ledger не надав read-only MMIO після opt-in'
 grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
   || fail 'ledger розширив права поза read-only'
-grep -Fq '(owner-approval . not-inferred)' \"$WORK/ledger-granted.out\" \\\n  || fail 'software gate помилково видає owner approval'
-grep -Fq '(physical-mmio . not-authorized)' \"$WORK/ledger-granted.out\" \\\n  || fail 'ledger позначив фізичний MMIO як авторизований'
+grep -Fq '(owner-approval . not-inferred)' "$WORK/ledger-granted.out" \
+  || fail 'software gate must not imply owner approval'
+grep -Fq '(physical-mmio . not-authorized)' "$WORK/ledger-granted.out" \
+  || fail 'ledger must not mark physical MMIO authorized'
 echo 'LEDGER-GRANTED-OK software-gate-only owner-approval=not-inferred physical-mmio=not-authorized'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
@@ -288,4 +289,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only hardware-mmio=NOT-AUTHORIZED/NOT-RUN"
