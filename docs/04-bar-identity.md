@@ -70,7 +70,7 @@ Ghidra 12.2 через REA. Псевдокод у репозиторій не п
 ## Відтворення
 
 ```bash
-make test                                  # обидва пробники, green, без sudo
+make test                                  # три пробники, green, без sudo
 make gate-root                             # опційний root-свідок; за потреби SUDO_FLAGS=-S
 sudo ./pascal/02_bar_identity              # той самий root-свідок вручну
 ```
@@ -82,10 +82,10 @@ Root-свідок перевіряє іншу гілку: `open` OK → `mmap` `
 Очікуваний фінальний рядок гейту:
 
 ```text
-PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed boot0=unproven
+PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven
 ```
 
-## Фаза 03 — RM arch info: протокол статично доведено, виклик UNPROVEN
+## Фаза 03 — RM arch info: runtime-proven окремий канал
 
 **Statically proven (публічний ABI, не з libcuda):**
 
@@ -96,32 +96,67 @@ PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-cl
 - `NV2080_CTRL_MC_GET_ARCH_INFO_PARAMS`: `NvU32 architecture`,
   `NvU32 implementation`, `NvU32 revision`, `NvU8 subRevision`; C-розмір 16
   через вирівнювання.
-- Локальний `/usr/src/nvidia-580.196.11/nvidia-uvm/ctrl2080mc.h` дає лише
-  константи архітектур (`GM000=0x110`, `GM200=0x120`, `GP100=0x130`, …).
-  Це ABI-таблиця, **не виміряне значення** цієї машини.
+- Команди `0x205` / `0x214` / `0x215` і структури
+  `GPU_GET_ID_INFO_V2_PARAMS` (32 B), `GPU_GET_PROBED_IDS_PARAMS` (384 B),
+  `GPU_ATTACH_IDS_PARAMS` (132 B) — публічний
+  `ctrl0000/ctrl0000gpu.h`. `NV0080_ALLOC_PARAMETERS` має 56 B; перші два
+  поля — `deviceId` та `hClientShare`. Розміри збігаються з trace
+  (`0x20`, `0x180`, `0x84`).
+- Локальний `/usr/src/nvidia-580.196.11/nvidia-uvm/ctrl2080mc.h` дає
+  `ARCHITECTURE_GP100 = 0x130`; публічний `src/common/inc/swref/published/nv_arch.h`
+  дає `GPU_IMPLEMENTATION_GP107 = 0x07`. Це ABI-таблиці, **не виміряні значення**.
 - REA-негатив лишається чинним: в інвентарі рядків libcuda немає
   `NV2080_CTRL_CMD` (`ev_514422e5d7733e0417243209387c8ed82d57d912dbc2734ef42a70c4b64773ac`).
-  Тобто шлях у цій збірці йде через числові константи, а не через імена, —
+  Шлях у цій збірці йде через числові константи, а не через імена, —
   **`interpretation`**, не доведена поведінка.
 
-**Runtime-proven частково** (власний exploratory Python-зонд у `/tmp`, до репо не входить):
+**Runtime-proven (власний LD_PRELOAD-зонд на `cuInit(0)`, `/tmp`, до репо не входить):**
 
-| Крок | Результат | Стан |
-|---|---|---|
-| `NV_ESC_RM_ALLOC`, клас `NV01_ROOT_CLIENT` (`0x41`) | `status=0`, handle отримано | runtime-proven |
-| `NV_ESC_RM_ALLOC`, клас `NV01_DEVICE_0` (`0x80`) | `status=31` за коректного батька; `status=27` за `hRoot=0` | UNPROVEN |
-| `NV_ESC_RM_ALLOC`, клас `NV20_SUBDEVICE_0` (`0x2080`) | handle не отримано, `status=87` | UNPROVEN |
-| `NV_ESC_RM_CONTROL`, `cmd=0x20801701` | `status=0x57`, поля нульові | UNPROVEN |
+Власний shim на `ioctl` показав точний порядок, якого не видно в `strace`
+(`strace` бачить лише номер, напрям і розмір, не вміст буфера):
 
-Кодування `31 → NV_ERR_INVALID_ARGUMENT`, `27 → NV_ERR_INSUFFICIENT_PERMISSIONS`
-— **`interpretation`** за `gvisor/pkg/abi/nvgpu/status.go`. Причину відмови
-alloc з ядра ми не довели й не вигадуємо.
+```text
+open /dev/nvidia0 → NV_ESC_SYS_PARAMS → alloc 0x41
+→ GPU_GET_PROBED_IDS(0x214, gpu=0x100)
+→ GPU_ATTACH_IDS(0x215, paramsSize=0x84, status=0)
+→ alloc NV01_DEVICE_0(0x80): deviceId=0, hClientShare=client, status=0
+→ alloc NV20_SUBDEVICE_0(0x2080), status=0
+→ MC_GET_ARCH_INFO(0x20801701, paramsSize=0x10, status=0)
+   params: arch=0x130 impl=0x07 rev=0xa1 subrev=0x02
+```
 
-Тому `03_rm_arch_info.pas` **не створюємо**. Cmd id і struct layout тепер
-відомі з публічного ABI, але ланцюжок handle-ів `client → device → subdevice`
-і саме значення `architecture`/`implementation` на GP107 залишаються
-**UNPROVEN**. Навіть позитивний RM-результат дає arch/implementation окремим
-каналом і не перетворює BOOT0 на прочитаний регістр.
+Тому попередня відмова була не «демонстрацією недоступності RM», а наслідком
+пропущених кроків: у першому зонді не було відкритого `/dev/nvidia0` і
+`GPU_ATTACH_IDS`, а `deviceId` було помилково взято як PCI-ідентифікатор
+`0x1c82`. Після виправлення `status=0` на всіх кроках. Чому саме ядро
+відмовляло в першому варіанті (`0x1f` / `0x1b`), ми не довели — це
+**`interpretation`** за `gvisor/.../status.go`, а не твердження про ядро.
+
+**Runtime-proven (канонічний FPC-зонд у репо):**
+
+`pascal/03_rm_arch_info.pas` відтворює цей ланцюжок власним кодом, без
+libcuda, з compile-time `SizeOf`-перевірками в `nv_rm.pas`:
+
+```text
+GPU_ATTACH_IDS            : gpu=0x100 status=0 deviceInstance=0 subDeviceInstance=0
+NV2080_CTRL_MC_GET_ARCH_INFO: arch=0x00000130 impl=0x00000007 rev=0x000000A1 subrev=0x02
+BOOT0: UNPROVEN (RM arch info is a separate channel)
+RM-ARCH-OK
+```
+
+ELF статичний, без `DT_NEEDED`; `make test` зелений для всіх трьох пробників.
+
+**Межі висновку:**
+
+- `arch=0x130` зіставлено з `ARCHITECTURE_GP100`, `impl=0x07` — з
+  `GPU_IMPLEMENTATION_GP107`. Зіставлення **`interpretation`** (у відкритому
+  R580-заголовку імені `NV2080_CTRL_MC_ARCH_INFO_IMPLEMENTATION_GP107` немає,
+  хоча числові значення збігаються). Самі чотири числа — **runtime-proven**.
+- `BOOT0` не читався: жодного `mmap resource0`, жодного `NV_PMC_BOOT_0`.
+  `0x137000A1` лишається **`string-only`**; збіг `rev=0xa1` із суфіксом
+  рядка — **`interpretation`**, не доказ регістра.
+- RM- arch/implementation є окремим каналом: він не надає права на MMIO
+  і не змінює discriminated union capability у `wsm-os-lisp`.
 
 ## Інструментарій, на якому це перевірено
 

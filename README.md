@@ -35,8 +35,10 @@ probes/
 pascal/
   nv_abi.pas                   clean-room ioctl ABI, {$PACKRECORDS C}, compile-time SizeOf proof
   nv_device.pas                shared discovery: NV_ESC_CARD_INFO + sysfs PCI config
+  nv_rm.pas                    RM ioctl ABI note, {$PACKRECORDS C}, compile-time SizeOf proof
   01_min_cuinit.pas            BaseUnix-only probe, static ELF
   02_bar_identity.pas          read-only BAR0 attempt; BOOT0 stays UNPROVEN if driver owns BAR0
+  03_rm_arch_info.pas          RM arch-info channel: ATTACH_IDS + DEVICE_0 + SUBDEVICE_0, BOOT0 untouched
   Makefile
 scripts/
   decode_ioctl.py              decode raw ioctl request numbers / strace lines
@@ -50,7 +52,7 @@ make -C probes
 sudo ./probes/01_min_cuinit          # or run as a user in the `video` group
 echo 0xc90046c8 | python3 scripts/decode_ioctl.py
 
-make test                            # FPC 3.2.2 pin + static-ELF + runtime witness (both probes)
+make test                            # FPC 3.2.2 pin + static-ELF + runtime witness (three probes)
 make gate-root                       # optional root witness: mmap EINVAL, BOOT0 UNPROVEN
 sudo ./pascal/02_bar_identity        # ручний root-свідок
 ```
@@ -58,7 +60,7 @@ sudo ./pascal/02_bar_identity        # ручний root-свідок
 ## Method and verification
 
 1. **Static**: REA/Ghidra 12.2 decompiled public exports of `libcuda.so.580.196.11`; only control flow, call graphs, constant numbers and structure layouts were recorded.
-2. **Dynamic**: minimal `dlopen`/`dlsym` programs called `cuInit`, `cuMemAlloc_v2`, `cuLaunchKernel`, and `cuMemFree_v2` under `strace`, plus an `LD_PRELOAD` interposer printing RM parameter words.
+2. **Dynamic**: minimal `dlopen`/`dlsym` programs called `cuInit`, `cuMemAlloc_v2`, `cuLaunchKernel`, and `cuMemFree_v2` under `strace`, plus an `LD_PRELOAD` interposer printing RM parameter words. The interposer revealed the exact `GPU_ATTACH_IDS` → `NV01_DEVICE_0` → `NV20_SUBDEVICE_0` sequence; `03_rm_arch_info.pas` reproduces it independently.
 3. **Cross-check**: constants resolved against the driver's public headers (`nv-ioctl-numbers.h`, `nv-ioctl.h`, `nv_escape.h`, `uvm_ioctl.h`, `ctrl2080*.h`) from the matching `580.196.11` source tree.
 4. **Evidence states**: every claim is tagged `statically proven`, `runtime-proven` or `string-only`; an unreadable register stays `UNPROVEN` rather than being inferred from a string.
 

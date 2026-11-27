@@ -2,7 +2,7 @@ FPC       ?= fpc
 FPCFLAGS  ?= -O2 -Mobjfpc -Sh -XS -Fu.
 FPC_PIN   ?= 3.2.2
 
-TARGETS := 01_min_cuinit 02_bar_identity
+TARGETS := 01_min_cuinit 02_bar_identity 03_rm_arch_info
 
 all: check-fpc $(TARGETS)
 
@@ -19,9 +19,13 @@ check-fpc:
 02_bar_identity: 02_bar_identity.pas nv_abi.pas nv_device.pas
 	$(FPC) $(FPCFLAGS) -o$@ $<
 
+03_rm_arch_info: 03_rm_arch_info.pas nv_abi.pas nv_device.pas nv_rm.pas
+	$(FPC) $(FPCFLAGS) -o$@ $<
+
 run: all
 	./01_min_cuinit
 	./02_bar_identity
+	./03_rm_arch_info
 
 test: all
 	bash ../scripts/test-pascal-probe.sh

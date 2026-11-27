@@ -12,9 +12,11 @@ FPC_BIN=${FPC:-fpc}
 FPC_EXPECTED=${FPC_EXPECTED:-3.2.2}
 BIN="pascal/01_min_cuinit"
 BAR_BIN="pascal/02_bar_identity"
+RM_BIN="pascal/03_rm_arch_info"
 WORK=$(mktemp -d)
 OUT="$WORK/out"
 BAR_OUT="$WORK/bar.out"
+RM_OUT="$WORK/rm.out"
 
 trap '_rc=$?; rm -rf "$WORK"; if [ "$_rc" -ne 0 ]; then
          echo "PASCAL-PROBE-FAIL крок=\"$BASH_COMMAND\" код=$_rc" >&2
@@ -91,6 +93,21 @@ fi
 grep -Fq 'Upper bound of range is less than lower bound' "$WORK/neg.log" \
   || fail 'negative witness впав з іншої причини (див. лог)'
 
+# 5b) Same proof for the RM unit: its SizeOf asserts must not be vacuous.
+step 'negative witness (RM ABI assert is not vacuous)'
+mkdir -p "$WORK/neg2"
+cp pascal/nv_abi.pas pascal/nv_rm.pas "$WORK/neg2/"
+sed -i 's/SizeOf(Tnvos54)             = 32/SizeOf(Tnvos54)             = 33/' \
+  "$WORK/neg2/nv_rm.pas"
+printf 'program neg2;\n{$mode objfpc}\nuses nv_rm;\nbegin WriteLn(AbiRmProven); end.\n' \
+  > "$WORK/neg2/neg2.pas"
+if "$FPC_BIN" -O2 -Fu"$WORK/neg2" -FU"$WORK/neg2" -o"$WORK/neg2/neg2" \
+   "$WORK/neg2/neg2.pas" >"$WORK/neg2.log" 2>&1; then
+  fail 'negative witness RM зібрався: RM SizeOf-перевірка нічого не перевіряє'
+fi
+grep -Fq 'Upper bound of range is less than lower bound' "$WORK/neg2.log" \
+  || fail 'negative witness RM впав з іншої причини (див. лог)'
+
 # 6) Runtime witness: the no-libcuda probe.
 step 'runtime witness (01_min_cuinit)'
 timeout 20s "./$BIN" >"$OUT"
@@ -122,13 +139,27 @@ for marker in \
   grep -Fq "$marker" "$BAR_OUT" || fail "нема маркера: $marker"
 done
 
-# 8) Binary proof for BOTH probes: static ELF, no DT_NEEDED entries.
+# 8) Runtime witness: RM arch info is a SEPARATE channel from BOOT0/MMIO.
+#    The GPU fd must stay open and GPU_ATTACH_IDS must succeed first; a
+#    failure here is a hard failure, never a guessed arch value.
+step 'runtime witness (03_rm_arch_info)'
+timeout 20s "./$RM_BIN" >"$RM_OUT"
+cat "$RM_OUT"
+for marker in \
+  'GPU_ATTACH_IDS            : gpu=0x100 status=0 deviceInstance=0 subDeviceInstance=0' \
+  'NV2080_CTRL_MC_GET_ARCH_INFO: arch=0x00000130 impl=0x00000007 rev=0x000000A1 subrev=0x02' \
+  'BOOT0: UNPROVEN (RM arch info is a separate channel)' \
+  'RM-ARCH-OK'; do
+  grep -Fq "$marker" "$RM_OUT" || fail "нема маркера: $marker"
+done
+
+# 9) Binary proof for ALL probes: static ELF, no DT_NEEDED entries.
 step 'binary proof'
-for b in "$BIN" "$BAR_BIN"; do
+for b in "$BIN" "$BAR_BIN" "$RM_BIN"; do
   file "$b" | grep -q 'statically linked' || fail "$b не статичний"
   if readelf -d "$b" 2>/dev/null | grep -q 'NEEDED'; then
     fail "$b має динамічні залежності (DT_NEEDED)"
   fi
 done
 
-echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed boot0=unproven'
+echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven'

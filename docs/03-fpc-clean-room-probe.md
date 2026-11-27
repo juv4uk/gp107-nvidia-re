@@ -59,18 +59,19 @@ bash scripts/test-pascal-probe.sh
 Очікуваний фінальний рядок:
 
 ```text
-PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82
+PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven
 ```
 
 Гейт передає три стани окремо: збірка (compile-time ABI-доказ), runtime
 (witness на реальному GPU), бінарник (відсутність динамічних залежностей).
 Жоден із них не доводить роботу GPU в bare-metal Lisp-машині.
 
-## Наступний мікро-крок
+## Наступний мікро-крок (виконано)
 
-`02_bar_identity.pas`: read-only `FpMMap` на
-`/sys/bus/pci/devices/0000:01:00.0/resource0`, звірення vendor/device з
-NV_ESC_CARD_INFO, і fail-closed відмова при будь-якій спробі запису в BAR0.
-Це дасть G0/G1 witness, який можна буде перенести в `wsm-os-lisp` як
-обмежену `PciConfig`/`Mmio` capability — але лише після owner-рішення
-про GPU-capability та звірки ABI v8→v9 у `wsm-target-contract`.
+`02_bar_identity.pas` зробив read-only `FpMMap` на
+`/sys/bus/pci/devices/0000:01:00.0/resource0`, звірив vendor/device з
+NV_ESC_CARD_INFO і fail-closed відмовляється при будь-якій спробі запису в BAR0.
+Це дало G0/G1 witness. Пізніше додано `03_rm_arch_info.pas` — окремий RM-канал
+arch/implementation, який **не** є BOOT0 і не надає права на MMIO.
+Перенесення в `wsm-os-lisp` як обмеженої `PciConfig`/`Mmio` capability
+лишається за owner-рішенням та звіркою ABI v8→v9 у `wsm-target-contract`.
