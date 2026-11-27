@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Опційний root-свідок: open(resource0) OK -> mmap(PROT_READ|MAP_SHARED)
-# EINVAL -> BOOT0 UNPROVEN. НЕ входить до базового test-pascal-probe.sh.
-# Бази гейт детермінований і працює звичайним користувачем (EACCES).
+# EINVAL -> BOOT0 UNPROVEN, причина EINVAL лишається UNPROVEN.
+# НЕ входить до базового test-pascal-probe.sh. Бази гейт детермінований і
+# працює звичайним користувачем (OPEN_DENIED/EACCES).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -41,8 +42,18 @@ grep -Eq '^resource0 open            : fd=[0-9]+ O_RDONLY$' "$OUT" \
   || fail 'root не відкрив resource0'
 grep -Fq 'resource0 mmap PROT_READ|MAP_SHARED: DENIED errno=22 (EINVAL)' "$OUT" \
   || fail 'root-mmap не дав EINVAL'
-grep -Fq 'BOOT0: UNPROVEN (hosted driver owns BAR0 exclusively)' "$OUT" \
-  || fail 'BOOT0 не позначено UNPROVEN'
-grep -Fq 'G1-FAIL-CLOSED-OK' "$OUT" || fail 'нема G1-FAIL-CLOSED-OK'
+for marker in \
+  'BAR0-STATE: MMAP_DENIED' \
+  'MMAP-DENIAL-CAUSE: UNPROVEN (errno alone proves no cause)' \
+  'BOOT0: UNPROVEN (mmap denied; register not read)' \
+  'G1-FAIL-CLOSED-OK'; do
+  grep -Fq "$marker" "$OUT" || fail "нема маркера: $marker"
+done
+if grep -Fq 'BAR0-STATE: OPEN_DENIED' "$OUT"; then
+  fail 'root відкрив resource0, але звіт стверджує OPEN_DENIED'
+fi
+if grep -Eq 'BAR0 exclusively|owns BAR0|причина EINVAL' "$OUT"; then
+  fail 'EINVAL перетворено на необґрунтоване твердження про причину'
+fi
 
-echo 'ROOT-WITNESS-OK resource0=open-ok mmap=EINVAL boot0=unproven'
+echo 'ROOT-WITNESS-OK resource0=open-ok mmap=EINVAL cause=unproven boot0=unproven'

@@ -124,8 +124,9 @@ for marker in \
 done
 
 # 7) Runtime witness: two independent identities must agree, and BAR0 must
-#    fail closed. Unprivileged run sees EACCES; root sees EINVAL because the
-#    bound nvidia driver claims the region exclusively. Both are green.
+#    fail closed. The unprivileged run must stop at OPEN_DENIED: no mmap was
+#    attempted and EACCES proves only that this uid cannot open resource0.
+#    The optional root witness exercises MMAP_DENIED separately.
 step 'runtime witness (02_bar_identity)'
 timeout 20s "./$BAR_BIN" >"$BAR_OUT"
 cat "$BAR_OUT"
@@ -133,11 +134,18 @@ for marker in \
   'NV_ESC_CARD_INFO identity : 10DE:1C82 @ 0000:01:00.0' \
   'PCI-CONFIG identity       : 10DE:1C82 BAR0=0xEE000000' \
   'CROSS-CHECK-OK: pci-config == NV_ESC_CARD_INFO' \
-  'resource0 mmap PROT_READ|MAP_SHARED: DENIED errno=13 (EACCES)' \
-  'BOOT0: UNPROVEN (hosted driver owns BAR0 exclusively)' \
+  'resource0 open            : DENIED errno=13 (EACCES)' \
+  'BAR0-STATE: OPEN_DENIED' \
+  'BOOT0: UNPROVEN (open denied; MMIO not attempted)' \
   'G1-FAIL-CLOSED-OK'; do
   grep -Fq "$marker" "$BAR_OUT" || fail "нема маркера: $marker"
 done
+if grep -Fq 'BAR0-STATE: MMAP_DENIED' "$BAR_OUT"; then
+  fail 'open не відбувся, а звіт стверджує mmap-відмову'
+fi
+if grep -Eq 'BAR0 exclusively|owns BAR0' "$BAR_OUT"; then
+  fail 'EACCES перетворено на необґрунтоване твердження про володіння BAR0'
+fi
 
 # 8) Runtime witness: RM arch info is a SEPARATE channel from BOOT0/MMIO.
 #    The GPU fd must stay open and GPU_ATTACH_IDS must succeed first; a

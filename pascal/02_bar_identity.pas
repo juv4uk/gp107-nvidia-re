@@ -7,7 +7,8 @@ program bar_identity;
     NV_ESC_CARD_INFO (/dev/nvidiactl) and PCI config space (sysfs).
   BAR0 is then opened O_RDONLY and mapped with PROT_READ|MAP_SHARED ONLY.
   No PROT_WRITE, no MAP_FIXED, no write instruction exists in this program.
-  If the live NVIDIA driver owns BAR0, the kernel refuses the mapping and
+  A refusal is reported only as a named state (OPEN_DENIED or MMAP_DENIED).
+  The errno alone never proves who owns BAR0 or why mmap was refused, and
   BOOT0 stays explicitly UNPROVEN -- never guessed.
 
   Understanding questions for this fragment:
@@ -26,10 +27,16 @@ uses
 const
   { Candidate mask from the public nouveau convention (libdrm cl0080.h:
     "chipset from NV_PMC_BOOT_0"), NOT verified on this host because the
-    live driver refuses BAR0 mapping. Kept as a hypothesis, not a fact. }
+    read-only BAR0 path was refused. Kept as a hypothesis, not a fact. }
   BOOT0_CHIPSET_MASK = LongWord($fff00000);
   GP107_CHIPSET      = LongWord($137);
   MMIO_PAGE_BYTES    = 4096;
+
+  { Named evidence states. OPEN_DENIED means mmap was NEVER called.
+    MMAP_DENIED means open succeeded and the read-only mapping failed.
+    Neither state establishes the cause of the refusal. }
+  STATE_OPEN_DENIED  = 'OPEN_DENIED';
+  STATE_MMAP_DENIED  = 'MMAP_DENIED';
 
 var
   card:  Tnv_card_info;
@@ -52,10 +59,10 @@ begin
   end;
 end;
 
-procedure Unproven(const stage: string; code: cint);
+procedure FailClosed(const state, note: string);
 begin
-  WriteLn(stage, ': DENIED errno=', code, ' (', ErrText(code), ')');
-  WriteLn('BOOT0: UNPROVEN (hosted driver owns BAR0 exclusively)');
+  WriteLn('BAR0-STATE: ', state);
+  WriteLn('BOOT0: UNPROVEN (', note, ')');
   WriteLn('G1-FAIL-CLOSED-OK');
 end;
 
@@ -98,7 +105,8 @@ begin
   begin
     e := fpgeterrno;
     WriteLn('resource0 open            : DENIED errno=', e, ' (', ErrText(e), ')');
-    Unproven('resource0 mmap PROT_READ|MAP_SHARED', e);
+    { mmap has not been executed: never report an mmap failure here. }
+    FailClosed(STATE_OPEN_DENIED, 'open denied; MMIO not attempted');
     Halt(0);
   end;
   WriteLn('resource0 open            : fd=', fd, ' O_RDONLY');
@@ -107,7 +115,11 @@ begin
   if p = MAP_FAILED then
   begin
     e := fpgeterrno;
-    Unproven('resource0 mmap PROT_READ|MAP_SHARED', e);
+    WriteLn('resource0 mmap PROT_READ|MAP_SHARED: DENIED errno=',
+            e, ' (', ErrText(e), ')');
+    { The errno is an observation; the reason is not directly proven. }
+    WriteLn('MMAP-DENIAL-CAUSE: UNPROVEN (errno alone proves no cause)');
+    FailClosed(STATE_MMAP_DENIED, 'mmap denied; register not read');
     FpClose(fd);
     Halt(0);
   end;

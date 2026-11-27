@@ -12,9 +12,13 @@ hosted-середовище ставить межу.
 2. Незалежно читає PCI config space через sysfs за BDF, отриманим від кроку 1.
 3. Звіряє `vendor:device` і BAR0 між двома джерелами; розбіжність = `exit 2`.
 4. Відкриває `resource0` **тільки** `O_RDONLY` і викликає
-   `FpMMap(nil, 4096, PROT_READ, MAP_SHARED, fd, 0)`.
-5. При будь-якій відмові друкує `BOOT0: UNPROVEN`, `G1-FAIL-CLOSED-OK` і
-   завершується успішно: це негативний свідок, а не збій інфраструктури.
+   `FpMMap(nil, 4096, PROT_READ, MAP_SHARED, fd, 0)` **тільки після успішного open**.
+5. Відмови розділені за названими станами:
+   `OPEN_DENIED` означає, що `mmap` взагалі не виконувався;
+   `MMAP_DENIED` означає, що `open` відбувся, а read-only мапінг відмовлено.
+   Обидва стани друкують `BOOT0: UNPROVEN`, `G1-FAIL-CLOSED-OK` і завершуються
+   успішно: це негативні свідки, а не збій інфраструктури. Причину відмови
+   програма не стверджує — маркер `MMAP-DENIAL-CAUSE: UNPROVEN`.
 
 У коді немає `PROT_WRITE`, `MAP_FIXED`, `O_RDWR`, `FpWrite` чи `pwrite`.
 Гейт `scripts/test-pascal-probe.sh` перевіряє це **по коді**, попередньо
@@ -28,9 +32,10 @@ hosted-середовище ставить межу.
 | PCI config `10de:1c82`, BAR0 `0xee000000` | **runtime** | `FpPRead` sysfs `.../0000:01:00.0/config`, offset 0x00/0x02/0x10 (little-endian) |
 | `NV_ESC_CARD_INFO` дає той самий `10de:1c82` і BAR0 `0xee000000+0x1000000`, `minor=0` | **runtime** | clean-room ioctl, той самий шлях, що й у `01_min_cuinit` |
 | Два джерела збігаються | **runtime** | маркер `CROSS-CHECK-OK` у гейті |
-| `resource0 open` як звичайний користувач → `EACCES` (13) | **runtime** | `ls -l`: `-rw------- root root`; гейт вимагає саме цей маркер |
-| `resource0 mmap(PROT_READ\|MAP_SHARED)` як root → `EINVAL` (22) | **runtime** | окремий запуск `sudo ./02_bar_identity`; у гейті не автоматизований |
-| Причина `EINVAL` — exclusive-володіння BAR0 драйвером `nvidia` | **інтерпретація** | `driver → /sys/bus/pci/drivers/nvidia`; Linux `pci_mmap_resource` відмовляє для exclusive-регіонів. Прямо з ядра це тут не перевірено |
+| `OPEN_DENIED`: `resource0 open` як звичайний користувач → `EACCES` (13), `mmap` не викликався | **runtime-proven** | `ls -l`: `-rw------- root root`; гейт вимагає маркери `BAR0-STATE: OPEN_DENIED` і `BOOT0: UNPROVEN (open denied; MMIO not attempted)`; негативна перевірка забороняє будь-який звіт про mmap у цій гілці |
+| `MMAP_DENIED`: `resource0 mmap(PROT_READ\|MAP_SHARED)` як root → `EINVAL` (22) | **runtime-proven** | окремий запуск `sudo ./02_bar_identity`; у базовому гейті не автоматизований |
+| `EACCES` доводить ексклюзивне володіння BAR0 драйвером | **не доведено** | `EACCES` показує лише відмову open для цього uid; програма не робить і гейт не приймає такого твердження |
+| Причина `EINVAL` — exclusive-володіння BAR0 драйвером `nvidia` | **не доведено / UNPROVEN** | можлива **інтерпретація** за `driver → /sys/bus/pci/drivers/nvidia` і Linux `pci_mmap_resource`, але з ядра це тут не перевірено; програма друкує `MMAP-DENIAL-CAUSE: UNPROVEN` |
 | `NV_PMC_BOOT_0` для GP107 = `0x137000A1`, маска chipset `$FFF00000` → `$137` | **string-only / гіпотеза** | публічний коментар `/usr/include/libdrm/nouveau/nvif/cl0080.h`: «chipset from NV_PMC_BOOT_0»; значення **не прочитано** на цій машині |
 | BOOT0 взагалі прочитаний на host | **не доведено й не стверджується** | див. два негативні свідки вище |
 
@@ -76,8 +81,9 @@ sudo ./pascal/02_bar_identity              # той самий root-свідок
 ```
 
 `gate-root` **не входить** до базового `test`: основний гейт лишається
-детермінованим і виконується звичайним користувачем (`EACCES` → fail-closed).
-Root-свідок перевіряє іншу гілку: `open` OK → `mmap` `EINVAL` → `BOOT0 UNPROVEN`.
+детермінованим і виконується звичайним користувачем (`OPEN_DENIED` → fail-closed).
+Root-свідок перевіряє іншу гілку: `open` OK → `MMAP_DENIED` (`EINVAL`) →
+`BOOT0 UNPROVEN` → причина відмови `UNPROVEN`.
 
 Очікуваний фінальний рядок гейту:
 
