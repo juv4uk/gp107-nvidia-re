@@ -134,6 +134,10 @@ if strip_pascal_comments pascal/03_rm_arch_info.pas \
 fi
 grep -Fq 'SelectTargetCard(card, matches, valid_cards)' \
   pascal/03_rm_arch_info.pas || fail 'нема вибору цільової картки через nv_device'
+grep -Fq 'valid_cards <> 1' pascal/03_rm_arch_info.pas \
+  || fail 'нема статичного fail-closed gate valid_cards <> 1'
+grep -Fq 'ambiguous valid_cards=' pascal/03_rm_arch_info.pas \
+  || fail 'нема маркера ambiguous valid_cards=N'
 grep -Fq 'GpuDevicePath(card)' pascal/03_rm_arch_info.pas \
   || fail 'шлях GPU-пристрою не похідний від minor_number'
 
@@ -242,6 +246,9 @@ for marker in \
   'RM-CLEANUP-COMPLETE objects=3'; do
   grep -Fq "$marker" "$RM_OUT" || fail "нема маркера: $marker"
 done
+if grep -Fq 'RM-ARCH-FAIL step=NV_ESC_CARD_INFO ambiguous valid_cards=' "$RM_OUT"; then
+  fail 'RM gate визначив неоднозначний valid_cards на успішному witness'
+fi
 
 step 'negative witness (partial-failure RM cleanup)'
 for spec in after_alloc_client:1 after_alloc_device:2 after_alloc_subdev:3; do
