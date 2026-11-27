@@ -1,21 +1,20 @@
 #include "gp107_mmio.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
+/*
+ * Physical MMIO is intentionally unavailable in this revision.
+ *
+ * A command-line opt-in flag is not owner authorization, and a userspace
+ * caller must not be able to turn sysfs inventory into an aperture mapping.
+ * Keep the API as a named, fail-closed boundary until a separately reviewed
+ * owner-approved design supplies a proven-safe register allowlist.
+ */
 
 int gp107_mmio_require_optin(int allow, char *err, size_t errsz)
 {
-    if (!allow) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=opt-in-required code=%d",
-                               GP107_ERR_OPTIN);
-    }
-    return GP107_OK;
+    (void)allow;
+    return gp107_set_error(err, errsz,
+                           "MMIO-FAIL step=owner-authorization-required code=%d",
+                           GP107_ERR_NOT_AUTHORIZED);
 }
 
 int gp107_mmio_check_driver(const struct gp107_inventory *inv,
@@ -38,50 +37,15 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
                       uint32_t offset, uint32_t *value,
                       char *err, size_t errsz)
 {
-    char path[512];
-    int fd;
-    void *map;
-    volatile const unsigned char *p;
-    uint32_t v;
-    int n;
-
-    if (sysfs_root == NULL || bdf == NULL || value == NULL) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=bad-argument code=%d",
-                               GP107_ERR_USAGE);
-    }
-    if (offset > GP107_MMIO_WINDOW - 4u) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=offset-out-of-window code=%d offset=0x%x",
-                               GP107_ERR_OFFSET, offset);
-    }
-    n = snprintf(path, sizeof(path), "%s/bus/pci/devices/%s/resource0",
-                 sysfs_root, bdf);
-    if (n < 0 || (size_t)n >= sizeof(path)) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=path-too-long code=%d",
-                               GP107_ERR_PARSE);
-    }
-    fd = open(path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=resource0-open code=%d errno=%d",
-                               GP107_ERR_OPEN, errno);
-    }
-    map = mmap(NULL, GP107_MMIO_WINDOW, PROT_READ, MAP_SHARED, fd, 0);
-    if (map == MAP_FAILED) {
-        int saved = errno;
-        (void)close(fd);
-        return gp107_set_error(err, errsz,
-                               "MMIO-FAIL step=read-only-map code=%d errno=%d",
-                               GP107_ERR_MAP, saved);
-    }
-    (void)close(fd);
-
-    p = (const volatile unsigned char *)map + offset;
-    v = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-        ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-    (void)munmap(map, GP107_MMIO_WINDOW);
-    *value = v;
-    return GP107_OK;
+    /*
+     * Deliberately do not inspect paths, open resource0, mmap, or dereference
+     * the supplied address. This entry point denies even a direct API caller.
+     */
+    (void)sysfs_root;
+    (void)bdf;
+    (void)offset;
+    (void)value;
+    return gp107_set_error(err, errsz,
+                           "MMIO-FAIL step=physical-mmio-not-authorized code=%d",
+                           GP107_ERR_NOT_AUTHORIZED);
 }
