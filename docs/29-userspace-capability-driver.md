@@ -15,8 +15,10 @@
 - MMIO-сеам є окремим експериментальним модулем.
 - Єдина публічна C-функція сама перевіряє opt-in, точну PCI identity,
   driver binding, розмір BAR0 і межі offset; low-level mapper приватний.
-- Відсутність driver link визнається лише за `ENOENT`. Інші помилки,
-  некоректний або обрізаний link блокують операцію як unknown.
+- Відкритий PCI-device directory закріплюється file descriptor, а `readlinkat()`
+  перевіряє саме його `driver` entry: лише `ENOENT` для цього entry означає
+  unbound. Зникнення батьківського шляху, інші помилки, некоректний або
+  обрізаний link завершуються fail-closed як unknown.
 - Перед mapping перевіряються розмір BAR0 з inventory та розмір відкритого
   `resource0` через `fstat`.
 - C та x86-64 assembly paths проходять через ту саму gated API. ASM load
