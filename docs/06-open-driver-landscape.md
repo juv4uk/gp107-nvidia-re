@@ -221,7 +221,7 @@ Mesa документує корисні прапорці:
 
 ### Координація із окремим RM lifecycle / command-submission планом
 
-Паралельний документ [`docs/07-next-research-direction.md`](06-next-research-direction.md)
+Паралельний документ [`docs/07-next-research-direction.md`](07-next-research-direction.md)
 веде vendor R580 ABI напрям E1–E6: read-only ioctl trace, channel/context
 lifecycle, pushbuffer, GPU sync, ізольований MMIO seam та DMA/GVA/kernel launch.
 Він належить до proprietary RM reverse engineering і лишається окремою
@@ -1082,7 +1082,7 @@ MMIO writes.
 Read-only firmware witness після native Nouveau boot:
 ```sh
 modinfo -F firmware nouveau | grep -E '^nvidia/(gp107|gp102)/'
-find -L /lib/firmware/nvidia/gp107 /lib/firmware/nvidia/gp102 -type f -printf '%p %s bytes\\n' 2>/dev/null | sort
+find -L /lib/firmware/nvidia/gp107 /lib/firmware/nvidia/gp102 -type f -printf '%p %s bytes\n' 2>/dev/null | sort
 ls -l /lib/firmware/nvidia/gp107/gr /lib/firmware/nvidia/gp107/sec2 /lib/firmware/nvidia/gp107/acr 2>&1
 sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|sec2|acr'
 ```
