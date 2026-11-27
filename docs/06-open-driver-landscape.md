@@ -221,7 +221,7 @@ Mesa документує корисні прапорці:
 
 ### Координація із окремим RM lifecycle / command-submission планом
 
-Паралельний документ [`docs/06-next-research-direction.md`](06-next-research-direction.md)
+Паралельний документ [`docs/06-next-research-direction.md`](07-next-research-direction.md)
 веде vendor R580 ABI напрям E1–E6: read-only ioctl trace, channel/context
 lifecycle, pushbuffer, GPU sync, ізольований MMIO seam та DMA/GVA/kernel launch.
 Він належить до proprietary RM reverse engineering і лишається окремою
@@ -408,15 +408,24 @@ backport. `nouveau.atomic=0` залишити лише як діагностич
 налаштування.
 
 **Stable-backport перевірка станом на 2026-11-27:** у репозиторії
-[`gregkh/linux`](https://github.com/gregkh/linux) виправлення вже є у
+[`gregkh/linux`](https://github.com/gregkh/linux) виправлення є у
 `master` (файл `drivers/gpu/drm/nouveau/nouveau_display.c` містить
 `nouveau_mode_config_funcs_atomic` і вибір через
-`drm_drv_uses_atomic_modeset(dev)`). Але перевірені upstream stable-гілки
-`linux-7.3.y` та `linux-7.2.y` на цей момент ще не містили цих callbacks
-(обидві повертали старий вміст файла, blob
-`d71dcfc6ee66b3349cd87404aa15ea9823417d36`). Отже, `Cc: stable@vger.kernel.org`
-у fix-коміті — це запит на backport, не доказ його включення у stable branch
-чи дистрибутив.
+`drm_drv_uses_atomic_modeset(dev)`). Перевірив також точні point-release
+source commits:
+- [Linux 7.3.5: `988117cc1bb17338c586a4e21ade88b5397eac33`](https://github.com/gregkh/linux/blob/988117cc1bb17338c586a4e21ade88b5397eac33/drivers/gpu/drm/nouveau/nouveau_display.c)
+- [Linux 7.2.15: `497791a0a96b866d90add64041c47acdff49cae6`](https://github.com/gregkh/linux/blob/497791a0a96b866d90add64041c47acdff49cae6/drivers/gpu/drm/nouveau/nouveau_display.c)
+
+Обидва source files повернули однаковий blob
+`d71dcfc6ee66b3349cd87404aa15ea9823417d36`, у якому ще немає
+`nouveau_mode_config_funcs_atomic`. Отже `Cc: stable@vger.kernel.org`
+не означає, що backport уже потрапив у point release або дистрибутив.
+
+Для нашого зафіксованого профілю Kali/kernel `7.2.15+kali-amd64` це
+особливо важливо: перевірити source package/patch set самого Kali build,
+а не виводити статус лише з номера upstream stable. Якщо backport відсутній
+і regression відтворюється, `nouveau.atomic=0` — лише тимчасовий
+діагностичний обхід; acceptance має перевіряти normal atomic KMS з fix.
 
 Для нашого зафіксованого профілю Kali/kernel `7.2.15+kali-amd64` не робити
 висновок лише з номера версії. Потрібно перевірити вихідний пакет/commit або
@@ -715,7 +724,7 @@ bring-up. Не переносити загальне заголовне форм
 
 ## 14. CUDA SM61 та незалежний Pascal eGPU reference
 
-### 15.1. CUDA Toolkit 13.x більше не збирає нові binaries для Pascal SM61
+### 14.1. CUDA Toolkit 13.x більше не збирає нові binaries для Pascal SM61
 
 NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CUDA; у CUDA Toolkit 13.0 прибрано offline compilation і library support для цих архітектур. Toolkit 12.x залишається останньою серією для створення застосунків під SM61.
 
@@ -730,7 +739,7 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 - [CUDA Toolkit 13.2.2 release notes](https://docs.nvidia.com/cuda/archive/13.2.2/cuda-toolkit-release-notes/index.html)
 - [CUDA Toolkit Archive — version 13.5.0, November 2026](https://developer.nvidia.com/cuda-toolkit-archive/)
 
-### 15.2. TheTom/pascal-egpu — корисна reference база, але не доказ GP107 compute
+### 14.2. TheTom/pascal-egpu — корисна reference база, але не доказ GP107 compute
 
 [TheTom/pascal-egpu](https://github.com/TheTom/pascal-egpu) досліджує driverless userspace access до Pascal **GP106/GTX 1060** через Thunderbolt eGPU на macOS Apple Silicon. Це інше середовище й інший GPU ID; проєкт не є Nouveau і не доводить runtime на нашому GP107.
 
@@ -741,7 +750,7 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 
 Проєкт містить виконувані MMIO write/reset/devinit helper-и. Це не read-only probes. Не запускати його write/reset/devinit/Falcon-код на робочій GTX 1050 Ti; використовувати лише документацію та безпечний статичний аналіз.
 
-### 15.3. Точний Pascal compute class для GP107 уже відомий з Nouveau source
+### 14.3. Точний Pascal compute class для GP107 уже відомий з Nouveau source
 
 Публічні NVIDIA headers визначають:
 - `PASCAL_COMPUTE_A = 0xC0C0`;
@@ -839,7 +848,7 @@ report, а не універсальна гарантія для всіх пак
 до open-driver acceptance.
 
 Джерела:
-- [NVIDIA Video Encode/Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix)
+- [NVIDIA Video Encode/Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix-new)
 - [NVIDIA Video Codec SDK 13.0 — FFmpeg/NVENC/NVDEC](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.0/ffmpeg-with-nvidia-gpu/index.html)
 - [NVIDIA Video Codec SDK 13.1 — Turing+ FFmpeg hardware path](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/)
 - [Linux GP107 NVENC implementation, pinned](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
@@ -857,7 +866,10 @@ Linux Nouveau `gp107.c` оголошує окремі GP107 GR firmware paths:
 `sw_ctx` та `sw_nonctx`. `sw_bundle_init` і `sw_method_init`
 у linux-firmware можуть бути посиланнями на спільні GP102 файли.
 WHENCE також містить GP107 ACR/SEC2 paths і NVDEC scrubber із
-перехресними посиланнями на GP102 firmware.
+перехресними посиланнями на GP102 firmware. Важливо: `nvidia/gp107/nvdec/scrubber.bin`
+є VPR/framebuffer memory scrubber, який `gp102_fb_oneinit()` підключає
+через NVDEC Falcon; це не firmware для H.264/HEVC decoder і не доказ
+доступного codec API.
 
 Для NVIDIA firmware-блоку WHENCE вказує redistributable license
 (`LicenseRef-LICENCE.nvidia`). Це дозволені до розповсюдження
@@ -878,7 +890,7 @@ Read-only перевірка на окремому native Nouveau boot:
 modinfo -F firmware nouveau | grep -E '^nvidia/(gp107|gp102)/'
 FWROOT=/lib/firmware
 [ -d /usr/lib/firmware/nvidia/gp107 ] && FWROOT=/usr/lib/firmware
-find -L "$FWROOT/nvidia/gp107" "$FWROOT/nvidia/gp102" -type f -printf '%p %s bytes\\n' 2>/dev/null | sort
+find -L "$FWROOT/nvidia/gp107" "$FWROOT/nvidia/gp102" -type f -printf '%p %s bytes\n' 2>/dev/null | sort
 ls -l "$FWROOT/nvidia/gp107/gr" "$FWROOT/nvidia/gp107/sec2" "$FWROOT/nvidia/gp107/acr" 2>&1
 sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|sec2|acr'
 ```
@@ -892,6 +904,7 @@ sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|se
 Джерела:
 - [linux-firmware WHENCE](https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/WHENCE?h=main)
 - [Linux GP107 GR firmware declarations, pinned](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
+- [GP102 framebuffer VPR scrubber hook, pinned](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/subdev/fb/gp102.c)
 - [Nouveau reclocking limitations](https://nouveau.freedesktop.org/)
 
 ## 17. Гібридна Intel HD 530 + GP107: примусовий вибір dGPU в Mesa
