@@ -32,10 +32,15 @@ docs/
   06-open-driver-landscape.md  upstream Nouveau/Mesa/NVK/Rusticl research for GP107
   07-next-research-direction.md R580 RM command submission and GPU-sync research plan (E1–E6)
   08-final-sprint-report.md     підсумок proprietary R580 RM-зондів; не є Nouveau/NVK runtime acceptance
+  NVK-GP107-COMPUTE-HARNESS.md  SPIR-V compute witness; runtime закритий до issue #18
+  GP107-NOUVEAU-TOP-TRACE.md    read-only preflight для TOP runlist trace
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
   Makefile
+  vulkan/
+    vector_add.comp         GLSL uint vector-add compute shader
+    nvk_gp107_compute.c     Vulkan harness; dispatch gate disabled until issue #18
 pascal/
   nv_abi.pas                   clean-room ioctl ABI, {$PACKRECORDS C}, compile-time SizeOf proof
   nv_device.pas                shared discovery: NV_ESC_CARD_INFO + sysfs PCI config
@@ -44,9 +49,13 @@ pascal/
   02_bar_identity.pas          read-only BAR0 attempt; BOOT0 stays UNPROVEN if driver owns BAR0
   03_rm_arch_info.pas          RM arch-info channel: ATTACH_IDS + DEVICE_0 + SUBDEVICE_0, BOOT0 untouched
   Makefile
+.github/workflows/nvk-gp107-compute-build.yml build-only Vulkan/SPIR-V CI (no GPU)
 scripts/
   decode_ioctl.py              decode raw ioctl request numbers / strace lines
   test-pascal-probe.sh         fail-closed gate: FPC pin, firewall, runtime, static ELF
+  build-nvk-gp107-compute.sh   build-only SPIR-V validation + C/Vulkan compilation
+  run-nvk-gp107-compute.sh     runtime entrypoint; fails closed until FIFO issue #18
+  preflight-gp107-nouveau-top-trace.sh read-only TOP trace preflight
 ```
 
 ## Quick start

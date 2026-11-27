@@ -9,3 +9,4 @@ pascal/02_bar_identity
 pascal/03_rm_arch_info
 __pycache__/
 *.pyc
+build/nvk-gp107-compute/

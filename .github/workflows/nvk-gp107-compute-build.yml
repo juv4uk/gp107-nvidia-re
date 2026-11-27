@@ -1,0 +1,57 @@
+name: NVK GP107 compute harness (build-only)
+
+on:
+  push:
+    paths:
+      - "README.md"
+      - "probes/vulkan/**"
+      - "scripts/build-nvk-gp107-compute.sh"
+      - "scripts/run-nvk-gp107-compute.sh"
+      - "scripts/preflight-gp107-nouveau-top-trace.sh"
+      - "docs/NVK-GP107-COMPUTE-HARNESS.md"
+      - "docs/GP107-NOUVEAU-TOP-TRACE.md"
+      - ".github/workflows/nvk-gp107-compute-build.yml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "probes/vulkan/**"
+      - "scripts/build-nvk-gp107-compute.sh"
+      - "scripts/run-nvk-gp107-compute.sh"
+      - "scripts/preflight-gp107-nouveau-top-trace.sh"
+      - "docs/NVK-GP107-COMPUTE-HARNESS.md"
+      - "docs/GP107-NOUVEAU-TOP-TRACE.md"
+      - ".github/workflows/nvk-gp107-compute-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Vulkan and SPIR-V build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            libvulkan-dev \
+            glslang-tools \
+            spirv-tools \
+            pkg-config \
+            shellcheck
+
+      - name: Check shell syntax and lint
+        run: |
+          bash -n scripts/build-nvk-gp107-compute.sh
+          bash -n scripts/run-nvk-gp107-compute.sh
+          bash -n scripts/preflight-gp107-nouveau-top-trace.sh
+          shellcheck scripts/build-nvk-gp107-compute.sh \
+            scripts/run-nvk-gp107-compute.sh \
+            scripts/preflight-gp107-nouveau-top-trace.sh
+
+      - name: Compile shader and C harness (no GPU)
+        run: ./scripts/build-nvk-gp107-compute.sh
