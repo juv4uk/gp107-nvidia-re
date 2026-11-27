@@ -26,7 +26,7 @@ PCI ID перевіряється за [envytools PCI ID database](https://githu
 4. **NAK** — backend-компілятор шейдерів, який використовується NVK.
 5. **Zink** — OpenGL поверх Vulkan. Документація Mesa вказує, що NVK+Zink став типовим OpenGL шляхом для Turing і новіших GPU; для GP107 не слід припускати, що Zink є типовим шляхом. Для GP107 досліджуємо традиційний Nouveau Gallium OpenGL окремо від NVK Vulkan.
 
-Офіційна сторінка Nouveau описує Vulkan як підтримуваний на Kepler і новіших GPU; Mesa вказує мінімум Linux 6.6 для NVK. Важливо не переносити загальне формулювання Mesa про Vulkan 1.4 на Pascal без перевірки per-device API version: у поточному `src/nouveau/vulkan/nvk_physical_device.c` функція `nvk_get_vk_version()` повертає Vulkan 1.3 для всіх `cls_eng3d < TURING_A`, оскільки `hostImageCopy`, необхідний для Vulkan 1.4, у цій реалізації доступний лише на Turing+. GP107/Pascal належить до цієї гілки й тому має повідомляти **Vulkan 1.3**, а не 1.4. Окремо `nvk_is_conformant()` допускає discrete GPUs від Kepler до Ada, тож Pascal входить у conformant-набір, але з API version 1.3. Остаточний runtime proof для нашої плати — `apiVersion` із `vulkaninfo --summary` або Vulkan physical-device properties на реальному GP107.
+Офіційна сторінка Nouveau описує Vulkan як підтримуваний на Kepler і новіших GPU; Mesa вказує мінімум Linux 6.6 для NVK. Важливо не переносити загальне формулювання Mesa про Vulkan 1.4 на Pascal без перевірки per-device API version: у перевіреному snapshot `src/nouveau/vulkan/nvk_physical_device.c` функція `nvk_get_vk_version()` повертає Vulkan 1.3 для всіх `cls_eng3d < TURING_A`, оскільки `hostImageCopy`, необхідний для Vulkan 1.4, у цій реалізації доступний лише на Turing+. GP107/Pascal належить до цієї гілки й тому має повідомляти **Vulkan 1.3**, а не 1.4. Окремо `nvk_is_conformant()` допускає discrete GPUs від Kepler до Ada, тож Pascal входить у conformant-набір, але з API version 1.3. Остаточний runtime proof для нашої плати — `apiVersion` із `vulkaninfo --summary` або Vulkan physical-device properties на реальному GP107.
 
 Поточний код для цього висновку зафіксований на snapshot commit [`b602686e3008239284315b67f7aea226bb8d2af2`](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c): перевірки `cls_eng3d < MAXWELL_A` → 1.2, `cls_eng3d < TURING_A` → 1.3, інакше → 1.4; окрема conformance-функція включає Kepler–Ada та Blackwell B.
 
@@ -539,8 +539,7 @@ issues/bugs. Rusticl потребує явного ввімкнення: `RUSTIC
 
 - **22 квітня 2025:** Collabora оголосила Pascal enablement і Vulkan 1.3 conformance;
   Mesa 25.1 мала ввімкнути NVK на цих GPU за замовчуванням.
-- **Поточна Mesa documentation:** NVK описується як підтримка Kepler і новіших
-  GPU та Vulkan 1.4 conformant для всіх офіційно підтримуваних GPU.
+- **Поточна загальна Mesa documentation:** описує NVK як Vulkan 1.4 conformant для офіційно підтримуваних GPU. Однак перевірений per-device source snapshot повертає API version 1.3 для Pascal. Це не можна зводити в одну гарантію: для GP107 зафіксувати версію source snapshot, перевіряти `apiVersion` через `vulkaninfo` на фізичному пристрої та не приписувати 1.4 без такого доказу.
 
 Це свідчить про розвиток NVK після первинного Pascal enablement, але жоден
 із цих загальних upstream statements не замінює тест на нашій конкретній
