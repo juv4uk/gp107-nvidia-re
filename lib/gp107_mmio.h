@@ -7,12 +7,14 @@
 #include "gp107_identity.h"
 
 /*
- * Optional read-only aperture seam. Software-gated research code only:
- * physical MMIO, driver unbind and alternate boot are not authorized.
- * The public operation re-reads PCI identity and enforces opt-in, binding,
- * BAR size and offset checks internally. The allow flag is not owner approval.
+ * Deliberately deferred MMIO API.
  *
- * No write mapping, RM requests, FIFO, doorbell, firmware or BOOT0 value.
+ * The API validates caller intent, exact PCI identity, driver binding,
+ * BAR0 type/size and offset bounds, then stops with
+ * GP107_ERR_SAFE_OFFSET_UNPROVEN. It does not open resource0, map BAR0,
+ * dereference an aperture, or grant physical MMIO permission.
+ *
+ * --allow-mmio is a software acknowledgement only, never owner approval.
  */
 
 #define GP107_MMIO_WINDOW 4096u
