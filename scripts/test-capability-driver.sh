@@ -37,9 +37,9 @@ echo 'DRIVER-FIREWALL-OK banned-ops=absent pin-in-code=absent boot0-value=absent
 step 'compile C11 gate with warnings as errors'
 make -C "$ROOT/lib" clean all >/dev/null
 [ -x "$BIN" ] || fail 'no gp107ctl binary'
-"$BIN" layout | grep -Fq 'LAYOUT-OK identity=20 binding=68 inventory=128' \
+"$BIN" layout | grep -Fq 'LAYOUT-OK identity=32 binding=68 inventory=140' \
   || fail 'compile-time layout assertion output missing'
-echo 'C11-COMPILE-OK werror=yes layout=20/68/128'
+echo 'C11-COMPILE-OK werror=yes layout=32/68/140'
 
 step 'synthetic sysfs fixture (single card, nvidia bound)'
 mkdir -p "$FIX/bus/pci/devices/0000:01:00.0"
@@ -48,9 +48,13 @@ import os
 import sys
 
 dev = sys.argv[1]
-cfg = bytearray(20)
+cfg = bytearray(32)
 cfg[0:2] = bytes((0xde, 0x10))
 cfg[2:4] = bytes((0x82, 0x1c))
+cfg[0x04:0x06] = bytes((0x07, 0x04))
+cfg[0x08] = 0xa1
+cfg[0x0b] = 0x03
+cfg[0x0e] = 0x80
 cfg[0x10:0x14] = bytes((0x00, 0x00, 0x00, 0xee))
 with open(os.path.join(dev, 'config'), 'wb') as fh:
     fh.write(cfg)
@@ -72,6 +76,8 @@ for marker in \
   '(device . 0x1c82)' \
   '(bdf . "0000:01:00.0")' \
   '(bar0-base . 0xee000000)' \
+  '(config (revision . 0xa1) (class . 0x030000) (header . 0x80) (command . 0x0407))' \
+  '(bar0 (raw . 0xee000000) (space . memory) (width . 32-bit) (prefetch . no) (source . public-pci-header))' \
   '(driver (bound . yes) (name . "nvidia"))' \
   '(rm-control . none)' \
   '(boot0 . unproven)' \
@@ -79,6 +85,22 @@ for marker in \
   grep -Fq "$marker" "$WORK/inv.out" || fail "нема маркера: $marker"
 done
 echo 'FIXTURE-IDENTITY-OK source=synthetic-sysfs'
+
+step 'capability ledger (bound driver denies MMIO, RM deferred)'
+"$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-bound.out"
+for marker in \
+  '(kind . gp107-capability-ledger)' \
+  '(abi-pin . untouched)' \
+  '(pci-inventory . granted)' \
+  '(bar0-decode . complete)' \
+  '(rm-identity . deferred) (reason . not-in-this-slice)' \
+  '(mmio-read . denied) (reason . driver-bound)' \
+  '(boot0 . unproven) (evidence . unproven)' \
+  '(rights (write . none) (dispatch . none) (rm . none))' \
+  '(summary . CAPABILITY-LEDGER-OK)'; do
+  grep -Fq "$marker" "$WORK/ledger-bound.out" || fail "нема маркера: $marker"
+done
+echo 'LEDGER-BOUND-OK mmio=denied rm=deferred'
 
 step 'negative witness (second matching card is ambiguous)'
 mkdir -p "$FIX/bus/pci/devices/0000:02:00.0"
@@ -143,6 +165,40 @@ for marker in \
 done
 echo 'FIXTURE-MMIO-READ-OK scope=synthetic-resource0 hardware=NOT-RUN'
 
+step 'capability ledger (unbound + no opt-in stays deferred)'
+"$BIN" capabilities --sysfs-root="$FIX" >"$WORK/ledger-deferred.out"
+grep -Fq '(mmio-read . deferred) (reason . opt-in-required)' "$WORK/ledger-deferred.out" \
+  || fail 'ledger не лишив MMIO у deferred без opt-in'
+echo 'LEDGER-DEFERRED-OK marker=step=opt-in-required'
+
+step 'capability ledger (unbound + opt-in grants read-only only)'
+"$BIN" capabilities --allow-mmio --sysfs-root="$FIX" >"$WORK/ledger-granted.out"
+grep -Fq '(mmio-read . granted) (reason . read-only-window)' "$WORK/ledger-granted.out" \
+  || fail 'ledger не надав read-only MMIO після opt-in'
+grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
+  || fail 'ledger розширив права поза read-only'
+echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+
+step 'BAR flag mutation (I/O space is decoded, then restored)'
+python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
+import sys
+p = sys.argv[1]
+b = bytearray(open(p, 'rb').read())
+b[0x10] = 0x01
+open(p, 'wb').write(b)
+PY
+"$BIN" inventory --sysfs-root="$FIX" >"$WORK/io-bar.out"
+grep -Fq '(bar0 (raw . 0xee000001) (space . io) (width . 32-bit) (prefetch . no)' "$WORK/io-bar.out" \
+  || fail 'I/O-прапорець BAR0 не декодовано'
+python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
+import sys
+p = sys.argv[1]
+b = bytearray(open(p, 'rb').read())
+b[0x10] = 0x00
+open(p, 'wb').write(b)
+PY
+echo 'BAR-FLAG-MUTATION-OK space=memory -> io -> memory'
+
 step 'host PCI inventory (best effort, read-only)'
 if [ -d /sys/bus/pci/devices/0000:01:00.0 ]; then
   "$BIN" inventory >"$WORK/host.out"
@@ -154,4 +210,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=5 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN"

@@ -1,8 +1,8 @@
 CC      ?= cc
 CFLAGS  ?= -O2 -Wall -Wextra -Werror -std=c11 -pedantic -D_POSIX_C_SOURCE=200809L
 BIN     := ../build/capability-driver/gp107ctl
-SRC     := gp107ctl.c gp107_identity.c gp107_mmio.c
-HDR     := gp107_identity.h gp107_mmio.h
+SRC     := gp107ctl.c gp107_identity.c gp107_mmio.c gp107_capabilities.c
+HDR     := gp107_identity.h gp107_mmio.h gp107_capabilities.h
 
 all: $(BIN)
 

@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #define GP107_PATH_CAP 512
-#define GP107_CFG_BYTES 20
+#define GP107_CFG_BYTES ((size_t)GP107_CONFIG_BYTES)
 
 int gp107_set_error(char *err, size_t errsz, const char *fmt, ...)
 {
@@ -104,7 +104,7 @@ static int read_config(const char *path, unsigned char bytes[GP107_CFG_BYTES])
         errno = saved;
         return -1;
     }
-    if (n < GP107_CFG_BYTES) {
+    if (n < (ssize_t)GP107_CFG_BYTES) {
         return -1;
     }
     return 0;
@@ -128,7 +128,6 @@ static int parse_bdf(const char *name, struct gp107_pci_identity *id,
     id->bus = (uint8_t)bus;
     id->slot = (uint8_t)slot;
     id->function = (uint8_t)func;
-    id->reserved = 0;
     if (snprintf(bdf, bdfsz, "%04x:%02x:%02x.%u",
                  domain, bus, slot, func) >= (int)bdfsz) {
         return -1;
@@ -271,11 +270,25 @@ int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
         memset(&candidate, 0, sizeof(candidate));
         candidate.vendor = cv;
         candidate.device = cd;
-        candidate.bar0_base = (uint32_t)cfg[0x10] |
-                              ((uint32_t)cfg[0x11] << 8) |
-                              ((uint32_t)cfg[0x12] << 16) |
-                              ((uint32_t)cfg[0x13] << 24);
-        candidate.bar0_base &= 0xfffffff0u;
+        candidate.command = (uint16_t)((uint16_t)cfg[0x04] | ((uint16_t)cfg[0x05] << 8));
+        candidate.revision = cfg[0x08];
+        candidate.class_code[0] = cfg[0x09];
+        candidate.class_code[1] = cfg[0x0a];
+        candidate.class_code[2] = cfg[0x0b];
+        candidate.header_type = cfg[0x0e];
+        candidate.bar0_raw = (uint32_t)cfg[0x10] |
+                             ((uint32_t)cfg[0x11] << 8) |
+                             ((uint32_t)cfg[0x12] << 16) |
+                             ((uint32_t)cfg[0x13] << 24);
+        {
+            unsigned int flags = candidate.bar0_raw & 0x0fu;
+            candidate.bar0_space = (flags & 1u) ? 1u : 0u;
+            candidate.bar0_width = (((flags >> 1) & 3u) == 2u) ? 1u : 0u;
+            candidate.bar0_prefetch = (flags & 8u) ? 1u : 0u;
+            candidate.bar0_base = candidate.bar0_raw &
+                                  (candidate.bar0_space ? 0xfffffffcu : 0xfffffff0u);
+        }
+        candidate.cfg_bytes = GP107_CONFIG_BYTES;
         if (parse_bdf(de->d_name, &candidate, found_bdf, sizeof(found_bdf)) != 0) {
             rc = gp107_set_error(err, errsz,
                                  "IDENTITY-FAIL step=bdf-parse code=%d name=%s",

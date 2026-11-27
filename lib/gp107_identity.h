@@ -21,6 +21,7 @@
 #define GP107_PCI_DEVICE_GP107  0x1c82u
 #define GP107_EXPECTED_BDF      "0000:01:00.0"
 #define GP107_DEFAULT_SYSFS     "/sys"
+#define GP107_CONFIG_BYTES      32u
 
 enum gp107_status {
     GP107_OK               = 0,
@@ -46,15 +47,23 @@ enum gp107_evidence {
 };
 
 struct gp107_pci_identity {
-    uint16_t vendor;    /* offset  0 */
-    uint16_t device;    /* offset  2 */
-    uint16_t domain;    /* offset  4 */
-    uint8_t  bus;       /* offset  6 */
-    uint8_t  slot;      /* offset  7 */
-    uint8_t  function;  /* offset  8 */
-    uint8_t  reserved;  /* offset  9 */
-    uint32_t bar0_base; /* offset 12, low flag bits masked */
-    uint32_t bar0_size; /* offset 16, from resource0 size when visible */
+    uint16_t vendor;        /* offset  0, config 0x00 */
+    uint16_t device;        /* offset  2, config 0x02 */
+    uint16_t domain;        /* offset  4, sysfs BDF */
+    uint8_t  bus;           /* offset  6, sysfs BDF */
+    uint8_t  slot;          /* offset  7, sysfs BDF */
+    uint8_t  function;      /* offset  8, sysfs BDF */
+    uint8_t  revision;      /* offset  9, config 0x08 */
+    uint16_t command;       /* offset 10, config 0x04 */
+    uint32_t bar0_raw;      /* offset 12, config 0x10 raw dword */
+    uint32_t bar0_base;     /* offset 16, low flag bits masked */
+    uint32_t bar0_size;     /* offset 20, from resource0 size when visible */
+    uint8_t  class_code[3]; /* offset 24, config 0x09..0x0b */
+    uint8_t  header_type;   /* offset 27, config 0x0e */
+    uint8_t  bar0_space;    /* offset 28: 0 memory, 1 io */
+    uint8_t  bar0_width;    /* offset 29: 0 32-bit, 1 64-bit */
+    uint8_t  bar0_prefetch; /* offset 30: 1 when prefetchable */
+    uint8_t  cfg_bytes;     /* offset 31: bytes actually decoded */
 };
 
 struct gp107_driver_binding {
@@ -72,9 +81,9 @@ struct gp107_inventory {
 
 /* Compile-time layout contract: drift must break the build, not silently
  * change what a caller reads out of a returned structure. */
-_Static_assert(sizeof(struct gp107_pci_identity) == 20, "pci layout drift");
+_Static_assert(sizeof(struct gp107_pci_identity) == 32, "pci layout drift");
 _Static_assert(sizeof(struct gp107_driver_binding) == 68, "driver layout drift");
-_Static_assert(sizeof(struct gp107_inventory) == 128, "inventory layout drift");
+_Static_assert(sizeof(struct gp107_inventory) == 140, "inventory layout drift");
 
 int gp107_set_error(char *err, size_t errsz, const char *fmt, ...);
 

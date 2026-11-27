@@ -26,7 +26,8 @@
 
 | Файл | Призначення |
 |---|---|
-| `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, BAR0 з config, driver binding, розмір resource0 |
+| `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
+| `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
 | `lib/gp107_mmio.h/.c` | Опційний read-only 32-бітний aperture seam з двома воротами (opt-in + driver-unbound) |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
@@ -54,7 +55,7 @@ int gp107_mmio_read32(const char *sysfs_root, const char *bdf,
 
 | # | Факт | Статус | Свідок / межа |
 |---:|---|---|---|
-| 1 | Розкладки `gp107_pci_identity=20`, `gp107_driver_binding=68`, `gp107_inventory=128` байт | **statically proven** | `_Static_assert` у `lib/gp107_identity.h`; вивід `LAYOUT-OK identity=20 binding=68 inventory=128` |
+| 1 | Розкладки `gp107_pci_identity=32`, `gp107_driver_binding=68`, `gp107_inventory=140` байт | **statically proven** | `_Static_assert` у `lib/gp107_identity.h`; вивід `LAYOUT-OK identity=32 binding=68 inventory=140` (розширено у docs/30) |
 | 2 | На hostі рівно одна картка `10de:1c82 @ 0000:01:00.0`, `bar0-base=0xee000000`, driver `nvidia` | **runtime-proven** | `gp107ctl inventory` через sysfs; маркер `HOST-INVENTORY-PASS evidence=runtime-proven` |
 | 3 | Друга картка того самого vendor/device відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=card-count code=13 count=2` |
 | 4 | Відсутній `config` відхиляється | **runtime-proven (fixture)** | `IDENTITY-FAIL step=pci-config-read code=5 bdf=...` |
@@ -85,19 +86,21 @@ make test-valid-cards-static   # старий базовий гейт не по�
    BOOT0-константа, атестація й authoritative pin;
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
-5. два MMIO-негативи й один read-only позитив на синтетичному `resource0`;
-6. best-effort реальний sysfs inventory (пропуск явно позначається, якщо
+5. три стани capability-ledger (`denied`/`deferred`/`granted`) і мутація
+   I/O-прапорця BAR0;
+6. два MMIO-негативи й один read-only позитив на синтетичному `resource0`;
+7. best-effort реальний sysfs inventory (пропуск явно позначається, якщо
    пристрою немає).
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=5 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=6 mmio=read-only-opt-in hardware-mmio=NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
 непривілейованим/детермінованим з `EACCES` на `resource0`.
 
 ## 4. Незавершене й найменший наступний крок
 
-- **Невідповідне питання:** який саме offset у BAR0 можна читати безпечно на
+- **Питання без відповіді:** який саме offset у BAR0 можна читати безпечно на
   цій платі за відсутності bound драйвера? Поточний код не містить жодного
   припущення про адресу регістру.
 - **Найменший крок:** після окремого owner-рішення про unbind/boot — повторити

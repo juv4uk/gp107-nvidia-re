@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "gp107_capabilities.h"
 #include "gp107_identity.h"
 #include "gp107_mmio.h"
 
@@ -14,6 +15,8 @@ static int usage(void)
             "USAGE gp107ctl inventory [--sysfs-root=PATH] [--expect-bdf=BDF]\n"
             "      gp107ctl mmio-read --offset=0xNN [--allow-mmio]\n"
             "                         [--sysfs-root=PATH] [--expect-bdf=BDF]\n"
+            "      gp107ctl capabilities [--allow-mmio]\n"
+            "                            [--sysfs-root=PATH] [--expect-bdf=BDF]\n"
             "      gp107ctl layout\n");
     return GP107_ERR_USAGE;
 }
@@ -27,6 +30,16 @@ static void print_inventory(const struct gp107_inventory *inv)
            inv->pci.vendor, inv->pci.device, inv->bdf);
     printf("  (bar0-base . 0x%08x) (bar0-size . 0x%08x))\n",
            inv->pci.bar0_base, inv->pci.bar0_size);
+    printf(" (config (revision . 0x%02x) (class . 0x%02x%02x%02x)"
+           " (header . 0x%02x) (command . 0x%04x))\n",
+           inv->pci.revision, inv->pci.class_code[2], inv->pci.class_code[1],
+           inv->pci.class_code[0], inv->pci.header_type, inv->pci.command);
+    printf(" (bar0 (raw . 0x%08x) (space . %s) (width . %s) (prefetch . %s)"
+           " (source . public-pci-header))\n",
+           inv->pci.bar0_raw,
+           inv->pci.bar0_space ? "io" : "memory",
+           inv->pci.bar0_width ? "64-bit" : "32-bit",
+           inv->pci.bar0_prefetch ? "yes" : "no");
     printf(" (driver (bound . %s) (name . \"%s\"))\n",
            inv->driver.bound ? "yes" : "no", inv->driver.name);
     printf(" (rights (pci . inventory-only) (rm-control . none) (mmio . none))\n");
@@ -79,7 +92,8 @@ int main(int argc, char **argv)
                sizeof(struct gp107_inventory));
         return GP107_OK;
     }
-    if (strcmp(mode, "inventory") != 0 && strcmp(mode, "mmio-read") != 0) {
+    if (strcmp(mode, "inventory") != 0 && strcmp(mode, "mmio-read") != 0 &&
+        strcmp(mode, "capabilities") != 0) {
         return usage();
     }
 
@@ -112,6 +126,22 @@ int main(int argc, char **argv)
             return rc;
         }
         print_inventory(&inv);
+        return GP107_OK;
+    }
+
+    if (strcmp(mode, "capabilities") == 0) {
+        char report[1024];
+        rc = gp107_inventory_scan(root, expect, &inv, err, sizeof(err));
+        if (rc != GP107_OK) {
+            fprintf(stderr, "%s\n", err);
+            return rc;
+        }
+        rc = gp107_capability_report(&inv, allow, report, sizeof(report));
+        if (rc != GP107_OK) {
+            fprintf(stderr, "CAPABILITY-FAIL step=report code=%d\n", rc);
+            return rc;
+        }
+        printf("%s", report);
         return GP107_OK;
     }
 
