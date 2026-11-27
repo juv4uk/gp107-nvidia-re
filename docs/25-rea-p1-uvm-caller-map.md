@@ -55,7 +55,7 @@ disassembly. `0x101` (257) як межа індесу GPU і `0x1908` як offse
 | Інтерфейс | Call-site | Enclosing function | `statically proven` факти | Evidence |
 |---|---|---|---|---|
 | `ChannelAllocate` | `0x08035a20` | `channel_pool_add`, `0x080355c0`, 4005 B | гілка `cmp edi, 0x10`; `rdi = [rsi+rax]`, `rsi = &rsp+0x30`; після виклику перевірка статусу | `ev_b7379a9859e9ebcc3785d87aeb006498f1056510b8d2da6270de5e3eb941948f`, `ev_489336181b7e63041d433c25c8562dfdf64327cc0144008df0843f217c294b3e` |
-| `PagingChannelAllocate` | `0x08035e7d` | `channel_pool_add`, `0x080355c0` | `eax = 0x1e0` перед викликом, `rsi = &rsp+0x30`; після — перевірка статусу | `ev_b7379a9859e9ebcc3785d87aeb006498f1056510b8d2da6270de5e3eb941948f`, `ev_489336181b7e63041d433c25c8562dfdf64327cc0144008df0843f217c294b3e` |
+| `PagingChannelAllocate` | `0x08035e7d` | `channel_pool_add`, `0x080355c0` | `cmp byte [rax+0xc16d], 0`, потім `rdi = [rax+0x1e0]`, `rsi = &rsp+0x30`; після — перевірка статусу. Попереднє читання `mov eax,0x1e0` було зсунутим на 2 байти і відхилено у docs/26 | `ev_b7379a9859e9ebcc3785d87aeb006498f1056510b8d2da6270de5e3eb941948f`, `ev_489336181b7e63041d433c25c8562dfdf64327cc0144008df0843f217c294b3e`, `ev_6ed5921e80256eb81907caed4a52cfa5988ac2e0f897b242dcd80c8f682dc01b` |
 | `PagingChannelsMap` | `0x0802cd79` | `rm_mem_map_gpu_proxy`, `0x0802cc80` | виклик у тому ж шляху, що й `MemoryCpuMap`; статус зберігається в `r11d` | `ev_b7379a9859e9ebcc3785d87aeb006498f1056510b8d2da6270de5e3eb941948f`, `ev_4a8915805f736e39b67a6136e93efef0a02133e2585f8131701e723985b688a2` |
 | `PagingChannelsUnmap` | `0x0802cb6a` | `rm_mem_unmap_gpu`, `0x0802cae0` | `rdi = [rdx+0x1908]`, `rdx = [rax+0x1e0]`; потім `MemoryFree` | `ev_b7379a9859e9ebcc3785d87aeb006498f1056510b8d2da6270de5e3eb941948f`, `ev_489336181b7e63041d433c25c8562dfdf64327cc0144008df0843f217c294b3e` |
 | `PagingChannelPushStream` | `0x08034007` | `uvm_channel_end_push`, `0x080338e0`, 3454 B | `rdi = [rax+0x130]`; виклик наприкінці push path | `ev_b7379a9859e9ebcc3785d87aeb006498f1056510b8d2da6270de5e3eb941948f`, `ev_bbd5346c854ac816ae62233360674de748af4393f30d2d0cbb562cccb9fe81a3` |
@@ -92,8 +92,9 @@ disassembly. `0x101` (257) як межа індесу GPU і `0x1908` як offse
 1. Для `uvm_rm_mem_alloc` — обмежене disassembly тіла 737 B, щоб виділити
    enum в `esi`, `rdx` (розмір) і перевірку `0x51` як статус; без припущень про
    RM class.
-2. Для `channel_pool_add` — вузьке вікно коло `0x08035e73` (`eax=0x1e0`), щоб
-   з'ясувати, чи це розмір/тип каналу, і лише тоді формулювати гіпотезу.
+2. Для `channel_pool_add` — не `pd` з довільного зсуву, а лінійна disassembly
+   від справжнього entry `0x080355c0`: там коло `0x08035e71` читається
+   `rdi = [rax+0x1e0]`; призначення поля лишається UNPROVEN (docs/26).
 3. Порівняти з `docs/02` runtime chain як **дві незалежні observability**;
    не оголошувати, що Vulkan `memType=8` проходить саме цим шляхом.
 
