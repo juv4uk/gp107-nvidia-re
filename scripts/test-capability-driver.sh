@@ -34,7 +34,7 @@ fi
 if grep -R -F -q 'b5ec3211f6bd07fb7c4a5f704875892eff145b91' lib pascal; then
   fail 'authoritative ABI pin present in library code'
 fi
-if grep -nHE '\\b(mmap|munmap|openat|FpMMap|FpMunmap|FpOpen)\\s*\\(' \
+if grep -nHE '\b(mmap|munmap|openat|FpMMap|FpMunmap|FpOpen)\s*\(' \
      lib/gp107_mmio.c pascal/gp107_mmio.pas >>"$WORK/fw-mmio.txt"; then
   cat "$WORK/fw-mmio.txt" >&2
   fail 'production MMIO API must not open resource0 or map an aperture'
