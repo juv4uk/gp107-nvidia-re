@@ -71,6 +71,7 @@ sudo ./probes/01_min_cuinit          # або запустити користу�
 echo 0xc90046c8 | python3 scripts/decode_ioctl.py
 
 make test                            # FPC 3.2.2 pin + static ELF + runtime-свідки трьох пробників
+make test-valid-cards-static         # лише fail-closed source guard; без FPC/GPU/RM
 make gate-root                       # необов'язковий root-свідок: mmap EINVAL, BOOT0 UNPROVEN
 sudo ./pascal/02_bar_identity        # ручний root-свідок
 ```
