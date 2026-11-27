@@ -329,6 +329,24 @@ backport. `nouveau.atomic=0` залишити лише як діагностич
 для відтворення старого регресійного стану, а не як постійне acceptance
 налаштування.
 
+**Stable-backport перевірка станом на 2026-11-27:** у репозиторії
+[`gregkh/linux`](https://github.com/gregkh/linux) виправлення вже є у
+`master` (файл `drivers/gpu/drm/nouveau/nouveau_display.c` містить
+`nouveau_mode_config_funcs_atomic` і вибір через
+`drm_drv_uses_atomic_modeset(dev)`). Але перевірені upstream stable-гілки
+`linux-7.3.y` та `linux-7.2.y` на цей момент ще не містили цих callbacks
+(обидві повертали старий вміст файла, blob
+`d71dcfc6ee66b3349cd87404aa15ea9823417d36`). Отже, `Cc: stable@vger.kernel.org`
+у fix-коміті — це запит на backport, не доказ його включення у stable branch
+чи дистрибутив.
+
+Для нашого зафіксованого профілю Kali/kernel `7.2.15+kali-amd64` не робити
+висновок лише з номера версії. Потрібно перевірити вихідний пакет/commit або
+наявність atomic callbacks у зібраному Nouveau. Якщо backport відсутній і
+регресія відтворюється, `nouveau.atomic=0` — діагностичний тимчасовий обхід;
+основним acceptance лишається робота з atomic modesetting на виправленому
+ядрі.
+
 Джерела:
 - [GP107 regression report and follow-up (2026-11-02 — 2026-11-25)](https://kernelthread.org/t/OS7PR01MB1391484D564CF93DFBB4C1DCE966A2@OS7PR01MB13914.jpnprd01.prod.outlook.kr)
 - [Introduced: atomic modesetting by default for NV50+](https://github.com/torvalds/linux/commit/2652aca460dcfdd0d169bbfa358aa15804dc736b)
