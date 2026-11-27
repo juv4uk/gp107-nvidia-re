@@ -59,7 +59,7 @@ with open(os.path.join(dev, 'vendor'), 'w') as fh:
 with open(os.path.join(dev, 'device'), 'w') as fh:
     fh.write('0x1c82\n')
 with open(os.path.join(dev, 'resource0'), 'wb') as fh:
-    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(60))
+    fh.write(bytes((0xde, 0x10, 0x82, 0x1c)) + bytes(4092))
 PY
 ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
 
@@ -111,6 +111,18 @@ grep -Fq 'IDENTITY-FAIL step=bdf-mismatch' "$WORK/bdf.err" \
   || fail 'нема названого negative-маркера bdf-mismatch'
 echo 'NEGATIVE-BDF-OK marker=step=bdf-mismatch'
 
+step 'driver-binding read errors fail closed (not treated as unbound)'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+printf 'not-a-symlink\n' > "$FIX/bus/pci/devices/0000:01:00.0/driver"
+if "$BIN" inventory --sysfs-root="$FIX" >"$WORK/baddriver.out" 2>"$WORK/baddriver.err"; then
+  fail 'еміттер прийняв некоректний driver entry як unbound'
+fi
+grep -Fq 'IDENTITY-FAIL step=driver-binding-read' "$WORK/baddriver.err" \
+  || fail 'нема названого negative-маркера driver-binding-read'
+rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+ln -s "$FIX/bus/pci/drivers/nvidia" "$FIX/bus/pci/devices/0000:01:00.0/driver"
+echo 'NEGATIVE-DRIVER-LINK-OK unknown=denied'
+
 step 'MMIO gate (opt-in required before any mapping)'
 if "$BIN" mmio-read --offset=0x0 --sysfs-root="$FIX" \
     >"$WORK/noopt.out" 2>"$WORK/noopt.err"; then
@@ -129,8 +141,66 @@ grep -Fq 'MMIO-FAIL step=driver-bound code=16 driver=nvidia' "$WORK/bound.err" \
   || fail 'нема названого negative-маркера driver-bound'
 echo 'NEGATIVE-MMIO-BOUND-OK marker=step=driver-bound'
 
+step 'public C API enforces opt-in and driver binding (not only CLI)'
+cat > "$WORK/mmio-api-test.c" <<'EOF'
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include "gp107_identity.h"
+#include "gp107_mmio.h"
+
+int main(int argc, char **argv)
+{
+    char err[256] = {0};
+    uint32_t value = 0;
+    int rc;
+
+    if (argc != 2)
+        return 64;
+
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 0, 0,
+                           &value, err, sizeof(err));
+    if (rc != GP107_ERR_OPTIN || strstr(err, "opt-in-required") == NULL) {
+        fprintf(stderr, "API-GATE-FAIL optin rc=%d err=%s\n", rc, err);
+        return 1;
+    }
+
+    err[0] = '\0';
+    rc = gp107_mmio_read32(argv[1], "0000:01:00.0", 1, 0,
+                           &value, err, sizeof(err));
+    if (rc != GP107_ERR_DRIVER_BOUND || strstr(err, "driver-bound") == NULL) {
+        fprintf(stderr, "API-GATE-FAIL driver rc=%d err=%s\n", rc, err);
+        return 1;
+    }
+
+    puts("MMIO-API-GATE-OK direct-call=guarded optin=required bound-driver=denied");
+    return 0;
+}
+EOF
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I"$ROOT/lib" \
+  "$WORK/mmio-api-test.c" "$ROOT/lib/gp107_identity.c" \
+  "$ROOT/lib/gp107_mmio.c" -o "$WORK/mmio-api-test"
+"$WORK/mmio-api-test" "$FIX"
+
 step 'MMIO read-only witness on synthetic resource0 (not hardware)'
 rm "$FIX/bus/pci/devices/0000:01:00.0/driver"
+cp "$FIX/bus/pci/devices/0000:01:00.0/resource0" "$WORK/resource0.saved"
+truncate -s 64 "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+if "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/shortbar.out" 2>"$WORK/shortbar.err"; then
+  fail 'MMIO-шлях прийняв BAR0 менший за 4 KiB'
+fi
+grep -Fq 'MMIO-FAIL step=bar0-size-unavailable' "$WORK/shortbar.err" \
+  || fail 'нема названого negative-маркера bar0-size-unavailable'
+mv "$WORK/resource0.saved" "$FIX/bus/pci/devices/0000:01:00.0/resource0"
+if "$BIN" mmio-read --offset=0x1000 --allow-mmio --sysfs-root="$FIX" \
+    >"$WORK/offset.out" 2>"$WORK/offset.err"; then
+  fail 'MMIO-шлях прийняв offset за межами 4 KiB window'
+fi
+grep -Fq 'MMIO-FAIL step=offset-out-of-window' "$WORK/offset.err" \
+  || fail 'нема названого negative-маркера offset-out-of-window'
+echo 'NEGATIVE-MMIO-BAR-BOUNDS-OK size=short offset=outside-window'
+
 "$BIN" mmio-read --offset=0x0 --allow-mmio --sysfs-root="$FIX" >"$WORK/mmio.out"
 for marker in \
   '(kind . gp107-mmio-read)' \
@@ -138,6 +208,8 @@ for marker in \
   '(value . 0x1c8210de)' \
   '(right . read-only)' \
   '(boot0 . unproven)' \
+  '(evidence . unclassified)' \
+  '(scope . caller-supplied-sysfs)' \
   '(summary . MMIO-READ-OK)'; do
   grep -Fq "$marker" "$WORK/mmio.out" || fail "нема маркера: $marker"
 done
@@ -154,4 +226,4 @@ else
   echo 'HOST-INVENTORY-SKIP reason=device-absent'
 fi
 
-echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 negatives=5 mmio=read-only-opt-in hardware-mmio=NOT-RUN"
+echo "CAPABILITY-DRIVER-GATE-OK c11=yes layout=20/68/128 fail-closed=passed synthetic-mmio=only hardware-mmio=NOT-AUTHORIZED/NOT-RUN"
