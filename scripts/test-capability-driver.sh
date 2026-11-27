@@ -299,7 +299,11 @@ grep -Fq '(mmio-read-software-gate . granted) (reason . read-only-window)' "$WOR
   || fail 'ledger не надав read-only MMIO після opt-in'
 grep -Fq '(rights (write . none) (dispatch . none) (rm . none))' "$WORK/ledger-granted.out" \
   || fail 'ledger розширив права поза read-only'
-echo 'LEDGER-GRANTED-OK write=none dispatch=none'
+grep -Fq '(owner-approval . not-inferred)' "$WORK/ledger-granted.out" \
+  || fail 'software gate must not imply owner approval'
+grep -Fq '(physical-mmio . not-authorized)' "$WORK/ledger-granted.out" \
+  || fail 'ledger must not mark physical MMIO authorized'
+echo 'LEDGER-GRANTED-OK software-gate-only owner-approval=not-inferred physical-mmio=not-authorized'
 
 step 'BAR flag mutation (I/O space is decoded, then restored)'
 python3 - "$FIX/bus/pci/devices/0000:01:00.0/config" <<'PY'
