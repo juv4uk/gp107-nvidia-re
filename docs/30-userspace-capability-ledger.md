@@ -1,77 +1,69 @@
-# 30 — Другий зріз C-драйвера: публічний PCI-заголовок і capability-ledger
+# 30 — PCI config-header і capability ledger GP107
 
-Це розширення `docs/29`: userspace capability-identity, read-only sysfs,
-програмний opt-in seam для read-only aperture. Фізичний MMIO, unbind і зміна
-boot не авторизовані. Тут
-**нема** RM-запитів, write mapping, GPFIFO, firmware, dispatch, reboot чи
-змін ABI/pin. SENS, CML, `wsm-os-lisp`, ADR і target contract не змінено.
+Цей документ фіксує sysfs PCI inventory та його машиночитану проєкцію. Він не
+надає права на BAR0 і не є частиною системного ABI.
 
-## 1. Що додано
+## 1. PCI identity
 
-1. Декодування публічного PCI config-header (Standard Configuration Header,
-   тип `0x00`, offsets `0x00–0x0f`) власним C-кодом:
-   `revision`, `class_code[3]`, `header_type`, `command`, сирий BAR0-dword,
-   біти `space`/`width`/`prefetch` RAW-маскованої адреси BAR0.
-   Джерело — публічна специфікація PCI, **не** vendor source і не REA-псевдокод.
-2. `lib/gp107_capabilities.h/.c` — машиночитаний ledger з явними станами
-   `granted`, `deferred`, `denied` і причинами.
-3. CLI `gp107ctl capabilities [--allow-mmio]`, розширені `inventory` і
-   compile-time assertи: нові розкладки `32 / 68 / 140` байт.
+C11 inventory зчитує через sysfs:
+- vendor/device та BDF;
+- 32-байтовий public PCI configuration header;
+- revision, class code, header type, command;
+- BAR0 raw flags/address та resource metadata;
+- driver binding.
 
-Логіка MMIO-стану в ledger:
+Значення є inventory facts, а не доказом семантики NVIDIA-specific регістрів,
+BOOT0, RM object, runlist чи GPU command stream.
 
-| Умова | Стан | Причина |
+## 2. Незмінна межа MMIO
+
+**Physical MMIO: NOT AUTHORIZED / NOT RUN.**
+
+| Умова | Software gate | Фізичний доступ |
 |---|---|---|
-| bound kernel driver | `denied` | `driver-bound` |
-| не bound, але немає `--allow-mmio` | `deferred` | `opt-in-required` |
-| не bound і є `--allow-mmio` | `granted` | `read-only-window` |
+| Kernel driver bound | denied (driver-bound) | not-authorized |
+| Driver absent, без --allow-mmio | denied (owner-authorization-required) | not-authorized |
+| Driver absent, з --allow-mmio | denied (owner-authorization-required) | not-authorized |
 
-`granted` означає лише, що **внутрішні програмні передумови** для вузького
-read-only API пройшли (unbound за sysfs + явний прапорець). Це не owner
-approval і не дозвіл на фізичний доступ. Ledger друкує
-`owner-approval=not-inferred` та `physical-mmio=not-authorized`; ці поля не
-можна підвищувати за `--allow-mmio`. Це також не право на запис, RM-операції
-чи GPU-завдання.
+--allow-mmio є програмним аргументом і не дорівнює owner approval.
+gp107_mmio_read32() завжди відмовляє; API не відкриває resource0,
+не викликає mapping і не читає фізичний BAR0. Немає жодного granted стану
+для фізичного MMIO.
 
-## 2. Статус фактів
+## 3. Capability projection
 
-| # | Факт | Статус | Свідок / межа |
-|---:|---|---|---|
-| 1 | Розкладки `32/68/140` байт | **statically proven** | `_Static_assert`; `LAYOUT-OK identity=32 binding=68 inventory=140` |
-| 2 | На RE host із sysfs: `revision=0xa1`, `class=0x030000`, `header=0x80`, `command=0x0407`, BAR0 `0xee000000`, memory / 32-bit / non-prefetch | **sysfs-observation** | `gp107ctl inventory` з host sysfs `config`; це не H170 certification |
-| 3 | Інтерпретація `0x030000` як «VGA display controller» і `0x80` як «PCI-to-PCI bridge header» — половина класу | **interpretation / UNPROVEN** | Код друкує сирі байти; назва типу заголовка не використовується для жодної дії |
-| 4 | I/O-прапорець BAR0 (`0x01`) декодується як `space=io`, після мутації повертається `memory` | **synthetic-fixture** | `BAR-FLAG-MUTATION-OK space=memory -> io -> memory` |
-| 5 | Ledger з `nvidia` bound: software gate `denied`, owner approval `not-inferred` | **synthetic-fixture + окреме host sysfs observation** | `LEDGER-BOUND-OK`; реальний `--allow-mmio` не запускався |
-| 6 | Ledger unbound без opt-in: software gate `deferred`; з opt-in: gate `granted`, але owner approval `not-inferred` і physical MMIO `not-authorized` | **synthetic-fixture** | `LEDGER-DEFERRED-OK`, `LEDGER-GRANTED-OK`; жодного реального MMIO |
-| 7 | `PCI BDF ↔ RM gpu_id`, RM class/runlist/notifier/fence, BOOT0 | **UNPROVEN** | У коді немає RM-шляху; BOOT0 не читався |
-| 8 | `0x137000A1` | **string-only** | константа відсутня у коді й у виводі |
-| 9 |Ledger є capability word у Lisp-машині / частина ABI | **UNPROVEN, не стверджується** | owner-рішення про ABI не ухвалено; S-вираз лише проєкція стану |
+Ledger окремо показує:
+- pci-inventory=observed;
+- mmio-read-software-gate=denied;
+- owner-approval=not-inferred;
+- physical-mmio=not-authorized;
+- rm-identity=deferred;
+- boot0=unproven.
 
-Збіг `revision=0xa1` із молодшим байтом відомого рядка лишається
-**interpretation** і не підвищує BOOT0 до `runtime-proven`.
+Ні sysfs inventory, ні CLI прапорець, ні synthetic fixture не підвищують
+фізичні права.
 
-## 3. Перевірка
+## 4. Свідки та невідоме
 
-```bash
-make test-capability-driver
-```
+| Факт | Статус |
+|---|---|
+| Layout 32/68/140 | **statically proven** |
+| PCI config values із попереднього RE-host inventory | **historical sysfs observation** |
+| Driver-link unknown handling | **synthetic negative** |
+| CLI/API MMIO denial | **synthetic/API denial tests** |
+| BOOT0, безпечний MMIO offset, PCI BDF ↔ RM gpu_id | **UNPROVEN** |
+| Runlist, notifier, fence, GPFIFO/dispatch | **UNPROVEN** |
 
-Окрім попередніх кроків, гейт перевіряє три стани ledger, декодування
-прапорців BAR0 на мутованому fixture і збереження compile-time розкладок.
-Фінальний маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
+Збіг revision byte 0xa1 з молодшим байтом рядка 0x137000A1 не доводить
+BOOT0. Це лишається interpretation/string-only.
 
-Базовий `scripts/test-pascal-probe.sh` і `make test-valid-cards-static` не
-змінено. Фізичний MMIO на цій платі не виконувався: `nvidia` лишається bound.
+## 5. Перевірка
 
-## 4. Найменший наступний крок
+Команда: make test-capability-driver
 
-Питання без відповіді: який саме BAR0-offset є безпечним для читання на цій
-платі після unbind? Код свідомо не містить жодного припущення про адресу
-регістру. Наступний безпечний крок — source-only аудит і уточнення BAR/resource semantics.
-Фізичний тест не запускається без окремого owner approval; `--allow-mmio` є
-лише програмним прапорцем, а не достатнім погодженням. BOOT0 лишається
-`UNPROVEN`.
+Гейт перевіряє synthetic sysfs inventory, driver-link errors, прямий C API
+denial, CLI denial незалежно від --allow-mmio і ledger physical-mmio
+not-authorized. Фізичний MMIO не запускається.
 
-Межі: жодного transfer-коду, release/tag/publish, `Tested-by`, installer-змін,
-RM-запитів чи запуску PR #21.
+SENS/CML/ABI pins, firmware, driver binding і boot configuration не змінюються.
+Публікація артефактів чи release цим документом не авторизується.
