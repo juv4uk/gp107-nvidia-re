@@ -135,33 +135,63 @@ static int parse_bdf(const char *name, struct gp107_pci_identity *id,
     return 0;
 }
 
-static void read_driver_link(const char *devdir, struct gp107_driver_binding *out)
+static int read_driver_link(const char *devdir,
+                             struct gp107_driver_binding *out,
+                             char *err, size_t errsz)
 {
     char path[GP107_PATH_CAP];
     char target[GP107_PATH_CAP];
+    struct stat st;
     ssize_t n;
     const char *base;
+    size_t len;
+    int saved;
 
     memset(out, 0, sizeof(*out));
     if (join_path(path, sizeof(path), devdir, "driver") != 0) {
-        return;
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-link-path code=%d",
+                               GP107_ERR_PARSE);
     }
+
     n = readlink(path, target, sizeof(target) - 1);
-    if (n <= 0) {
-        return;
+    if (n < 0) {
+        saved = errno;
+        if (saved == ENOENT || saved == ENOTDIR) {
+            /* No driver symlink is the only state that means known-unbound. */
+            return GP107_OK;
+        }
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-link-unknown code=%d errno=%d",
+                               GP107_ERR_DRIVER_UNKNOWN, saved);
     }
+    if (n == 0 || (size_t)n >= sizeof(target) - 1) {
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-link-invalid code=%d",
+                               GP107_ERR_DRIVER_UNKNOWN);
+    }
+
     target[n] = '\0';
+    if (stat(path, &st) != 0) {
+        saved = errno;
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-link-unknown code=%d errno=%d",
+                               GP107_ERR_DRIVER_UNKNOWN, saved);
+    }
+
     base = strrchr(target, '/');
     base = (base != NULL) ? base + 1 : target;
-    {
-        size_t len = strlen(base);
-        if (len >= sizeof(out->name)) {
-            len = sizeof(out->name) - 1;
-        }
-        memcpy(out->name, base, len);
-        out->name[len] = '\0';
+    len = strlen(base);
+    if (len == 0 || len >= sizeof(out->name)) {
+        return gp107_set_error(err, errsz,
+                               "IDENTITY-FAIL step=driver-link-invalid code=%d",
+                               GP107_ERR_DRIVER_UNKNOWN);
     }
+
+    memcpy(out->name, base, len);
+    out->name[len] = '\0';
     out->bound = 1;
+    return GP107_OK;
 }
 
 static void read_bar0_size(const char *devdir, struct gp107_pci_identity *id)
@@ -295,7 +325,10 @@ int gp107_inventory_scan(const char *sysfs_root, const char *expect_bdf,
                                  GP107_ERR_PARSE, de->d_name);
             goto done;
         }
-        read_driver_link(path, &out->driver);
+        rc = read_driver_link(path, &out->driver, err, errsz);
+        if (rc != GP107_OK) {
+            goto done;
+        }
         read_bar0_size(path, &candidate);
         out->pci = candidate;
         out->valid_count++;
