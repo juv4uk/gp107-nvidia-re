@@ -221,7 +221,7 @@ Mesa документує корисні прапорці:
 
 ### Координація із окремим RM lifecycle / command-submission планом
 
-Паралельний документ [`docs/06-next-research-direction.md`](06-next-research-direction.md)
+Паралельний документ [`docs/07-next-research-direction.md`](06-next-research-direction.md)
 веде vendor R580 ABI напрям E1–E6: read-only ioctl trace, channel/context
 lifecycle, pushbuffer, GPU sync, ізольований MMIO seam та DMA/GVA/kernel launch.
 Він належить до proprietary RM reverse engineering і лишається окремою
@@ -763,3 +763,343 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 - [Pascal Compute A header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc0c0.h)
 - [Pascal Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clc1c0.h)
 - [Maxwell Compute B header](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/compute/clb1c0.h)
+
+
+## 16. Pascal 3D command classes для GP107
+
+У [`classes/3d/README.txt`](https://github.com/NVIDIA/open-gpu-doc/blob/master/classes/3d/README.txt)
+офіційно зазначено, що GP107 підтримує обидва класи:
+- `PASCAL_A` — `clc097.h`, texture layout `clc097tex.h`;
+- `PASCAL_B` — `clc197.h`, texture layout `clc197tex.h`.
+
+Class IDs у headers:
+- `PASCAL_A = 0xC097`;
+- `PASCAL_B = 0xC197`.
+
+У цьому самому mapping GP107 прямо перелічений як підтримуваний GPU
+для обох класів. Це офіційна документація public command-class ABI,
+але не повна специфікація GPU й не гарантія роботи кожного методу.
+
+## 17. Пакет інструментів і послідовність для локального агента
+
+Нижче — порядок для локального native Linux свідка. Це не інструкція
+перебудовувати робочу систему; перший Nouveau тест — окремий Live USB
+або окремий boot entry з гарантованим поверненням до поточного R580.
+
+### A. Read-only паспорт під поточним драйвером
+
+Зберегти stdout/stderr і exit code кожної команди:
+```sh
+date -u --iso-8601=seconds
+uname -a
+cat /etc/os-release
+cat /proc/cmdline
+lspci -Dnnk -d 10de:1c82
+lspci -Dvv -d 10de:1c82
+```
+
+Для фактичного BDF із `lspci` зафіксувати
+`vendor`, `device`, `subsystem_vendor`, `subsystem_device`,
+`revision`, `power_state` (якщо доступний) і symlink `driver`
+у `/sys/bus/pci/devices/$BDF/`. Перевірити owner-observed
+`SUBSYS_33511462` (очікуване subsystem `1462:3351`), але не
+стверджувати точний MSI SKU без фізичної наклейки або VBIOS identity.
+
+Під R580, лише якщо `nvidia-smi` справді доступний:
+```sh
+nvidia-smi -q
+nvidia-smi --query-gpu=name,pci.bus_id,pci.device_id,pci.sub_device_id,vbios_version,memory.total,driver_version --format=csv
+```
+Якщо утиліта/драйвер недоступні — записати `NOT_AVAILABLE`, не
+встановлювати proprietary driver лише заради отримання цього виводу.
+
+### B. Native Nouveau boot — окреме тестове завантаження
+
+До запуску workloads:
+```sh
+uname -a
+cat /proc/cmdline
+modinfo nouveau
+modinfo -F firmware nouveau | sort -u
+lspci -Dnnk -d 10de:1c82
+ls -l /dev/dri /dev/dri/by-path
+sudo journalctl -b -k -o short-monotonic --no-pager > nouveau-kernel.log
+```
+
+Перевірити, що `Kernel driver in use: nouveau` прив'язаний саме
+до `10de:1c82` і відповідний `/dev/dri/renderD*` має symlink на
+той самий PCI BDF. Не плутати Intel iGPU із GP107. Не завантажувати
+Nouveau одночасно з proprietary NVIDIA KMD на цій карті.
+
+**Atomic KMS regression gate:** зафіксувати kernel source package/commit.
+Mainline fix `ed7fb901fce31588bd12ab95adc36ebcb51bc8ea` увійшов у
+v7.4-rc3; однак `Cc: stable` не гарантує backport у поточне distro
+ядро. У перевірених stable гілках 7.3.y та 7.2.y на 2026-11-27
+backport ще не було. Для Kali `7.2.15+kali-amd64` не робити
+припущень за номером: перевірити відповідний source package/patch set.
+`nouveau.atomic=0` — лише тимчасовий діагностичний boot для ядра
+без fix, якщо atomic regression саме відтворюється; не постійний параметр.
+
+Read-only DRM enumeration:
+```sh
+drm_info
+modetest -M nouveau -c -p
+```
+`modetest -c -p` використовується лише для переліку connectors/CRTCs/
+planes; не додавати `-s` і не запускати modeset у первинному аудиті.
+
+### C. Окремі графічні та compute smoke tests
+
+Пакети за назвами дистрибутива: `pciutils`, `mesa-utils`,
+`vulkan-tools`, `drm-info`, `libdrm-tests`, `clinfo`,
+`glmark2` або `vkmark`. Відсутній пакет позначати
+`NOT_AVAILABLE`, не підміняти тест CPU renderer-ом.
+
+**OpenGL:**
+```sh
+glxinfo -B
+glmark2
+```
+Перевірити renderer/vendor/device; `llvmpipe` означає software path,
+а не GP107 acceleration. За headless/Wayland/remote session можливий
+інший результат — фіксувати session type.
+
+**Гібридна графіка Intel HD 530 + GP107.** На цій машині desktop може
+працювати через Intel GPU, тому звичайний `glxinfo` або перший Vulkan
+device не доводить, що тестується GTX 1050 Ti. Після отримання BDF з
+`lspci -Dnnk -d 10de:1c82` використовувати PCI selector Mesa
+(приклад для `0000:01:00.0`):
+```sh
+DRI_PRIME=pci-0000_01_00_0 glxinfo -B
+DRI_PRIME=pci-0000_01_00_0 glmark2
+DRI_PRIME=pci-0000_01_00_0! vulkaninfo --summary
+DRI_PRIME=pci-0000_01_00_0! vkcube
+```
+Замінити BDF у selector на фактично виявлений; не припускати, що він
+завжди `0000:01:00.0`. Для Vulkan суфікс `!` обмежує видимі застосунку
+пристрої вибраним GPU. У кожному виводі перевірити `deviceName`,
+`driverName` і PCI identity; якщо показано Intel або llvmpipe, це не
+GP107 runtime witness. Джерело: [Mesa `DRI_PRIME` documentation](https://docs.mesa3d.org/envvars.html).
+
+**Vulkan:**
+```sh
+vulkaninfo --summary
+vkcube
+```
+Зафіксувати `deviceName`, `driverName`, `driverInfo`,
+`apiVersion`, device extensions і exit status. Для GP107 за
+перевіреним per-device Mesa source очікується Vulkan 1.3, але значення
+з `vulkaninfo` є остаточним runtime witness.
+
+Для окремого детального проходу NVK debug flags запускати по одному:
+```sh
+NVK_DEBUG=vm vkmark
+NVK_DEBUG=push,push_sync vkmark
+NAK_DEBUG=print vkmark
+```
+Не змішувати ці журнали в один прогін; `NAK_DEBUG=print` може
+генерувати великий вивід.
+
+**OpenCL/Rusticl:**
+```sh
+RUSTICL_ENABLE=nouveau clinfo -l
+RUSTICL_ENABLE=nouveau clinfo
+```
+Переконатися, що OpenCL device — саме Nouveau/GP107, а не CPU/llvmpipe.
+Після enumeration запустити власний vector-add і незалежно перевірити
+кожен результат на CPU; лише потім — потрібний subset OpenCL CTS.
+Rusticl не є CUDA. Відсутність Rusticl у distro build фіксувати як
+`NOT_AVAILABLE`, не як доказ апаратної несумісності.
+
+**Video capability (лише запити):**
+```sh
+vainfo
+vdpauinfo
+```
+Для NV130 decode TODO або відсутній API — валідний результат
+`NOT_AVAILABLE`; не намагатися вмикати невідомі firmware paths.
+
+**Power/telemetry (тільки читання):**
+```sh
+sensors
+find /sys/class/drm -maxdepth 7 -path '*/device/hwmon/*' -type f
+```
+Якщо доступні debugfs pstate/hwmon counters, читати їх без запису.
+Відсутні частоти/температура/потужність позначати `NOT_MEASURED`;
+не виводити реальні clocks із VBIOS datasheet чи номіналу виробника.
+
+### D. Інструменти для статичного дослідження — що використовувати
+
+- **Linux source / NVKM:** `gp107.c`, `ctxgp107.c`, `gf100.c`,
+  chipset map у `device/base.c`, а також GP107-relevant FIFO/FB/MMU/
+  display code. Для кожного висновку фіксувати commit SHA.
+- **NVIDIA open-gpu-doc:** `classes/3d/README.txt`, `clc097.h`,
+  `clc197.h`, `clc0c0.h`, `clc1c0.h`, `clc1c0qmd.h`.
+  Це public class ABI/field layout, не повна hardware spec.
+- **Mesa source:** `src/nouveau/vulkan/nvk_physical_device.c`,
+  NVK/NAK shader paths і старий Nouveau Gallium path; зіставляти
+  pinned revisions.
+- **envytools:** `nvbios` для статичного декодування вже наявної копії
+  VBIOS; `rnn`/RNND для відомих register/FIFO fields; `demmt`
+  для парсингу вже отриманих command-stream captures. `envydis`
+  не вважати повним GP107 SASS decoder.
+- **Ghidra/REA:** статичний аналіз host-side R580 `libcuda.so`/ELF,
+  із чітким відділенням proprietary ABI facts від Nouveau.
+- **CUDA Binary Utilities 12.x:** `nvdisasm`/`cuobjdump` — закриті
+  контрольні утиліти для SM61 cubin/SASS, не частина відкритого драйвера.
+- **nva:** не запускати на першому bring-up. Це прямий register-access
+  інструмент; будь-які MMIO write/reset/devinit/Falcon scripts заборонені
+  на робочій карті в цій фазі.
+
+Не копіювати vendor source/decompiled code або firmware blobs у цей repo.
+Зберігати лише власні traces, ABI факти, посилання, hashes і мінімальні
+reproducers із відповідними ліцензіями.
+
+### F. GP107 reset/boot matrix та evidence bundle
+
+Якщо тестовий стенд стабільний, окремо виконати cold boot, warm reboot
+і suspend/resume з D3. Для кожного стану зберігати повний kernel log
+і шукати `nouveau|nvkm|SEC2|409800|PRI|FAULT|TIMEOUT`. Це окремий
+від atomic KMS регресії старий GP107/GP108 GR-init quirk; не писати
+в регістри для його діагностики.
+
+Повернути один evidence bundle з UTC timestamp, точним PCI BDF/subsystem,
+VBIOS version/hash (якщо безпечно доступний), kernel/Mesa/LLVM/libdrm/
+linux-firmware package versions, повними logs, командами, exit codes
+і SHA-256 кожного артефакту. Не публікувати serials, MAC addresses,
+usernames, повну конфігурацію хоста або firmware binaries.
+
+Під час перевірки Desktop Commander усі зареєстровані пристрої були Offline,
+тому фізичний test у цьому сеансі не виконаний. Цей розділ — runbook, не runtime
+результат. Evidence labels лишаються `NOT_AVAILABLE`, `NOT_MEASURED`,
+`FAILED`, `PASSED`, `UNPROVEN` — не зводити їх до одного PASS/FAIL.
+
+Джерела:
+- [Mesa Rusticl](https://docs.mesa3d.org/rusticl.html)
+- [Mesa environment variables / RUSTICL_ENABLE](https://docs.mesa3d.org/envvars.html)
+- [llama.cpp Vulkan build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
+- [Linux Nouveau GP107 compute class](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/gr/gp107.c)
+- [Mesa NVK Vulkan API version selection](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+
+
+
+## 18. NVENC/NVDEC: від можливостей кремнію до відкритого API
+
+### 18.1. Hardware capability GTX 1050 / 1050 Ti
+
+NVIDIA Video Encode/Decode Support Matrix прямо перелічує GeForce GTX 1050 /
+1050 Ti як Pascal. У таблиці це покоління має NVENC 6th Gen та NVDEC 3rd Gen.
+Однак там є два рядки з однаковою маркетинговою назвою та різними значеннями
+у codec columns. Тому без точного board SKU/VBIOS не переносити точні
+параметри 10-bit, 4:4:4, lossless, B-frames або конкретні decode formats
+з одного рядка на інший.
+
+NVIDIA FFmpeg documentation підтверджує, що Pascal покоління входить у
+сімейства, для яких існують NVENCODE та NVDECODE API шляхи. Це означає,
+що vendor stack має окремий hardware encode/decode маршрут; не означає,
+що його реалізує відкритий Nouveau userspace stack.
+
+### 18.2. Що реально реалізовано в Nouveau для GP107
+
+Поточний Linux Nouveau source має GP107 engine constructors:
+- chipset profile викликає `gm107_nvenc_new` і `gm107_nvdec_new`;
+- але саме по собі це лише реєстрація NVKM engine objects.
+
+Source details:
+- `nvkm/engine/nvenc/gm107.c`: `gm107_nvenc_flcn` порожній;
+  fwif використовує лише `gm107_nvenc_nofw` і не оголошує firmware
+  dependencies чи encode command implementation.
+- `nvkm/engine/nvdec/gm107.c`: є базові generic Falcon controls, але
+  firmware interface також містить лише `gm107_nvdec_nofw`; це не
+  повноцінна VP/codec implementation і не userspace decode API.
+- Nouveau VideoAcceleration lists engines only through NV126; GP107/NV137
+  не має listed VP engine. Для VP6+ codec APIs у таблиці стоїть TODO;
+  NV130 accelerated video decode у FeatureMatrix також TODO.
+- NVK Vulkan Video H.264 path із Mesa 26.3 залежить від GSP/Turing+,
+  тому не є шляхом для Pascal GP107 (див. розділ 2.2).
+
+Отже capability matrix має розділяти три рівні:
+
+| Рівень | GTX 1050 Ti / GP107 |
+|---|---|
+| Silicon | Vendor matrix: NVENC 6th Gen, NVDEC 3rd Gen |
+| Proprietary vendor API | NVENCODE/NVDECODE у R580 — окремий контрольний маршрут, потрібен фізичний test |
+| Open Nouveau API | NVENC userspace encode не реалізований у перевіреному GP107 stub; Nouveau VP decode API для NV130 не підтверджений / TODO |
+
+Не називати GP107 encode/decode «відкрито підтриманими» лише через
+наявність NVENC/NVDEC silicon чи constructor у `device/base.c`.
+
+### 18.3. R580 + FFmpeg: API-version mismatch не дорівнює відсутності NVENC
+
+У поточному FFmpeg source таблиця minimum driver requirements визначає:
+- NVENC API 13.1 → driver 610.00;
+- NVENC API 13.0 → driver 570.0.
+
+Pascal останньою підтримуваною proprietary гілкою лишається R580; user /
+community reports для R580 вказують NVENC API 13.0. Тому FFmpeg 9 build,
+скомпільований з API 13.1 headers, може відхилити R580 з повідомленням
+`Required: 13.1 Found: 13.0`, хоча сама карта має NVENC hardware.
+Це SDK/header compatibility gate, не доказ дефекту silicon.
+
+**Vendor-control test для локального агента (лише на окремому R580 boot):**
+- не знижувати системний FFmpeg;
+- створити окремий build/worktree FFmpeg з NVENC API 13.0 headers
+  (або використати відомий FFmpeg 8.1.2 control build);
+- зберегти `ffmpeg -buildconf`, NVENC header/API version, driver version,
+  exact test command, полный stdout/stderr і exit status;
+- протестувати NVENC окремо від NVDEC;
+- не змішувати цей результат із Nouveau і не міняти proprietary driver
+  лише заради тесту.
+
+Поки немає фізичного R580 + GP107 test, proprietary encode/decode status
+для цієї конкретної плати залишається `UNPROVEN`, навіть якщо hardware
+matrix підтверджує наявність блоків.
+
+### 18.4. GP107 firmware inventory: engine bring-up, не reclocking
+
+Поточний upstream linux-firmware `WHENCE` перелічує такі GP107 blobs:
+- GR: `fecs_bl/data/inst/sig`, `gpccs_bl/data/inst/sig`,
+  `sw_ctx.bin`, `sw_nonctx.bin`;
+- GR paths `sw_bundle_init.bin` та `sw_method_init.bin` — symlinks
+  на спільні GP102 blobs;
+- ACR files `bl.bin`, `ucode_load.bin`, `ucode_unload.bin`,
+  `unload_bl.bin` — GP102 symlinks;
+- SEC2 `desc/image/sig` та `*-1` variants — GP102 symlinks;
+- NVDEC `scrubber.bin` — GP102 symlink.
+
+Це підтверджує upstream firmware inventory для GR/ACR/SEC2/Falcon
+initialization і наявність scrubber blob у kernel firmware package.
+Це не доводить, що ці файли встановлені на локальній системі або фактично
+завантажені у runtime. Перевіряти package manifest, symlink targets,
+hashes та kernel firmware-load messages окремо.
+
+Критично: **firmware для GR/ACR/SEC2 bring-up ≠ firmware для reclocking**.
+Наявність цих blobs не усуває Pascal signed-firmware limitation і не
+робить engine/memory reclocking доступним у Nouveau. Не прошивати,
+не копіювати proprietary driver firmware у репозиторій і не виконувати
+MMIO writes.
+
+Read-only firmware witness після native Nouveau boot:
+```sh
+modinfo -F firmware nouveau | grep -E '^nvidia/(gp107|gp102)/'
+find -L /lib/firmware/nvidia/gp107 /lib/firmware/nvidia/gp102 -type f -printf '%p %s bytes\\n' 2>/dev/null | sort
+ls -l /lib/firmware/nvidia/gp107/gr /lib/firmware/nvidia/gp107/sec2 /lib/firmware/nvidia/gp107/acr 2>&1
+sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|sec2|acr'
+```
+
+`modinfo` показує declared dependencies; фактичне завантаження доводить
+лише kernel journal. Усі результати позначати окремо: `DECLARED`,
+`FILE_PRESENT`, `SYMLINK_RESOLVED`, `LOAD_OBSERVED`, `UNPROVEN`.
+
+Джерела:
+- [NVIDIA Video Encode/Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix-new)
+- [NVIDIA FFmpeg documentation — Pascal API family support](https://developer.nvidia.com/ffmpeg)
+- [Linux GP107 NVENC placeholder](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
+- [Linux GP107 NVDEC placeholder](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c)
+- [Linux GP107 chipset profile](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
+- [linux-firmware WHENCE — GP107 GR/ACR/SEC2/NVDEC paths](https://kernel.googlesource.com/pub/scm/linux/kernel/git/firmware/linux-firmware/+/refs/heads/main/WHENCE)
+- [Nouveau VideoAcceleration engine list/API status](https://nouveau.freedesktop.org/VideoAcceleration.html)
+- [FFmpeg NVENC API minimum driver logic](https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/nvenc.c)
+- [R580/Pascal FFmpeg 9 API 13.1 incompatibility report](https://github.com/FFmpeg-Builds/FFmpeg-Builds/issues/652)
+
+
