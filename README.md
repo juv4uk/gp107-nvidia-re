@@ -48,7 +48,7 @@
 | [`26-rea-p1-uvm-alloc-enum-and-alignment.md`](docs/26-rea-p1-uvm-alloc-enum-and-alignment.md) | Enum-розгалуження `uvm_rm_mem_alloc` і виправлення disalignment у `channel_pool_add`; RM-семантика лишається UNPROVEN |
 | [`27-rea-p1-uvm-object-field-aliasing.md`](docs/27-rea-p1-uvm-object-field-aliasing.md) | Offset `+0x1e0` має різні базові об'єкти в `nvidia-uvm.ko`; RM-handle/feature-flag лишаються UNPROVEN |
 | [`28-rea-p1-uvm-channel-manager-callers.md`](docs/28-rea-p1-uvm-channel-manager-callers.md) | 5 call-site `uvm_channel_manager_create`: `rdi=parent`, `rsi=&parent+0x19f8`; RM-семантика лишається UNPROVEN |
-| [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | Перший C11-код: fail-closed sysfs identity + опційний read-only MMIO-сеам; фізичний MMIO NOT_RUN |
+| [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | C11 fail-closed sysfs identity; фізичний MMIO безумовно denied / NOT AUTHORIZED / NOT RUN |
 | [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | Публічний PCI config-header і машиночитаний ledger; RM/boot0 лишаються UNPROVEN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
