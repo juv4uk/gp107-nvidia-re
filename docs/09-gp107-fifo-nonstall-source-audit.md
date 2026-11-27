@@ -188,7 +188,7 @@ compile-time стелі `CONFIG_NOUVEAU_DEBUG >= 5`; це треба перев�
    - `RUNLIST_ID_NOT_OBSERVED`, якщо потрібного TOP record немає;
    - `CHANNEL_RUNLIST_CORRELATED` — тільки коли конкретний GR/compute user channel прив'язаний source-backed/runtime до цього runlist;
    - `NONSTALL_EVENT_OBJECT_REGISTERED` — лише коли callback `nvkm_uchan_uevent()` із `args->v0.type == NVIF_CHAN_EVENT_V0_NON_STALL_INTR` завершився успішно; це ще не ALLOW;
-   - TOP row із `runlist 0` чи nonzero сам по собі не переводить channel/event стани в ZERO/ACTIVE;
+   - `NONSTALL_EVENT_ALLOWED` — тільки за окремим witness успішного `NVIF_EVENT_V0_ALLOW`;
    - жодного `Tested-by` від агента/LLM.
 
 ### Mesa/NVK trigger caution
@@ -240,7 +240,7 @@ NVK physical-device enumeration є лише **candidate trigger** для тим�
 - Не змінювати системний driver, конфігурацію хоста або завантаження без owner-дії.
 
 
-## 6. Reproducible upstream source references
+## 7. Reproducible upstream source references
 
 All links below resolve against upstream stable tag `v7.2.15`, commit
 [497791a0a96b866d90add64041c47acdff49cae6](https://github.com/gregkh/linux/commit/497791a0a96b866d90add64041c47acdff49cae6):
