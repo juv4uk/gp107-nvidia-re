@@ -22,7 +22,7 @@
 | `SizeOf(Tnv_pci_info) = 12`, `SizeOf(Tnv_card_info) = 72` | **статично, компілятором** | `TAssertPciInfo12` / `TAssertCardInfo72` у `pascal/nv_abi.pas`: хибний розклад дає `array[0..-1]` і падіння збірки. Гейт додатково робить negative witness (підміна `minor_number` на `QWord`) і вимагає саме `Upper bound of range is less than lower bound` |
 | `NV_IOC_CARD_INFO=$c90046c8`, `NV_IOC_SYS_PARAMS=$c00846d6`, `NV_IOC_REGISTER_FD=$c00446c9` | **статично + self-check** | ті самі значення обчислюються `NvIOC_RDWR()`, звіряються перед будь-яким ioctl |
 | `BaseUnix` імпортує `FPC_SYSC_IOCTL` / `FPC_SYSC_MMAP` | **статично** | `ppudump /usr/lib/x86_64-linux-gnu/fpc/3.2.2/units/x86_64-linux/rtl/baseunix.ppu` |
-| Бінарник STATIC, без `DT_NEEDED` | **статично, ELF** | `file` → `statically linked`; `readelf -d` → немає `NEEDED`; перевіряється гейтом |
+| ELF статичний, без `DT_NEEDED` | **статично доведено** | `file` → `statically linked`; `readelf -d` → немає `NEEDED`; це доводить відсутність динамічних залежностей, але не відсутність статично скомпонованої libc |
 | `block_size_bytes = 0x08000000` (134217728) | **runtime** | sysfs, прочитаний через `FpOpen`/`FpRead`; потім прийнято `NV_ESC_SYS_PARAMS` |
 | `10de:1c82 @ 0000:01:00.0`, `minor=0`, BAR0 `0xee000000+0x1000000`, FB `0xd0000000+0x10000000` | **runtime** | `NV_ESC_CARD_INFO`, той самий результат, що й у C-пробі |
 | `NV_ESC_REGISTER_FD` на gpu fd з control fd як 4-байтовим аргументом | **runtime** | probe відкриває `/dev/nvidia0`, виконує ioctl; помилка друкується, але не приховується |
@@ -35,9 +35,10 @@
 У `wsm-lazarus/src/wsm.elfpublish.pas:17` прямо зафіксовано, що FPC 3.2.2
 **не експортує `fpFChmod`** — там POSIX `fchmod` іде через libc. Тому ми не
 робимо висновок з імені модуля, а перевіряємо **готовий артефакт**: статичний
-ELF без `DT_NEEDED`. Для конкретних `FpOpen`, `FpIOCtl`, `FpRead`, `FpClose`
-у `baseunix.ppu` присутні імпорти `FPC_SYSC_*`, тобто вони справді йдуть
-напряму через syscall ABI.
+ELF без `DT_NEEDED`. Це доводить відсутність динамічних ELF-залежностей, але
+не доводить відсутність будь-якого статично скомпонованого коду libc. Для
+конкретних `FpOpen`, `FpIOCtl`, `FpRead`, `FpClose` у `baseunix.ppu` присутні
+імпорти `FPC_SYSC_*`, тобто саме ці операції йдуть напряму через syscall ABI.
 
 ## Pin інструментарію
 
@@ -59,7 +60,7 @@ bash scripts/test-pascal-probe.sh
 Очікуваний фінальний рядок:
 
 ```text
-PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven
+PASCAL-PROBE-GATE-OK fpc=3.2.2 static=yes no-dynamic-deps=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven
 ```
 
 Гейт передає три стани окремо: збірка (compile-time ABI-доказ), runtime

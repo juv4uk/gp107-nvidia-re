@@ -54,7 +54,9 @@ var
   subpars:  Tnv2080_alloc_params;
   arch:     Tarch_info_params;
   ctrl:     Tnvos54;
-  gpu_id:   LongWord;
+  gpu_id:       LongWord;
+  rm_gpu_count: Integer;
+  pci:          Tpci_identity;
   i:        Integer;
 
 procedure Die(const step: string; code: cint);
@@ -88,6 +90,19 @@ begin
     Die('GPU minor_number out of range', card.minor_number);
   WriteLn('GPU device node           : ', gpu_path);
 
+  { Cross-check the driver's PCI identity against the independent sysfs view. }
+  if not ReadPciConfig(card, pci) then
+    Die('read PCI config for selected GP107', fpgeterrno);
+  if (pci.vendor <> card.pci.vendor_id) or
+     (pci.device <> card.pci.device_id) or
+     (pci.bar0 <> LongWord(card.reg_address)) then
+  begin
+    WriteLn(StdErr, 'RM-ARCH-FAIL step=PCI identity cross-check');
+    Halt(2);
+  end;
+  WriteLn('PCI config identity       : ', IntToHex(pci.vendor, 4), ':',
+          IntToHex(pci.device, 4), ' BAR0=0x', IntToHex(pci.bar0, 8));
+
   ctl_fd := FpOpen('/dev/nvidiactl', O_RDWR or O_CLOEXEC, 0);
   if ctl_fd < 0 then Die('open /dev/nvidiactl', fpgeterrno);
   gpu_fd := FpOpen(PChar(gpu_path), O_RDWR or O_CLOEXEC, 0);
@@ -113,17 +128,31 @@ begin
   if ctrl.status <> NV_SUCCESS then DieStatus('GPU_GET_PROBED_IDS', ctrl.status);
 
   gpu_id := 0;
+  rm_gpu_count := 0;
   for i := 0 to NV_MAX_PROBED_GPUS - 1 do
     if probed.gpu_ids[i] <> LongWord(-1) then
     begin
-      gpu_id := probed.gpu_ids[i];
-      Break;
+      Inc(rm_gpu_count);
+      if rm_gpu_count = 1 then
+        gpu_id := probed.gpu_ids[i];
     end;
-  if gpu_id = 0 then
+  if rm_gpu_count = 0 then
   begin
     WriteLn(StdErr, 'RM-ARCH-FAIL step=GPU_GET_PROBED_IDS no valid gpu id');
     Halt(2);
   end;
+  if rm_gpu_count <> 1 then
+  begin
+    WriteLn(StdErr, 'RM-ARCH-FAIL step=GPU_GET_PROBED_IDS ambiguous count=',
+            rm_gpu_count, ' (PCI-to-RM id mapping not proven)');
+    Halt(2);
+  end;
+  if gpu_id = 0 then
+  begin
+    WriteLn(StdErr, 'RM-ARCH-FAIL step=GPU_GET_PROBED_IDS invalid gpu_id=0');
+    Halt(2);
+  end;
+  WriteLn('RM GPU candidate count   : ', rm_gpu_count);
 
   FillChar(attach, SizeOf(attach), 0);
   for i := 0 to NV_MAX_PROBED_GPUS - 1 do

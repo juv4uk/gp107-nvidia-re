@@ -28,6 +28,7 @@ docs/
   02-cuMemAlloc-and-launch.md  allocation (UVM) and kernel launch (no ioctl)
   03-fpc-clean-room-probe.md   FPC 3.2.2 substrate, evidence states, toolchain pin
   04-bar-identity.md           G0/G1 witness: PCI identity vs NV_ESC_CARD_INFO, BAR0 fail-closed
+  05-gp107-capability-matrix.md evidence-based GP107 capability inventory
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
@@ -52,7 +53,7 @@ make -C probes
 sudo ./probes/01_min_cuinit          # or run as a user in the `video` group
 echo 0xc90046c8 | python3 scripts/decode_ioctl.py
 
-make test                            # FPC 3.2.2 pin + static-ELF + runtime witness (three probes)
+make test                            # FPC 3.2.2 pin + ABI negatives + 3 runtime probes + ELF checks
 make gate-root                       # optional root witness: mmap EINVAL, BOOT0 UNPROVEN
 sudo ./pascal/02_bar_identity        # ручний root-свідок
 ```

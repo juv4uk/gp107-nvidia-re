@@ -53,7 +53,7 @@ got="$("$FPC_BIN" -iV)"
 
 # 2) Firewall: no GUI, no libc link directive, no thread manager dependency.
 #    BaseUnix wrappers are syscall imports only where FPC_SYSC_* exists;
-#    the final ELF check below is the real proof of libc-freedom.
+#    the final ELF check below proves absence of dynamic dependencies, not static libc absence.
 step 'firewall (no LCL / libc link / cthreads)'
 if grep -nHEn '(Forms|Controls|LCL|Interfaces|cthreads)|\{\$linklib[[:space:]]+c\}|external[[:space:]]+['\''"]c['\''"]' \
       pascal/*.pas; then
@@ -83,6 +83,10 @@ grep -Fq 'SelectTargetCard(card, matches, valid_cards)' \
   pascal/03_rm_arch_info.pas || fail 'нема вибору цільової картки через nv_device'
 grep -Fq 'GpuDevicePath(card)' pascal/03_rm_arch_info.pas \
   || fail 'шлях GPU-пристрою не похідний від minor_number'
+grep -Fq 'ReadPciConfig(card, pci)' pascal/03_rm_arch_info.pas \
+  || fail 'нема незалежного PCI config cross-check'
+grep -Fq 'rm_gpu_count <> 1' pascal/03_rm_arch_info.pas \
+  || fail 'нема fail-closed перевірки неоднозначного RM GPU-ID list'
 
 # 4) Clean build: compile-time SizeOf asserts live in nv_abi.pas.
 step 'clean build'
@@ -164,9 +168,17 @@ fi
 step 'runtime witness (03_rm_arch_info)'
 timeout 20s "./$RM_BIN" >"$RM_OUT"
 cat "$RM_OUT"
+if ! grep -Eq '^NV_ESC_CARD_INFO target[[:space:]]+: 10DE:1C82 @ [[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}[.][0-7] minor=[0-9]+$' "$RM_OUT"; then
+  fail 'NV_ESC_CARD_INFO did not identify one GP107 with a PCI BDF and minor'
+fi
+if ! grep -Eq '^GPU device node[[:space:]]+: /dev/nvidia[0-9]+$' "$RM_OUT"; then
+  fail 'GPU device node was not derived from the selected minor'
+fi
+grep -Fq 'PCI config identity       : 10DE:1C82 BAR0=0xEE000000' "$RM_OUT" \
+  || fail 'PCI config identity cross-check marker is missing'
+grep -Fq 'RM GPU candidate count   : 1' "$RM_OUT" \
+  || fail 'RM GPU-ID list was not uniquely resolved'
 for marker in \
-  'NV_ESC_CARD_INFO target   : 10DE:1C82 @ 0000:01:00.0 minor=0' \
-  'GPU device node           : /dev/nvidia0' \
   'GPU_ATTACH_IDS            : gpu=0x100 status=0 deviceInstance=0 subDeviceInstance=0' \
   'NV2080_CTRL_MC_GET_ARCH_INFO: arch=0x00000130 impl=0x00000007 rev=0x000000A1 subrev=0x02' \
   'BOOT0: UNPROVEN (RM arch info is a separate channel)' \
@@ -183,4 +195,4 @@ for b in "$BIN" "$BAR_BIN" "$RM_BIN"; do
   fi
 done
 
-echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-libc=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven'
+echo 'PASCAL-PROBE-GATE-OK fpc='"$got"' static=yes no-dynamic-deps=yes gpu=10de:1c82 bar0=fail-closed rmarch=runtime-proven boot0=unproven'
