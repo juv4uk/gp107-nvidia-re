@@ -28,14 +28,15 @@ PCI ID перевіряється за [envytools PCI ID database](https://githu
 
 Офіційна сторінка Nouveau описує Vulkan як підтримуваний на Kepler і новіших GPU; Mesa вказує мінімум Linux 6.6 для NVK. Важливо не переносити загальне формулювання Mesa про Vulkan 1.4 на Pascal без перевірки per-device API version: у поточному `src/nouveau/vulkan/nvk_physical_device.c` функція `nvk_get_vk_version()` повертає Vulkan 1.3 для всіх `cls_eng3d < TURING_A`, оскільки `hostImageCopy`, необхідний для Vulkan 1.4, у цій реалізації доступний лише на Turing+. GP107/Pascal належить до цієї гілки й тому має повідомляти **Vulkan 1.3**, а не 1.4. Окремо `nvk_is_conformant()` допускає discrete GPUs від Kepler до Ada, тож Pascal входить у conformant-набір, але з API version 1.3. Остаточний runtime proof для нашої плати — `apiVersion` із `vulkaninfo --summary` або Vulkan physical-device properties на реальному GP107.
 
-Поточний код для цього висновку зафіксований на snapshot commit [`b602686e3008239284315b67f7aea226bb8d2af2`](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c): перевірки `cls_eng3d < MAXWELL_A` → 1.2, `cls_eng3d < TURING_A` → 1.3, інакше → 1.4; окрема conformance-функція включає Kepler–Ada та Blackwell B.
+Поточний код для цього висновку зафіксований на snapshot commit [`41cf87c44dde834b1fcd5817bb6712f97875e891`](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c): перевірки `cls_eng3d < MAXWELL_A` → 1.2, `cls_eng3d < TURING_A` → 1.3, інакше → 1.4; окрема conformance-функція включає Kepler–Ada та Blackwell B.
 
 Джерела:
 - [Nouveau — current status](https://nouveau.freedesktop.org/)
 - [Mesa — NVK](https://docs.mesa3d.org/drivers/nvk.html)
 - [Collabora: NVK enabled for Maxwell, Pascal and Volta, 2025-04-22](https://www.collabora.com/news-and-blog/news-and-events/nvk-enabled-for-maxwell,-pascal,-and-volta-gpus.html)
 - [Linux kernel — Nouveau driver documentation](https://github.com/torvalds/linux/blob/master/Documentation/gpu/nouveau.rst)
-- [Mesa NVK physical-device API-version and conformance logic (pinned source snapshot)](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+- [Mesa NVK physical-device API-version and conformance logic (pinned source snapshot)](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c)
+- [Mesa NVK physical-device queue-family flags (same pinned source snapshot)](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c#1664)
 
 ## 2.1. OpenCL через Mesa Rusticl: окремий експериментальний шлях
 
@@ -448,6 +449,14 @@ source commits:
 - accelerated video decoding (VDPAU/XvMC): `TODO`;
 - power management: `TODO`;
 - compute: `WIP`;
+
+Важлива межа: `Compute: WIP` у загальній Nouveau Feature Matrix не слід
+ототожнювати з відсутністю Vulkan compute у Mesa NVK. У перевіреному Mesa
+source snapshot нижче NVK оголошує queue family з `VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT`.
+Це статичний source evidence для Vulkan API path, а не доказ успішного
+виконання compute workload на конкретній GTX 1050 Ti: потрібні runtime
+queue properties, мінімальний compute dispatch і перевірка результату.
+
 - базовий 2D, 3D і KMS — `DONE`.
 
 NV130 — сімейство, а не конкретна гарантія кожної функції для кожної
@@ -702,7 +711,7 @@ GTX 1050 Ti та її subsystem/VBIOS варіанті.
 
 Є важлива відмінність між поточною загальною Mesa NVK documentation і
 per-device version selection у коді Mesa. У source snapshot
-[`b602686e3008239284315b67f7aea226bb8d2af2`](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c):
+[`41cf87c44dde834b1fcd5817bb6712f97875e891`](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c):
 
 - `nvk_get_vk_version()` повертає Vulkan 1.3, коли
   `info->cls_eng3d < TURING_A`; Pascal GP107 належить до цієї категорії.
@@ -719,7 +728,7 @@ bring-up. Не переносити загальне заголовне форм
 на кожну архітектуру автоматично.
 
 Джерело:
-- [Mesa pinned source — per-device NVK API version and conformance predicates](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/b602686e3008239284315b67f7aea226bb8d2af2/src/nouveau/vulkan/nvk_physical_device.c)
+- [Mesa pinned source — per-device NVK API version and conformance predicates](https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/41cf87c44dde834b1fcd5817bb6712f97875e891/src/nouveau/vulkan/nvk_physical_device.c)
 
 
 ## 14. CUDA SM61 та незалежний Pascal eGPU reference
@@ -847,7 +856,7 @@ capability matrix.
 | Proprietary R580 legacy codec API | Окремий vendor control path | перевіряти тільки на R580 у власній сесії |
 
 Джерела:
-- [NVIDIA Video Encode and Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix-new)
+- [NVIDIA Video Encode and Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-support-matrix)
 - [Linux GP107 NVENC placeholder](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
 - [Linux GP107 NVDEC placeholder](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c)
 - [Linux GP107 chipset registration](https://github.com/torvalds/linux/blob/9437ee8b6cf607e883b36e44bd755968daaebd48/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
