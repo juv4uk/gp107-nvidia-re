@@ -784,7 +784,7 @@ NVIDIA позначає Maxwell, Pascal і Volta як feature-complete для CU
 
 ## 16. NVENC/NVDEC: від можливостей кремнію до відкритого API
 
-### 18.1. Hardware capability GTX 1050 / 1050 Ti
+### 16.1. Hardware capability GTX 1050 / 1050 Ti
 
 NVIDIA Video Encode/Decode Support Matrix прямо перелічує GeForce GTX 1050 /
 1050 Ti як Pascal. У таблиці це покоління має NVENC 6th Gen та NVDEC 3rd Gen.
@@ -800,7 +800,7 @@ NVIDIA Video Codec Support Matrix підтверджує наявність ві
 сумісності Pascal із цією новою SDK. Для GP107 контрольний proprietary шлях
 потрібно перевіряти на останньому Pascal-сумісному R580/API 13.0.
 
-### 18.2. Що реально реалізовано в Nouveau для GP107
+### 16.2. Що реально реалізовано в Nouveau для GP107
 
 Поточний Linux Nouveau source має GP107 engine constructors:
 - chipset profile викликає `gm107_nvenc_new` і `gm107_nvdec_new`;
@@ -830,7 +830,7 @@ Source details:
 Не називати GP107 encode/decode «відкрито підтриманими» лише через
 наявність NVENC/NVDEC silicon чи constructor у `device/base.c`.
 
-### 18.3. R580 + FFmpeg: API-version mismatch не дорівнює відсутності NVENC
+### 16.3. R580 + FFmpeg: API-version mismatch не дорівнює відсутності NVENC
 
 У поточному FFmpeg source таблиця minimum driver requirements визначає:
 - NVENC API 13.1 → driver 610.00;
@@ -847,7 +847,7 @@ community reports для R580 вказують NVENC API 13.0. Тому FFmpeg 9
 - створити окремий build/worktree FFmpeg з NVENC API 13.0 headers
   (або використати відомий FFmpeg 8.1.2 control build);
 - зберегти `ffmpeg -buildconf`, NVENC header/API version, driver version,
-  exact test command, полный stdout/stderr і exit status;
+  exact test command, повний stdout/stderr і exit status;
 - протестувати NVENC окремо від NVDEC;
 - не змішувати цей результат із Nouveau і не міняти proprietary driver
   лише заради тесту.
@@ -856,7 +856,7 @@ community reports для R580 вказують NVENC API 13.0. Тому FFmpeg 9
 для цієї конкретної плати залишається `UNPROVEN`, навіть якщо hardware
 matrix підтверджує наявність блоків.
 
-### 18.4. GP107 firmware inventory: engine bring-up, не reclocking
+### 16.4. GP107 firmware inventory: engine bring-up, не reclocking
 
 Поточний upstream linux-firmware `WHENCE` перелічує такі GP107 blobs:
 - GR: `fecs_bl/data/inst/sig`, `gpccs_bl/data/inst/sig`,
@@ -897,7 +897,7 @@ sudo journalctl -b -k --no-pager | grep -Ei 'nouveau|nvkm|firmware|fecs|gpccs|se
 
 Джерела:
 - [NVIDIA Video Encode/Decode Support Matrix](https://developer.nvidia.com/video-encode-decode-gpu-support-matrix-new)
-- [NVIDIA FFmpeg documentation — Pascal API family support](https://developer.nvidia.com/ffmpeg)
+- [NVIDIA Video Codec SDK 13.1 FFmpeg guide — Turing+ support boundary](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/)
 - [Linux GP107 NVENC placeholder](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/nvenc/gm107.c)
 - [Linux GP107 NVDEC placeholder](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/nvdec/gm107.c)
 - [Linux GP107 chipset profile](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c)
