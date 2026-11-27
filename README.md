@@ -28,6 +28,9 @@ docs/
   02-cuMemAlloc-and-launch.md  allocation (UVM) and kernel launch (no ioctl)
   03-fpc-clean-room-probe.md   FPC 3.2.2 substrate, evidence states, toolchain pin
   04-bar-identity.md           G0/G1 witness: PCI identity vs NV_ESC_CARD_INFO, BAR0 fail-closed
+  05-gp107-capability-matrix.md evidence-based GP107 capability and proof-state matrix
+  06-open-driver-landscape.md  upstream Nouveau/Mesa/NVK/Rusticl research for GP107
+  07-next-research-direction.md R580 RM command submission and GPU-sync research plan (E1–E6)
   ioctl-map.md                 consolidated ioctl / RM command reference
 probes/
   01_min_cuinit.c              clean-room C: enumerate GPUs via /dev/nvidiactl, no libcuda
