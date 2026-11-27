@@ -91,17 +91,18 @@ make test-valid-cards-static   # старий базовий гейт не по�
 1. shell syntax і C11 build із `-Werror`;
 2. code firewall для write mapping, RM-запитів, BOOT0-констант і ABI pins;
 3. synthetic sysfs positive fixture із явним `scope-unclassified`;
-4. direct C API tests: відмова без opt-in і з bound driver;
+4. direct C API tests: відмова без opt-in та відмова навіть коли caller
+   підробляє `driver.bound=0` у переданій inventory-структурі;
 5. fail-closed tests для malformed driver link, неоднозначної кількості карт,
    відсутнього PCI config та неправильного BDF;
 6. MMIO tests для явного offset, вирівнювання та фактичного `resource0` size;
 7. synthetic read-only fixture, який не є фізичним GPU свідком;
 8. negative tests для 4-КіБ minimum `resource0`, його фактичного `fstat` розміру
    та offset поза 4-КіБ вікном;
-8. capability ledger, що залишає MMIO `deferred` навіть після software opt-in,
+9. capability ledger, що залишає MMIO `deferred` навіть після software opt-in,
    доки немає owner consent і доведеного safe register;
-9. best-effort runner sysfs inventory із `scope-unclassified`, не H170 PASS;
-10. x86-64 C/assembly output equivalence на синтетичному resource0 та наявність `lfence` у бінарнику.
+10. best-effort runner sysfs inventory із `scope-unclassified`, не H170 PASS;
+11. x86-64 C/assembly output equivalence на синтетичному resource0 та наявність `lfence` у бінарнику.
 
 Підсумковий маркер:
 `CAPABILITY-DRIVER-GATE-OK c11=yes layout=32/68/140 negatives=12 mmio=read-only-opt-in asm=equiv-x86_64 hardware-mmio=NOT-RUN`.
