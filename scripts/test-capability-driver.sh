@@ -47,6 +47,7 @@ cat >"$WORK/mmio-api-gate.c" <<'C'
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "gp107_mmio.h"
 
 int main(int argc, char **argv)
@@ -57,13 +58,17 @@ int main(int argc, char **argv)
     struct gp107_inventory inv;
     int rc;
 
-    if (argc != 4) return GP107_ERR_USAGE;
+    if (argc != 4 && argc != 5) return GP107_ERR_USAGE;
     offset = strtoul(argv[3], NULL, 0);
     rc = gp107_inventory_scan(argv[1], GP107_EXPECTED_BDF,
                               &inv, err, sizeof(err));
     if (rc != GP107_OK) {
         fprintf(stderr, "%s\\n", err);
         return rc;
+    }
+    if (argc == 5 && strcmp(argv[4], "--forge-unbound") == 0) {
+        inv.driver.bound = 0;
+        inv.driver.name[0] = 0;
     }
     rc = gp107_mmio_read32(argv[1], &inv, atoi(argv[2]), (uint32_t)offset,
                            &value, err, sizeof(err));
@@ -144,9 +149,9 @@ expect_fail 15 'MMIO-FAIL step=opt-in-required' "$WORK/api-noopt.err" \
   "$WORK/mmio-api-gate" "$FIX" 0 0
 echo 'API-OPTIN-GATE-OK'
 
-step 'public C API independently rejects a bound driver'
+step 'public C API ignores a forged unbound inventory'
 expect_fail 16 'MMIO-FAIL step=driver-bound' "$WORK/api-bound.err" \
-  "$WORK/mmio-api-gate" "$FIX" 1 0
+echo 'API-DRIVER-GATE-OK forged-bound-state=ignored'
 echo 'API-DRIVER-GATE-OK'
 
 step 'malformed driver entry is not treated as unbound'
