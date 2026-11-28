@@ -23,22 +23,23 @@ trap 'rm -f -- "$TMP_CAPTURE"' EXIT
 record() { printf '%s=%s\n' "$1" "$2" >> "$STATUS"; }
 note() { printf '%-24s %s\n' "$1" "$2"; }
 unavailable() {
-  printf 'NOT_AVAILABLE: %s\n' "$2" > "$OUT/$1"
-  record "${1//[.-]/_}" "NOT_AVAILABLE:$2"
+  local name="$1" key="$2" reason="$3"
+  printf 'NOT_AVAILABLE: %s\n' "$reason" > "$OUT/$name"
+  record "$key" "NOT_AVAILABLE:$reason"
 }
 failed() { record "$1" "FAILED:rc=$2"; note "$1" "FAILED rc=$2"; }
 capture() {
-  local name="$1"; shift
+  local name="$1" key="$2"; shift 2
   local executable="$1"; shift
   if ! command -v "$executable" >/dev/null 2>&1; then
-    unavailable "$name" "no-$executable"
+    unavailable "$name" "$key" "no-$executable"
     return 0
   fi
   if "$executable" "$@" > "$OUT/$name" 2>&1; then
-    record "${name//[.-]/_}" collected
+    record "$key" collected
   else
     local rc=$?
-    record "${name//[.-]/_}" "FAILED:rc=$rc"
+    record "$key" "FAILED:rc=$rc"
   fi
 }
 
@@ -51,6 +52,8 @@ TARGET_STATE="UNKNOWN:lspci-absent"
 TARGET_CANDIDATE="NOT_AVAILABLE:unique-10de:1c82-BDF-not-established"
 if ! command -v lspci >/dev/null 2>&1; then
   printf 'NOT_AVAILABLE: lspci\n' > "$OUT/01-pci-inventory.txt"
+  record pci_driver "NOT_AVAILABLE:no-lspci"
+  record pci_verbose "NOT_AVAILABLE:no-lspci"
 else
   if lspci -Dnn > "$OUT/01-pci-inventory.txt" 2>&1; then
     mapfile -t TARGET_BDFS < <(awk 'tolower($0) ~ /\[10de:1c82\]/ {print $1}' "$OUT/01-pci-inventory.txt")
@@ -92,7 +95,7 @@ else
 fi
 
 if ! command -v lsmod >/dev/null 2>&1; then
-  unavailable 03-kernel-modules.txt no-lsmod
+  unavailable 03-kernel-modules.txt kernel_modules no-lsmod
 elif lsmod > "$TMP_CAPTURE" 2>&1; then
   awk 'NR == 1 || $1 ~ /^(nouveau|nvidia|nvidia_uvm|nvidia_drm|nvidia_modeset|i915)$/' "$TMP_CAPTURE" > "$OUT/03-kernel-modules.txt"
   record kernel_modules collected
@@ -134,13 +137,18 @@ note target "$TARGET_STATE"
 
 # Query the exact BDF only after both PCI and sysfs identity agree.
 if [ "$SYSFS_MATCH" -eq 1 ]; then
-  capture 05-pci-driver.txt lspci -Dnnk -s "$GPU_BDF"
-  capture 06-pci-verbose.txt lspci -Dnnvv -s "$GPU_BDF"
+  capture 05-pci-driver.txt pci_driver lspci -Dnnk -s "$GPU_BDF"
+  capture 06-pci-verbose.txt pci_verbose lspci -Dnnvv -s "$GPU_BDF"
 else
   printf 'NOT_AVAILABLE: exact sysfs identity not established\n' > "$OUT/05-pci-driver.txt"
   printf 'NOT_AVAILABLE: exact sysfs identity not established\n' > "$OUT/06-pci-verbose.txt"
-  record pci_driver "NOT_AVAILABLE:no-sysfs-match"
-  record pci_verbose "NOT_AVAILABLE:no-sysfs-match"
+  if command -v lspci >/dev/null 2>&1; then
+    record pci_driver "NOT_AVAILABLE:no-sysfs-match"
+    record pci_verbose "NOT_AVAILABLE:no-sysfs-match"
+  else
+    record pci_driver "NOT_AVAILABLE:no-lspci"
+    record pci_verbose "NOT_AVAILABLE:no-lspci"
+  fi
 fi
 
 # GPU API initialization and workloads remain outside this passive collector.
@@ -196,7 +204,7 @@ fi
 
 # Filter kernel log and record actual command status.
 if ! command -v dmesg >/dev/null 2>&1; then
-  unavailable 10-dmesg.txt no-dmesg
+  unavailable 10-dmesg.txt dmesg no-dmesg
 elif dmesg -r > "$TMP_CAPTURE" 2>&1; then
   if dmesg > "$TMP_CAPTURE" 2>&1; then
     grep -Ei 'nouveau|nvidia|drm' "$TMP_CAPTURE" | tail -300 > "$OUT/10-dmesg.txt" || true
