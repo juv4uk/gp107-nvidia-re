@@ -8,6 +8,7 @@ all:
 test:
 	bash scripts/test-pascal-probe.sh
 	bash scripts/check-no-driver-overreach.sh
+	bash scripts/test-evidence-manifest.sh
 
 # Додатковий C11-гейт: не змінює базовий Pascal-гейт і не торкається заліза
 # поза read-only sysfs inventory.

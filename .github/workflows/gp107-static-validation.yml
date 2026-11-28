@@ -9,6 +9,9 @@ on:
       - "lib/**"
       - "scripts/test-pascal-probe.sh"
       - "scripts/test-capability-driver.sh"
+      - "scripts/test-evidence-manifest.sh"
+      - "experiments/**"
+      - "evidence/**"
 
 permissions:
   contents: read
@@ -44,6 +47,9 @@ jobs:
         # Static and host-runnable: no GPU, no root. It was in the tree but
         # no workflow ran it, so a regression would have been invisible.
         run: bash scripts/check-no-driver-overreach.sh
+
+      - name: Verify immutable evidence manifests
+        run: bash scripts/test-evidence-manifest.sh
 
       - name: Run host-independent fail-closed source guard
         run: make test-valid-cards-static
