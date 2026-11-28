@@ -3,8 +3,22 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
-trap 'rc=$?; printf "MATRIX-COLLECTOR-TEST-FAIL line=%s status=%s command=%s\\n" "$LINENO" "$rc" "$BASH_COMMAND" >&2; exit "$rc"' ERR
+finish() {
+  local rc=$?
+  if [ "$rc" -ne 0 ]; then
+    printf 'MATRIX-COLLECTOR-TEST-FAIL status=%s\n' "$rc" >&2
+    for artifact in "$WORK"/*.log "$WORK"/*/00-status.txt "$WORK"/*/10-manifest-check.txt; do
+      [ -f "$artifact" ] || continue
+      printf '\n--- %s ---\n' "$artifact" >&2
+      sed -n '1,120p' "$artifact" >&2 || true
+    done
+  fi
+  rm -rf "$WORK"
+  return "$rc"
+}
+trap finish EXIT
+trap 'rc=$?; printf "MATRIX-COLLECTOR-ERR line=%s status=%s command=%s\\n" "$LINENO" "$rc" "$BASH_COMMAND" >&2; exit "$rc"' ERR
+note() { printf '[matrix-test] %s\n' "$*" >&2; }
 FAKEBIN="$WORK/bin"
 SYS_ROOT="$WORK/sys"
 MARKER="$WORK/gpu-runtime-invoked"
@@ -74,7 +88,7 @@ export PATH="$FAKEBIN:$PATH"
 export WSM_SYS_ROOT="$SYS_ROOT"
 export GPU_RUNTIME_MARKER="$MARKER"
 
-# Unique domain-qualified BDF (not 01:00.0), exact sysfs identity and telemetry.
+note "unique BDF, exact sysfs identity and telemetry"
 OUT="$WORK/passive"
 bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT" > "$WORK/passive.log"
 grep -Fxq 'target=REFERENCE_CARD:10de:1c82:BDF=0000:03:00.0' "$OUT/00-status.txt"
@@ -87,7 +101,7 @@ grep -Fxq 'gpu_runtime=NOT_RUN:owner-approval-required' "$OUT/00-status.txt"
 bash "$ROOT/scripts/test-evidence-manifest.sh" "$OUT/99-manifest.txt" > "$WORK/passive-manifest.log"
 grep -q 'MANIFEST-OK' "$WORK/passive-manifest.log"
 
-# Existing output (and symlink output) fails before old bytes can be changed.
+note "existing output and symlink output must be refused without mutation"
 EXISTING="$WORK/existing"
 mkdir "$EXISTING"
 printf 'preserve-this-evidence\n' > "$EXISTING/00-status.txt"
@@ -104,7 +118,7 @@ if bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$LINK" > "$WORK/link.l
 fi
 [ "$(sha256sum "$EXISTING/00-status.txt" | awk '{print $1}')" = "$BEFORE" ]
 
-# Missing and ambiguous target identities never bind a different BDF.
+note "missing and ambiguous targets must not bind a different BDF"
 OUT_NONE="$WORK/no-target"
 LSPCI_MODE=none bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NONE" > "$WORK/none.log"
 grep -Fxq 'target=NOT_THE_REFERENCE_CARD:expected=10de:1c82' "$OUT_NONE/00-status.txt"
@@ -114,7 +128,7 @@ LSPCI_MODE=multiple bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_
 grep -Fxq 'target=AMBIGUOUS_REFERENCE_CARDS:count=2' "$OUT_MULTI/00-status.txt"
 grep -Fxq 'pci_verbose=NOT_AVAILABLE:no-sysfs-match' "$OUT_MULTI/00-status.txt"
 
-# Failed tools are FAILED with the actual exit codes, never reported collected.
+note "tool failures must preserve exact status and stderr"
 OUT_FAIL="$WORK/tool-failures"
 LSMOD_FAIL=1 DMESG_FAIL=1 bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_FAIL" > "$WORK/failures.log"
 grep -Fxq 'kernel_modules=FAILED:rc=7' "$OUT_FAIL/00-status.txt"
