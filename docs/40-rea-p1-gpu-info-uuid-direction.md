@@ -38,12 +38,12 @@ asm-first контракт не змінено.
 
 Raw witness:
 [`evidence/rea-20261128/gpu-info-uuid-direction.txt`](../evidence/rea-20261128/gpu-info-uuid-direction.txt),
-SHA-256 `9df8efff4f06c3e879d5374086d8bd604266cd00c67c8131d7495e12031ef99b`.
+SHA-256 `2824dbfea882db2b5b9396065ea638d7617d2fd5a7450e9901a525ae3b294d5b`.
 Evidence bundle: `evidence/rea-20261128/evidence-p1-gpu-info-uuid.json`,
 159 records, SHA-256 `912ec870d3615761dc12af59b2b4163ccfa0f147ee8350e73c5b00a6c32fc67c`.
 
-Ключові Evidence IDs: `ev_0161857e…`, `ev_85119b22…`, `ev_d35da1bb…`,
-`ev_2efe1290…`, `ev_41442471…`, `ev_658020eb…`.
+Ключові Evidence IDs: `ev_0161857e…`, `ev_85119b22…`, `ev_580d64fc…`,
+`ev_d35da1bb…`, `ev_2efe1290…`, `ev_41442471…`, `ev_658020eb…`.
 
 ## 2. `uvm_gpu_retain_by_uuid`: UUID йде **в** `GetGpuInfo`
 
@@ -55,8 +55,9 @@ Evidence bundle: `evidence/rea-20261128/evidence-p1-gpu-info-uuid.json`,
 3. `0x0801ea05`–`0x0801ea10`: `lea rsi,[rsp+0x08]`; `mov rdx,rbx`
    (zeroed allocation `0xf0`); `mov rdi,r12`;
    `call nvUvmInterfaceGetGpuInfo`.
-4. Другий виклик — `0x0801ea7c` (Rizin), ELF relocation `0x1a47c`, знову
-   з `rdi=r12`.
+4. Другий виклик — `0x0801eadb` (Rizin; ELF relocation `0x1a47c` → Rizin
+   `0x0801eadc`), знову з `rdi=r12`. Підтверджено Evidence
+   `ev_580d64fc…` (`pd 14 @ 0x0801ead0`).
 
 Перерахунок relocation-ів у межах функції дав рівно два записи на
 `nvUvmInterfaceGetGpuInfo` (`0x1a3b1`, `0x1a47c`), один

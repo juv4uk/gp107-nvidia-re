@@ -42,6 +42,14 @@ Evidence: ev_85119b225af43207b2aca4d5f07578172f188110bf386311c6341f389bfd76e3
   0x0801ea5c      mov   qword [r14], rax
   0x0801ea6b ...  lea rsi,[rsp+0x10]; mov rdi,r12; call nvUvmInterfaceRegisterGpu
 
+REA: pd 14 @ 0x0801ead0
+Evidence: ev_580d64fcd38a9da7e9fb1f937f6915ecd4eeed155027550fd7b6652487f0b028
+  0x0801ead0      lea   rsi, qword [rsp+0x08]
+  0x0801ead5      mov   rdx, rbx
+  0x0801ead8      mov   rdi, r12
+  0x0801eadb      call  reloc.target.nvUvmInterfaceGetGpuInfo
+  0x0801eae0      mov   r13d, eax
+
 readelf -rW relocation enumeration for ELF 0x1a2f0..0x1a5d0:
   0x1a399 ... R_X86_64_PLT32 ... uvm_parent_gpu_get_by_uuid_locked - 4
   0x1a3b1 ... R_X86_64_PLT32 ... nvUvmInterfaceGetGpuInfo - 4
