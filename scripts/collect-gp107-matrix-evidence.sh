@@ -79,8 +79,10 @@ fi
 record target_candidate "$TARGET_CANDIDATE"
 note target_candidate "$TARGET_CANDIDATE"
 
-# Minimal host context: never report collected after a failed uname.
-if command -v uname >/dev/null 2>&1 && uname -srm > "$OUT/02-system.txt" 2>&1; then
+# Minimal host context: distinguish an absent tool from a failed invocation.
+if ! command -v uname >/dev/null 2>&1; then
+  unavailable 02-system.txt system no-uname
+elif uname -srm > "$OUT/02-system.txt" 2>&1; then
   if [ -r /etc/os-release ]; then
     if cat /etc/os-release >> "$OUT/02-system.txt" 2>&1; then record os_release collected; else record os_release FAILED:cat; fi
   else
@@ -90,7 +92,6 @@ if command -v uname >/dev/null 2>&1 && uname -srm > "$OUT/02-system.txt" 2>&1; t
   record system collected
 else
   rc=$?
-  printf 'FAILED: uname rc=%s\n' "$rc" > "$OUT/02-system.txt"
   failed system "$rc"
 fi
 
