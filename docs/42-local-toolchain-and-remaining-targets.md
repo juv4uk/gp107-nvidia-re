@@ -62,7 +62,7 @@ review. Для будь-якого runtime-кроку потрібні точн�
 | # | Ціль | Невідоме | Інструмент | Смуга | Критерій green |
 | --- | --- | --- | --- | --- | --- |
 | [#61](https://github.com/juv4uk/gp107-nvidia-re/issues/61) | userspace UUID producer для `UVM_REGISTER_GPU` | хто формує поле `device+0xc06` | REA/rizin по `libcuda` (SHA `20ad4403…`) | **C** | writer поля + ланцюг до нього, два незалежні прогони |
-| [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62) | callback producer `device+0xc06`, `BDF ↔ RM gpu_id` | що встановлює `[holder+0x30]`; чи є прямий mapping | REA (статично) + `lspci -vv` / RM `GET_PROBED_IDS` (runtime) | **C** + **B** | callback writer доведено; BDF↔gpu_id або доведено, або явно `NOT_AVAILABLE` |
+| [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62) | callback producer `device+0xc06`, `BDF ↔ RM gpu_id` | що встановлює `[holder+0x30]`; чи є прямий mapping | REA (статично, лише після письмового clearance) + `lspci -nnvv` (read-only PCI inventory; не доводить RM ID) + RM `GET_PROBED_IDS` лише за окремим runtime authorization | **C** + **B, OWNER_AUTHORIZATION_REQUIRED** | callback writer — лише після clearance; BDF↔gpu_id — тільки за прямим cross-layer witness; до окремого дозволу `GET_PROBED_IDS=NOT_RUN`, mapping=`UNPROVEN` |
 | E1 | порядок `ioctl`/`mmap` для `cuCtxCreate…cuLaunchKernel` | реальна послідовність викликів | власний LD_PRELOAD-shim + `strace -f -yy -e trace=ioctl,mmap,openat` | **B** | таблиця викликів, два прогони, невідомий request = окремий `UNPROVEN` рядок |
 | E2 | channel/context lifecycle | які RM-класи приймає R580 | власний C-зонд `NV_ESC_RM_ALLOC`/`RM_CONTROL` | **B** | alloc → control → free у зворотному порядку; інʼєкція часткової відмови звільняє рівно створене |
 | E3 | pushbuffer/GPFIFO формат | мінімальний запис команди | власні структури + `SizeOf`-asserts, submission через E2 | **B** | власний маркер submitted + звірка порядку полів із trace |
@@ -176,9 +176,11 @@ gate не змінює цього операційного статусу.
 
 ### Compatibility не потребує реверсу зовсім
 
-Пропрієтарний драйвер уже працює на цій карті: `runtime-proven` у
-[`05`](05-gp107-capability-matrix.md) (#2, #6, #7). Питання не в знанні, а в
-пакуванні й доказах:
+На окремому зовнішньому Kali/R580 witness для GP107 уже є обмежені
+`runtime-proven` спостереження у [`05`](05-gp107-capability-matrix.md) (#2, #6, #7).
+Це не доказ того, що proprietary driver працює на цільовій H170 або в WSM
+Compatibility closure. Для H170 Compatibility пакування та acceptance ще
+не доведені. Питання для WSM — у пакуванні й доказах:
 
 1. `nvidia-service-type` у профілі Compatibility — є;
 2. `kernel-arguments` з `modprobe.blacklist=nouveau` і `nvidia_drm.modeset=1` — є;
@@ -191,10 +193,13 @@ bundle. Жодного рядка реверсу це не потребує, і 
 
 ### Відкритий стек уже виконує обчислення
 
-NVK vector-add пройшов фізично ([`14`](14-nvk-vector-add-compute-result.md)).
-Тобто смуга A вже дала результат, а не план. Незакритим лишається
-`UNPROVEN` із [`13`](13-nouveau-nvk-boot-witness.md): кореляція channel ↔ event
-і GR TOP runlist 0.
+На окремому зовнішньому GP107/Kali witness зафіксовано один історичний
+NVK vector-add dispatch ([`14`](14-nvk-vector-add-compute-result.md)). [`18`](18-procedural-deviation-and-benchmark-reliability.md)
+фіксує `runtime-proven deviation`: погоджений source/BTF preflight не був
+повністю завершений до dispatch. Це реальний runtime-факт конкретного
+workload, але не clean acceptance, stability baseline або дозвіл на повтор.
+H170 не перевірявся. Незакритим лишається `UNPROVEN` із
+[`13`](13-nouveau-nvk-boot-witness.md): кореляція channel ↔ event і GR TOP runlist 0.
 
 ### Що з цього випливає для порядку роботи
 
