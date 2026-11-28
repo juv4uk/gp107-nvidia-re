@@ -1,150 +1,243 @@
 #!/usr/bin/env bash
-# Збирає evidence-матрицю для #28 на еталонній карті — лише читанням.
-#
-# Правила, які цей скрипт не порушує:
-#   * нічого не пише в пристрій, не робить mmap, не чіпає resource0;
-#   * не потребує root і не підвищує привілеї;
-#   * відсутній інструмент — це записаний стан NOT_AVAILABLE, а не привід
-#     впасти або вигадати значення;
-#   * якщо карта не 10de:1c82, це фіксується як TARGET=NOT_THE_REFERENCE_CARD,
-#     і жодна клітинка не стає PASS.
-#
-# Використання:
-#   bash scripts/collect-gp107-matrix-evidence.sh [output-dir]
-#
-# Результат: каталог з артефактами + 99-manifest.txt із SHA-256, сумісний із
-# scripts/test-evidence-manifest.sh (тобто його одразу перевіряє наявний гейт).
+# Read-only GP107 evidence collector. Passive inventory only; no GPU API init.
 set -uo pipefail
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SYS_ROOT="${WSM_SYS_ROOT:-/sys}"
 OUT="${1:-$ROOT/evidence/matrix-$(date -u +%Y%m%dT%H%M%SZ)}"
-REFERENCE_PCI="10de:1c82"
-
-mkdir -p "$OUT" || { echo "COLLECT-FAIL: не створюється $OUT" >&2; exit 2; }
-
-# Другий прогін у той самий каталог давав самосуперечливий маніфест: застарілий
-# 10-manifest-check.txt потрапляв у хеші, а потім перезаписувався перевіркою.
-# Тому в непорожній каталог не пишемо без явного дозволу — так само, як
-# release-bundler відмовляється перезаписувати наявні артефакти.
-if [ -n "$(ls -A "$OUT" 2>/dev/null)" ] && [ "${WSM_COLLECT_ALLOW_EXISTING:-0}" != "1" ]; then
-  echo "COLLECT-FAIL: $OUT вже непорожній; оберіть новий каталог або WSM_COLLECT_ALLOW_EXISTING=1" >&2
+REFERENCE_VENDOR="0x10de"
+REFERENCE_DEVICE="0x1c82"
+if [ "$#" -gt 1 ]; then echo "COLLECT-FAIL: one output-dir allowed" >&2; exit 2; fi
+case "$OUT" in /*) ;; *) OUT="$PWD/$OUT" ;; esac
+OUT_PARENT="$(dirname "$OUT")"
+mkdir -p "$OUT_PARENT" || { echo "COLLECT-FAIL: cannot create parent $OUT_PARENT" >&2; exit 2; }
+# Never follow or overwrite an existing directory, file, or symlink.
+if [ -e "$OUT" ] || [ -L "$OUT" ]; then
+  echo "COLLECT-FAIL: output-dir already exists: $OUT" >&2
   exit 2
 fi
-
+mkdir "$OUT" || { echo "COLLECT-FAIL: cannot create output-dir $OUT" >&2; exit 2; }
 STATUS="$OUT/00-status.txt"
-: > "$STATUS"
+TMP_CAPTURE="$(mktemp)"
+trap 'rm -f -- "$TMP_CAPTURE"' EXIT
 
 record() { printf '%s=%s\n' "$1" "$2" >> "$STATUS"; }
-note()   { printf '%-14s %s\n' "$1" "$2"; }
-
-# Кожен збирач: якщо інструмента немає — фіксуємо NOT_AVAILABLE і йдемо далі.
-capture() { # $1 = назва артефакту, решта = команда
-  local name="$1"; shift
-  local file="$OUT/$name"
-  if ! command -v "$1" >/dev/null 2>&1; then
-    printf 'NOT_AVAILABLE: %s\n' "$1" > "$file"
-    record "${name//[.-]/_}" "NOT_AVAILABLE:no-$1"
-    note "$name" "NOT_AVAILABLE ($1 відсутній)"
+note() { printf '%-24s %s\n' "$1" "$2"; }
+unavailable() {
+  local name="$1" key="$2" reason="$3"
+  printf 'NOT_AVAILABLE: %s\n' "$reason" > "$OUT/$name"
+  record "$key" "NOT_AVAILABLE:$reason"
+}
+failed() { record "$1" "FAILED:rc=$2"; note "$1" "FAILED rc=$2"; }
+capture() {
+  local name="$1" key="$2"; shift 2
+  local executable="$1"; shift
+  if ! command -v "$executable" >/dev/null 2>&1; then
+    unavailable "$name" "$key" "no-$executable"
     return 0
   fi
-  if "$@" > "$file" 2>&1; then
-    record "${name//[.-]/_}" "collected"
-    note "$name" "collected"
+  if "$executable" "$@" > "$OUT/$name" 2>&1; then
+    record "$key" collected
   else
     local rc=$?
-    record "${name//[.-]/_}" "FAILED:rc=$rc"
-    note "$name" "FAILED rc=$rc (вивід збережено)"
+    record "$key" "FAILED:rc=$rc"
   fi
 }
 
-note "output" "$OUT"
+note output "$OUT"
+record privacy "PRIVATE_REVIEW_REQUIRED:dmesg-and-local-paths"
 
-# --- 1. ідентичність цілі -------------------------------------------------
-if command -v lspci >/dev/null 2>&1; then
-  lspci -nn 2>/dev/null | grep -Ei "vga|3d|display" > "$OUT/01-gpu-identity.txt" || true
-  if grep -qi "$REFERENCE_PCI" "$OUT/01-gpu-identity.txt"; then
-    record target "REFERENCE_CARD:$REFERENCE_PCI"
+# Resolve the exact unique domain-qualified BDF for 10de:1c82.
+GPU_BDF=""
+TARGET_STATE="UNKNOWN:lspci-absent"
+TARGET_CANDIDATE="NOT_AVAILABLE:unique-10de:1c82-BDF-not-established"
+if ! command -v lspci >/dev/null 2>&1; then
+  unavailable 01-pci-inventory.txt pci_inventory no-lspci
+  record pci_driver "NOT_AVAILABLE:no-lspci"
+  record pci_verbose "NOT_AVAILABLE:no-lspci"
+else
+  if lspci -Dnn > "$OUT/01-pci-inventory.txt" 2>&1; then
+    record pci_inventory collected
+    mapfile -t TARGET_BDFS < <(awk 'tolower($0) ~ /\[10de:1c82\]/ {print $1}' "$OUT/01-pci-inventory.txt")
+    if [ "${#TARGET_BDFS[@]}" -eq 1 ]; then
+      candidate="${TARGET_BDFS[0]}"
+      if [[ "$candidate" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$ ]]; then
+        GPU_BDF="$candidate"
+        TARGET_CANDIDATE="PCI_CANDIDATE:10de:1c82:BDF=$GPU_BDF"
+        TARGET_STATE="UNKNOWN:sysfs-identity-pending"
+      else
+        TARGET_STATE="FAILED:noncanonical-bdf"
+      fi
+    elif [ "${#TARGET_BDFS[@]}" -gt 1 ]; then
+      TARGET_STATE="AMBIGUOUS_REFERENCE_CARDS:count=${#TARGET_BDFS[@]}"
+    else
+      TARGET_STATE="NOT_THE_REFERENCE_CARD:expected=10de:1c82"
+    fi
   else
-    record target "NOT_THE_REFERENCE_CARD:expected=$REFERENCE_PCI"
+    rc=$?
+    TARGET_STATE="FAILED:lspci-rc=$rc"
+    record pci_inventory "FAILED:rc=$rc"
+  fi
+fi
+record target_candidate "$TARGET_CANDIDATE"
+note target_candidate "$TARGET_CANDIDATE"
+
+# Minimal host context: distinguish an absent tool from a failed invocation.
+if ! command -v uname >/dev/null 2>&1; then
+  unavailable 02-system.txt system no-uname
+elif uname -srm > "$OUT/02-system.txt" 2>&1; then
+  if [ -r /etc/os-release ]; then
+    if cat /etc/os-release >> "$OUT/02-system.txt" 2>&1; then record os_release collected; else record os_release FAILED:cat; fi
+  else
+    printf '\nNOT_AVAILABLE: /etc/os-release\n' >> "$OUT/02-system.txt"
+    record os_release "NOT_AVAILABLE:/etc/os-release"
+  fi
+  record system collected
+else
+  rc=$?
+  failed system "$rc"
+fi
+
+if ! command -v lsmod >/dev/null 2>&1; then
+  unavailable 03-kernel-modules.txt kernel_modules no-lsmod
+elif lsmod > "$TMP_CAPTURE" 2>&1; then
+  awk 'NR == 1 || $1 ~ /^(nouveau|nvidia|nvidia_uvm|nvidia_drm|nvidia_modeset|i915)$/' "$TMP_CAPTURE" > "$OUT/03-kernel-modules.txt"
+  record kernel_modules collected
+else
+  rc=$?
+  cp "$TMP_CAPTURE" "$OUT/03-kernel-modules.txt"
+  failed kernel_modules "$rc"
+fi
+
+# Cross-check the selected PCI function against its own sysfs node.
+SYSFS_MATCH=0
+DEVICE_SYS=""
+if [ -n "$GPU_BDF" ]; then
+  DEVICE_SYS="$SYS_ROOT/bus/pci/devices/$GPU_BDF"
+  {
+    printf 'BDF=%s\n' "$GPU_BDF"
+    if [ -r "$DEVICE_SYS/vendor" ]; then printf 'vendor=%s\n' "$(cat "$DEVICE_SYS/vendor" 2>/dev/null || echo FAILED)"; else echo 'vendor=NOT_AVAILABLE'; fi
+    if [ -r "$DEVICE_SYS/device" ]; then printf 'device=%s\n' "$(cat "$DEVICE_SYS/device" 2>/dev/null || echo FAILED)"; else echo 'device=NOT_AVAILABLE'; fi
+    if [ -r "$DEVICE_SYS/subsystem_vendor" ]; then printf 'subsystem_vendor=%s\n' "$(cat "$DEVICE_SYS/subsystem_vendor" 2>/dev/null || echo FAILED)"; fi
+    if [ -r "$DEVICE_SYS/subsystem_device" ]; then printf 'subsystem_device=%s\n' "$(cat "$DEVICE_SYS/subsystem_device" 2>/dev/null || echo FAILED)"; fi
+    if [ -L "$DEVICE_SYS/driver" ]; then printf 'driver=%s\n' "$(basename "$(readlink "$DEVICE_SYS/driver" 2>/dev/null || echo UNKNOWN)")"; else echo 'driver=UNBOUND_OR_UNKNOWN'; fi
+  } > "$OUT/04-gpu-sysfs-identity.txt" 2>&1
+  if [ -r "$DEVICE_SYS/vendor" ] && [ -r "$DEVICE_SYS/device" ] \
+      && [ "$(cat "$DEVICE_SYS/vendor" 2>/dev/null || true)" = "$REFERENCE_VENDOR" ] \
+      && [ "$(cat "$DEVICE_SYS/device" 2>/dev/null || true)" = "$REFERENCE_DEVICE" ]; then
+    SYSFS_MATCH=1
+    TARGET_STATE="REFERENCE_CARD:10de:1c82:BDF=$GPU_BDF"
+    record sysfs_identity "MATCH:$GPU_BDF"
+  else
+    TARGET_STATE="SYSFS_IDENTITY_MISMATCH: BDF=$GPU_BDF"
+    record sysfs_identity "MISMATCH_OR_UNAVAILABLE:$GPU_BDF"
   fi
 else
-  printf 'NOT_AVAILABLE: lspci\n' > "$OUT/01-gpu-identity.txt"
-  record target "UNKNOWN:lspci-absent"
+  printf 'NOT_AVAILABLE: unique 10de:1c82 BDF not established\n' > "$OUT/04-gpu-sysfs-identity.txt"
+  record sysfs_identity "NOT_AVAILABLE:no-unique-target"
 fi
-note "target" "$(grep '^target=' "$STATUS" | cut -d= -f2-)"
+record target "$TARGET_STATE"
+note target "$TARGET_STATE"
 
-# --- 2. система й драйвери ------------------------------------------------
-{ uname -srm; echo; cat /etc/os-release 2>/dev/null; } > "$OUT/02-system.txt" 2>&1 || true
-record system "collected"
+# Query the exact BDF only after both PCI and sysfs identity agree.
+if [ "$SYSFS_MATCH" -eq 1 ]; then
+  capture 05-pci-driver.txt pci_driver lspci -Dnnk -s "$GPU_BDF"
+  capture 06-pci-verbose.txt pci_verbose lspci -Dnnvv -s "$GPU_BDF"
+else
+  printf 'NOT_AVAILABLE: exact sysfs identity not established\n' > "$OUT/05-pci-driver.txt"
+  printf 'NOT_AVAILABLE: exact sysfs identity not established\n' > "$OUT/06-pci-verbose.txt"
+  if command -v lspci >/dev/null 2>&1; then
+    record pci_driver "NOT_AVAILABLE:no-sysfs-match"
+    record pci_verbose "NOT_AVAILABLE:no-sysfs-match"
+  else
+    record pci_driver "NOT_AVAILABLE:no-lspci"
+    record pci_verbose "NOT_AVAILABLE:no-lspci"
+  fi
+fi
 
-lsmod 2>/dev/null | grep -Ei "nouveau|nvidia|i915" > "$OUT/03-kernel-modules.txt" \
-  || printf 'NOT_AVAILABLE: lsmod\n' > "$OUT/03-kernel-modules.txt"
-record kernel_modules "collected"
-
-capture 04-lspci-verbose.txt lspci -nnvv -s 01:00.0
-
-# --- 3. GPU runtime: навмисно поза read-only collector -----------------
-# vulkaninfo/glxinfo ініціалізують драйвер і GPU. Їх запускають лише в окремій
-# owner-approved runtime-сесії; цей collector не виконує Vulkan/OpenGL API.
+# GPU API initialization and workloads remain outside this passive collector.
 GPU_RUNTIME_STATE="NOT_RUN: owner-approved runtime session required"
-printf '%s\n' "$GPU_RUNTIME_STATE" > "$OUT/05-gpu-runtime.txt"
-printf '%s\n' "$GPU_RUNTIME_STATE" > "$OUT/07-renderer.txt"
+printf '%s\n' "$GPU_RUNTIME_STATE" > "$OUT/07-gpu-runtime.txt"
+printf '%s\n' "$GPU_RUNTIME_STATE" > "$OUT/08-renderer.txt"
 record gpu_runtime "NOT_RUN:owner-approval-required"
 record renderer "NOT_RUN:owner-approval-required"
-note "gpu runtime" "NOT_RUN (потрібен окремий дозвіл власника)"
 
-# --- 4. частоти/температури без nvidia-smi --------------------------------
-{
-  for hw in /sys/class/drm/card*/device/hwmon/hwmon*; do
+# Read thermal/power telemetry only below the selected GP107 sysfs device.
+THERMAL="$OUT/09-gp107-thermal-and-clocks.txt"
+THERMAL_COUNT=0
+THERMAL_FAILED=0
+: > "$THERMAL"
+if [ "$SYSFS_MATCH" -eq 1 ]; then
+  for hw in "$DEVICE_SYS"/hwmon/hwmon*; do
     [ -d "$hw" ] || continue
-    echo "== $hw"
-    for f in temp1_input temp1_max power1_average; do
-      [ -r "$hw/$f" ] && printf '%s=%s\n' "$f" "$(cat "$hw/$f")"
+    printf '== %s ==\n' "$(basename "$hw")" >> "$THERMAL"
+    for attribute in temp1_input temp1_max power1_average power1_input gpu_busy_percent freq1_input; do
+      if [ -r "$hw/$attribute" ]; then
+        if value="$(cat "$hw/$attribute" 2>/dev/null)"; then
+          printf '%s=%s\n' "$attribute" "$value" >> "$THERMAL"
+          THERMAL_COUNT=$((THERMAL_COUNT + 1))
+        else
+          printf 'FAILED:%s\n' "$attribute" >> "$THERMAL"
+          THERMAL_FAILED=1
+        fi
+      fi
     done
   done
-  for card in /sys/class/drm/card*; do
-    [ -d "$card" ] || continue
-    for f in gt_cur_freq_mhz gt_max_freq_mhz; do
-      [ -r "$card/device/$f" ] && printf '%s=%s\n' "$f" "$(cat "$card/device/$f")"
-    done
+  for attribute in gpu_busy_percent mem_info_vram_used mem_info_vram_total; do
+    if [ -r "$DEVICE_SYS/$attribute" ]; then
+      if value="$(cat "$DEVICE_SYS/$attribute" 2>/dev/null)"; then
+        printf '%s=%s\n' "$attribute" "$value" >> "$THERMAL"
+        THERMAL_COUNT=$((THERMAL_COUNT + 1))
+      else
+        printf 'FAILED:%s\n' "$attribute" >> "$THERMAL"
+        THERMAL_FAILED=1
+      fi
+    fi
   done
-} > "$OUT/08-clocks-and-thermal.txt" 2>&1
-[ -s "$OUT/08-clocks-and-thermal.txt" ] || printf 'NOT_AVAILABLE: no hwmon/gt entries\n' > "$OUT/08-clocks-and-thermal.txt"
-record clocks_thermal "collected"
-
-# --- 5. журнал ядра -------------------------------------------------------
-if command -v dmesg >/dev/null 2>&1 && dmesg -r >/dev/null 2>&1; then
-  dmesg 2>/dev/null | grep -Ei "nouveau|nvidia|drm" | tail -300 > "$OUT/09-dmesg.txt" || true
-  record dmesg "collected"
 else
-  printf 'NOT_AVAILABLE: dmesg потребує прав або відсутній\n' > "$OUT/09-dmesg.txt"
-  record dmesg "NOT_AVAILABLE:permission-or-absent"
+  printf 'NOT_AVAILABLE: exact GP107 sysfs identity not established\n' > "$THERMAL"
 fi
-note "dmesg" "$(grep '^dmesg=' "$STATUS" | cut -d= -f2-)"
+if [ "$THERMAL_FAILED" -ne 0 ]; then
+  record clocks_thermal FAILED:read-error
+elif [ "$THERMAL_COUNT" -gt 0 ]; then
+  record clocks_thermal collected
+else
+  printf 'NOT_AVAILABLE: no GP107 hwmon/telemetry nodes\n' >> "$THERMAL"
+  record clocks_thermal "NOT_AVAILABLE:gp107-hwmon"
+fi
 
-# --- 6. маніфест: ті самі SHA-256, які перевіряє наявний гейт -------------
+# Filter kernel log and record actual command status.
+if ! command -v dmesg >/dev/null 2>&1; then
+  unavailable 10-dmesg.txt dmesg no-dmesg
+elif dmesg -r > "$TMP_CAPTURE" 2>&1; then
+  if dmesg > "$TMP_CAPTURE" 2>&1; then
+    grep -Ei 'nouveau|nvidia|drm' "$TMP_CAPTURE" | tail -300 > "$OUT/10-dmesg.txt" || true
+    record dmesg collected
+  else
+    rc=$?; cp "$TMP_CAPTURE" "$OUT/10-dmesg.txt"; failed dmesg "$rc"
+  fi
+else
+  rc=$?; cp "$TMP_CAPTURE" "$OUT/10-dmesg.txt"; failed dmesg "$rc"
+fi
+
+# Hash final evidence files; manifest and its later self-check are not captures.
 MANIFEST="$OUT/99-manifest.txt"
 {
-  echo "# GP107 matrix evidence, зібрано $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "# target=$(grep '^target=' "$STATUS" | cut -d= -f2-)"
-  echo "# read-only: жодного запису в пристрій, mmap або resource0"
+  echo "# GP107 matrix evidence, collected $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "# target=$TARGET_STATE"
+  echo "# passive-only: no Vulkan/OpenGL init, ioctl, GPU submit or device writes"
 } > "$MANIFEST"
-for f in "$OUT"/*.txt; do
-  base="$(basename "$f")"
-  # 99-manifest.txt не може хешувати себе; 10-manifest-check.txt створюється
-  # перевіркою вже після маніфесту і не є артефактом знімання.
-  case "$base" in 99-manifest.txt|10-manifest-check.txt) continue ;; esac
-  printf '%s  %s\n' "$(sha256sum "$f" | awk '{print $1}')" "$base" >> "$MANIFEST"
+for file in "$OUT"/*.txt; do
+  [ -f "$file" ] || continue
+  name="$(basename "$file")"
+  case "$name" in 99-manifest.txt|10-manifest-check.txt) continue ;; esac
+  printf '%s  %s\n' "$(sha256sum "$file" | awk '{print $1}')" "$name" >> "$MANIFEST"
 done
-
-# Маніфест не може хешувати сам себе; гейт це знає і пропускає 99-manifest.txt.
 if bash "$ROOT/scripts/test-evidence-manifest.sh" "$MANIFEST" > "$OUT/10-manifest-check.txt" 2>&1; then
-  note "manifest" "self-check OK"
+  note manifest "self-check OK"
 else
-  note "manifest" "self-check FAILED"
-  echo "COLLECT-FAIL: власний маніфест не проходить перевірку — див. 10-manifest-check.txt" >&2
+  note manifest "self-check FAILED"
+  echo "COLLECT-FAIL: self-manifest check failed; see 10-manifest-check.txt" >&2
   exit 2
 fi
-
-note "summary" "$OUT/00-status.txt"
+note summary "$OUT/00-status.txt"
 echo "COLLECT-OK dir=$OUT"

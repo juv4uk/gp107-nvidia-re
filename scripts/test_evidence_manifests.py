@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -84,6 +85,61 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
         self.assertEqual(result.known_missing, ())
         self.assertEqual(used, set())
 
+    def test_explicit_repo_manifest_ignores_exceptions_for_unselected_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scripts = root / "scripts"
+            evidence = root / "evidence" / "matrix"
+            scripts.mkdir()
+            evidence.mkdir(parents=True)
+            artifact = evidence / "inventory.txt"
+            artifact.write_bytes(b"new matrix evidence")
+            digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            manifest = evidence / "99-manifest.txt"
+            manifest.write_text(
+                f"{digest}  inventory.txt\n",
+                encoding="utf-8",
+            )
+            (scripts / "manifest-exceptions.txt").write_text(
+                "# historical exception not selected by this invocation\n"
+                + "experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt\t"
+                + "/original/host/03-run.log\t"
+                + ("a" * 64)
+                + "\thistorical evidence gap\n",
+                encoding="utf-8",
+            )
+
+            result = check_repository(root, [manifest])
+
+        self.assertEqual(result, (1, 0, 0))
+
+    def test_full_tracked_scan_still_rejects_an_unconsumed_exception(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scripts = root / "scripts"
+            evidence = root / "evidence" / "matrix"
+            scripts.mkdir()
+            evidence.mkdir(parents=True)
+            artifact = evidence / "inventory.txt"
+            artifact.write_bytes(b"new matrix evidence")
+            digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            (evidence / "99-manifest.txt").write_text(
+                f"{digest}  inventory.txt\n",
+                encoding="utf-8",
+            )
+            (scripts / "manifest-exceptions.txt").write_text(
+                "experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt\t"
+                + "/original/host/03-run.log\t"
+                + ("a" * 64)
+                + "\thistorical evidence gap\n",
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+
+            with self.assertRaisesRegex(ManifestError, "unused or stale exception entries"):
+                check_repository(root)
+
     def test_explicit_external_bundle_is_verified_inside_its_own_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary) / "bundle"
@@ -110,7 +166,7 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             link.symlink_to(outside)
             digest = hashlib.sha256(outside.read_bytes()).hexdigest()
             manifest = bundle / "99-manifest.txt"
-            manifest.write_text(f"{digest}  artifact.txt\\n", encoding="utf-8")
+            manifest.write_text(f"{digest}  artifact.txt\n", encoding="utf-8")
 
             with self.assertRaisesRegex(ManifestError, "missing artifact"):
                 check_repository(ROOT, [manifest])

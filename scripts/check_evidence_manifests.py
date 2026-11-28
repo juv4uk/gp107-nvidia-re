@@ -252,10 +252,10 @@ def check_repository(root: Path, paths: list[Path] | None = None) -> tuple[int, 
     explicit_paths = paths is not None
     manifests = paths if explicit_paths else tracked_manifests(root)
     used_exceptions: set[tuple[str, str]] = set()
+    selected_repository_manifests: set[str] = set()
     verified_count = 0
     known_bad_count = 0
     negative_count = 0
-    has_repository_manifest = False
 
     for manifest_arg in manifests:
         manifest = manifest_arg if manifest_arg.is_absolute() else root / manifest_arg
@@ -263,7 +263,7 @@ def check_repository(root: Path, paths: list[Path] | None = None) -> tuple[int, 
         try:
             repo_relative(root, manifest)
             external_bundle = False
-            has_repository_manifest = True
+            selected_repository_manifests.add(repo_relative(root, manifest))
         except ManifestError:
             if not explicit_paths or not manifest_arg.is_absolute():
                 raise
@@ -299,10 +299,16 @@ def check_repository(root: Path, paths: list[Path] | None = None) -> tuple[int, 
         else:
             print(f"MANIFEST-OK manifest={result.manifest} files={result.verified}")
 
-    # A standalone external bundle is an explicit one-off verification request;
-    # repository exception rows are unrelated and must not be required to be
-    # consumed by that call.
-    unused = set(exceptions) - used_exceptions if has_repository_manifest else set()
+    # A full tracked-tree scan must consume every registered exception. An
+    # explicit path check is intentionally narrower: only rows for the selected
+    # repository manifests are in scope; external bundles never use repo rows.
+    if explicit_paths:
+        relevant_exceptions = {
+            key for key in exceptions if key[0] in selected_repository_manifests
+        }
+        unused = relevant_exceptions - used_exceptions
+    else:
+        unused = set(exceptions) - used_exceptions
     if unused:
         rendered = ", ".join(f"{manifest}:{artifact}" for manifest, artifact in sorted(unused))
         raise ManifestError(f"unused or stale exception entries: {rendered}")
