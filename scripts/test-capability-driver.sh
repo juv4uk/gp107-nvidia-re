@@ -489,18 +489,27 @@ open(p, 'wb').write(b)
 PY
 echo 'BAR-FLAG-MUTATION-OK space=memory -> io -> memory'
 
-step 'host PCI inventory (best effort, read-only)'
-if [ -d /sys/bus/pci/devices/0000:01:00.0 ]; then
-  "$BIN" inventory >"$WORK/host.out"
-  grep -Fq '(vendor . 0x10de)' "$WORK/host.out" || fail 'host vendor mismatch'
-  grep -Fq '(device . 0x1c82)' "$WORK/host.out" || fail 'host device mismatch'
-  grep -Fq '(bdf . "0000:01:00.0")' "$WORK/host.out" || fail 'host BDF mismatch'
-  "$PASBIN" inventory >"$WORK/host-pas.out"
-  cmp -s "$WORK/host.out" "$WORK/host-pas.out" \
-    || fail 'Pascal host inventory відрізняється від C'
-  echo 'HOST-INVENTORY-PASS evidence=runtime-proven pascal=C'
+step 'host PCI inventory (best effort, only on the expected GP107 BDF)'
+HOST_BDF=/sys/bus/pci/devices/0000:01:00.0
+if [ ! -d "$HOST_BDF" ]; then
+  echo 'HOST-INVENTORY-SKIP reason=expected-bdf-absent'
+elif [ ! -r "$HOST_BDF/vendor" ] || [ ! -r "$HOST_BDF/device" ]; then
+  echo 'HOST-INVENTORY-SKIP reason=expected-bdf-identity-unreadable'
 else
-  echo 'HOST-INVENTORY-SKIP reason=device-absent'
+  HOST_VENDOR=$(tr -d '\n' <"$HOST_BDF/vendor")
+  HOST_DEVICE=$(tr -d '\n' <"$HOST_BDF/device")
+  if [ "$HOST_VENDOR" != "0x10de" ] || [ "$HOST_DEVICE" != "0x1c82" ]; then
+    echo "HOST-INVENTORY-SKIP reason=not-target-gp107 vendor=$HOST_VENDOR device=$HOST_DEVICE"
+  else
+    "$BIN" inventory >"$WORK/host.out"
+    grep -Fq '(vendor . 0x10de)' "$WORK/host.out" || fail 'host vendor mismatch after target identity match'
+    grep -Fq '(device . 0x1c82)' "$WORK/host.out" || fail 'host device mismatch after target identity match'
+    grep -Fq '(bdf . "0000:01:00.0")' "$WORK/host.out" || fail 'host BDF mismatch after target identity match'
+    "$PASBIN" inventory >"$WORK/host-pas.out"
+    cmp -s "$WORK/host.out" "$WORK/host-pas.out" \
+      || fail 'Pascal host inventory відрізняється від C'
+    echo 'HOST-INVENTORY-PASS evidence=runtime-proven pascal=C'
+  fi
 fi
 
 echo "CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed mmio=deferred safe-offset=unproven pascal=C-parity hardware-mmio=NOT-AUTHORIZED/NOT-RUN"
