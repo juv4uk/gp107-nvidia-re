@@ -22,6 +22,10 @@ Linux source snapshot: [torvalds/linux f4585067150b85e33f60876149a6e742928da75e]
 |---|---|---|
 | nvkm/engine/gr/gp107.c | cc2bb0d0a9870e6145edef92babc480062e2d8c8 | GP107 GR firmware declarations і firmware interface v0 |
 | nvkm/subdev/acr/gp102.c | 084f28449e527077b1fd1f29fc75cafd75d9c46e | спільні GP102 ACR loaders та GP107 path declarations |
+| nvkm/subdev/acr/gm200.c | fd78965d841f9f632b2db8245f49868f22ec28f2 | WPR/LSB builder, signature record і FECS/GPCCS bootstrap |
+| nvkm/engine/gr/gm200.c | b5210b31c1b2c2cdaa22b246517758b09d2bc534 | FECS → GPCCS → software GR loader; no-firmware fallback |
+| nvkm/engine/gr/gk20a.c | 035ea213f543336923eb321b7673313314407765 | parser/loader для sw_ctx, sw_nonctx, sw_bundle_init, sw_method_init |
+| nvkm/engine/device/base.c | a2ed8c4fe52a0bfcc7f48e4ff49b328a10eef41b | GP107 subdevice wiring: ACR, GR, FIFO і display окремими функціями |
 | nvkm/engine/sec2/gp102.c | c64013d1050067bff133a3cd5a12a976744fd97d | спільний GP102 SEC2 і GP107 version-0/version-1 declarations |
 | nvkm/subdev/fb/gp102.c | 534553c6480547cd4ffdc7578c59838741b1b588 | GP107 NVDEC scrubber declaration |
 
@@ -59,6 +63,74 @@ gp107_gr оголошує такі шляхи через MODULE_FIRMWARE:
 gp107_gr, gm200_gr_fecs_acr та gm200_gr_gpccs_acr, а далі має gm200_gr_nofw
 fallback. Це описує source-level loader policy, а не доводить, які саме файли
 були запитані або завантажені на цільовій машині.
+
+#### Loader semantics: що саме вимагає GR
+
+Таблиця firmware paths вище — це лише інвентар. Pinned source також показує
+послідовність споживання:
+
+1. `nv137_chipset` названий `GP107`; він під'єднує
+   `gp102_acr_new`, `gp107_gr_new`, `gp100_fifo_new` та
+   `gp102_disp_new` як окремі subdevice functions. Це доводить роздільність
+   dispatch/ініціалізації ACR, GR, FIFO та display у таблиці пристрою, але не
+   доводить, що KMS гарантовано працює після відмови GR.
+2. `gp107_gr_fwif[]` вибирає interface version `0` з
+   `gm200_gr_load`, `gp107_gr`, `gm200_gr_fecs_acr` і
+   `gm200_gr_gpccs_acr`. Наступний запис — fallback
+   `gm200_gr_nofw`.
+3. `gm200_gr_load` послідовно завантажує FECS bootloader, instruction,
+   data і signature files; потім ті самі чотири компоненти GPCCS. Якщо будь-який
+   з цих двох firmware load helper-ів повертає помилку, вона передається
+   нагору. Лише після успішних FECS і GPCCS ставиться `gr->firmware = true`,
+   після чого запускається `gk20a_gr_load_sw`.
+4. `gk20a_gr_load_sw` окремо читає чотири software data files:
+   `sw_nonctx`, `sw_ctx`, `sw_bundle_init`, `sw_method_init` і
+   перетворює їх у таблиці ініціалізації context/bundle/method. Це не той самий
+   етап, що завантаження FECS/GPCCS Falcon images.
+5. `gm200_gr_nofw` друкує `firmware unavailable` і повертає
+   `-ENODEV`. Отже в цьому GP107 GR interface немає успішного
+   no-firmware GR fallback. Це source-level висновок про GR engine, а не
+   твердження, що весь DRM device або display subdevice обов'язково
+   відмовляє.
+
+Практичний висновок: на рівні публічного Nouveau source GP107 GR
+3D/compute path залежить від FECS/GPCCS та software GR files. Не можна
+позначати Free GR/3D/compute як доступний лише тому, що ядро містить
+`gp107_gr_new` або що PCI/KMS identity прочитана. Окремо лишаються package
+closure, firmware provenance, request/load outcome та фізичний function test.
+
+#### ACR/LSF boundary: що видно, а що ні
+
+У `nv137_chipset` ACR реалізований через `gp102_acr_new`, а GR loader
+передає `gm200_gr_fecs_acr` і `gm200_gr_gpccs_acr` до ACR/LSF helpers.
+Публічний код показує такі речі:
+
+- GP102 ACR load path створює `AcrLoad` із `acr/bl` +
+  `acr/ucode_load`, а unload path — із `acr/unload_bl` +
+  `acr/ucode_unload`. Для GP107 ці шляхи оголошені через symlink у
+  WHENCE, як наведено в таблиці вище.
+- ACR load setup готує region descriptor для WPR; GM200 ACR builder
+  формує WPR/LSB records для Falcon firmware.
+- LSB builder перевіряє, що signature file має очікуваний розмір, і копіює
+  signature bytes у LSB record.
+- `gm200_gr_gpccs_acr` має прапорець
+  `NVKM_ACR_LSF_FORCE_PRIV_LOAD`; `gm200_gr_fecs_acr` його не має.
+
+Не робити з цього сильніших тверджень, ніж дозволяє source: ці фрагменти
+показують шлях підготовки ACR/LSF metadata та передачі підпису у WPR record.
+Вони самі по собі не доводять повну апаратну перевірку конкретного підпису,
+можливість створити сумісний replacement без ключів NVIDIA або поведінку
+конкретної карти під час boot. Ці питання позначаються `UNKNOWN`, доки немає
+окремого публічного специфікаційного чи дозволеного runtime свідка.
+
+#### Межа display/KMS
+
+GP107 device table прив'язує `disp` до `gp102_disp_new`, окремо від
+`gr` → `gp107_gr_new`. Це корисне архітектурне розділення, але воно не є
+тестом. Статус `KMS_WITH_GR_FIRMWARE_ABSENT` лишається
+`NOT_TESTED_H170`: не перетворювати `gm200_gr_nofw = -ENODEV` на
+твердження, що display точно працює або точно не працює без GR firmware.
+Для цього потрібен окремий, owner-approved фізичний display test на H170.
 
 ### ACR
 
