@@ -65,6 +65,7 @@
 | [`42-local-toolchain-and-remaining-targets.md`](docs/42-local-toolchain-and-remaining-targets.md) | три смуги робіт (відкритий стек / runtime-спостереження / статичний RE), ліцензійний gate, таблиця «ціль → питання → інструмент» і порядок дій для #61, #62, E1–E6, #28, #5, #18 |
 | [`48-gp107-open-stack-status-2026-11.md`](docs/48-gp107-open-stack-status-2026-11.md) | датований стан відкритого стеку на Pascal: NVK/Zink, KMS, reclocking, відео, compute; регресія atomic на GP107 (2026-11-02 → фікс `ed7fb901fce3` 2026-11-25) і що це змінює для релізу |
 | [`50-windows-uvm-ioctl-map-and-uuid-payload.md`](docs/50-windows-uvm-ioctl-map-and-uuid-payload.md) | `statically proven`: 58 викликів `DeviceIoControl`-helperа, 27 унікальних IOCTL-кодів, 3× `0x22e034` з 16-байтним полем за офсетом `+8` 40-байтного input; тотожність поля з `CUuuid` і відповідність `UVM_REGISTER_GPU` — `UNPROVEN`; інструментобуд Chocolatey Portable 2.7.5 + Python 3.12.10 + pefile/capstone; без release/tag |
+| [`53-windows-uuid-to-uvm-ioctl-payload.md`](docs/53-windows-uuid-to-uvm-ioctl-payload.md) | `statically proven`: у shipped `nvcuda64.dll` 16 байт із `obj+0xc06` через `xmm2` потрапляють у `0x22e034 input+0x08` перед викликом DeviceIoControl-helperа; pdata-розділений кадр, BSS-таблиця й прапорець не мають вмісту у файлі; тотожність об'єкта й `0x22e034 ≡ UVM_REGISTER_GPU` — `UNPROVEN`; скрипт `pe_uuid_flow_audit.py`, 14/14 перевірок; без release/tag |
 | [`43-gp107-nonstall-mainline-indexing.md`](docs/43-gp107-nonstall-mainline-indexing.md) | Pinned Linux master source chain: GP107 global non-stall event index versus per-runlist user-channel ID; nonzero runlist risk remains conditional, H170 user-channel correlation UNPROVEN |
 | [`44-open-stack-capability-matrix.md`](docs/44-open-stack-capability-matrix.md) | evidence-backed попередньо заповнена матриця Nouveau/NVK: зовнішній GP107 witness, bounded compute PASS, межі H170 та WSM acceptance |
 | [`45-windows-uvm-uuid-comparison.md`](docs/45-windows-uvm-uuid-comparison.md) | Windows-внесок у звірку: `nvcuda64.dll` (`af853a5b…`), `\\.\UVMLiteController` → `DeviceIoControl`, ті ж зсуви `+0xc06`/`+0xc27`, writer-и `0x1804096ef`/`0x18036d645`; Windows nr, payload і початкове джерело UUID — `UNPROVEN`; без release/tag |
@@ -84,7 +85,7 @@
 - `docs/` — дослідницькі документи та зведені довідники.
 - `evidence/nouveau-20261127/` — сирі логи boot-свідка та SHA-256 маніфести.
 - `evidence/rea-20261127/` — JSON-пакети доказів REA.
-- `evidence/windows-20261128/` — власні нотатки, команди Rizin та `pe_ioctl_audit.json` для Windows-звірки (docs/45, docs/48); бінарники виробника не зберігаються.
+- `evidence/windows-20261128/` — власні нотатки, команди Rizin, `pe_ioctl_audit.json` і `uuid_to_ioctl_audit.json` для Windows-звірки (docs/45, docs/50, docs/51); бінарники виробника не зберігаються.
 - `experiments/nvk-compute-smoke/` — функціональний NVK compute harness і його артефакти.
 - `experiments/vk-compute-bench/` — порівняльний Vulkan compute harness і його артефакти.
 - `probes/` — незалежний C-пробник без `libcuda`.
