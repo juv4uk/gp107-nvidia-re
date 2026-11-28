@@ -1,3 +1,4 @@
 60a32ef7ac2dc4dabc75da8a33a4de2ca005b61c0ce054632f082c5d07453018  linux-vs-windows-comparison.md
 d468ec8993a7ece110ecf492b109033348cdb5fb3b7b9ad822178d836954308e  nvcuda64-uuid-and-uvm-facts.txt
 b6527ec1cc43cafd3f7fe5d12b69b0a85224791b3269bd36542b09af45a557e7  rizin-commands.txt
+f7aa2836e40ad7de537f14ad2894f3955db30c05fb2c00ffa54e9f2583df6cdc  pe_ioctl_audit.json
