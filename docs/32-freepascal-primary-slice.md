@@ -20,9 +20,9 @@ RM, firmware, reboot і фізичний MMIO не виконувалися.
 Збірка: `make -C pascal gp107ctl-pascal`. Компілятор перевіряється через
 `make -C pascal check-fpc`: очікується точно `3.2.2`.
 
-`Load32Asm` лишається ізольованим instruction-reference leaf для статичної
-перевірки `mov eax,[rdi]` + `lfence`; `Read32` не викликає його. Public API
-не відкриває `resource0`, не мапить BAR і не читає register.
+`Load32Asm` лишається приватним implementation-only instruction-reference leaf для статичної
+перевірки `mov eax,[rdi]` + `lfence`; після #55 він більше не експортується з public unit interface.
+`Read32` не викликає його. Public API не відкриває `resource0`, не мапить BAR і не читає register.
 
 ## 2. Статус фактів
 
@@ -39,7 +39,8 @@ RM, firmware, reboot і фізичний MMIO не виконувалися.
 | 9 | Фізичний MMIO-доступ до реальної GP107 | **NOT RUN** | `nvidia` bound; cmdline без `wsm_open_driver=1`; жодного unbind/reboot |
 | 10 | BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, `BDF ↔ RM gpu_id` | **UNPROVEN / string-only** | Pascal не додає жодного нового твердження; константа відсутня у коді |
 | 11 | Використання Pascal як основи майбутнього релізу під плату власника | **design choice / interpretation** | owner-заява про цільове залізо; не release-рішення й не ABI-pin |
-| 12 | C перевіряє `driver`-symlink через `readlinkat()` на відкритому каталозі; Pascal — шляхом через `FpReadLink` | **interpretation / PARTIAL** | у FPC 3.2.2 RTL немає `FpReadLinkAt`; названі маркери й fail-closed поведінка збігаються на fixture, але C-якір сильніший |
+| 12 | C і Pascal повторно звіряють PCI identity та driver binding через один pinned PCI directory fd | **source change; exact-head CI PENDING** | C використовує `openat/readlinkat`; Pascal додає вузькі FPC 3.2.2 libc bindings до `openat/readlinkat`, звіряє `uevent`, sysfs attributes, PCI config і driver entry на тому самому fd; code 21 лишається кінцевим safe-offset gate |
+| 13 | Pascal pinned-dirfd negatives: bound/unbound, invalid driver entry, BDF symlink swap та same-BDF wrong-device swap | **synthetic-fixture planned / CI PENDING** | п’ять сценаріїв додано до `scripts/test-capability-driver.sh` у PR #56; до exact-head run не трактувати як прийняте runtime evidence |
 
 ## 3. Межі
 

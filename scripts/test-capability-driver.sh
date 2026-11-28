@@ -199,6 +199,153 @@ cmp -s "$WORK/ledger-bound.out" "$WORK/ledger-bound-pas.out" \
 echo 'LEDGER-BOUND-OK mmio=denied rm=deferred'
 echo 'PASCAL-PARITY-OK inventory-and-ledger identical-to-C'
 
+step 'prepare pinned-identity decoy directories'
+python3 - "$FIX/devices" <<'PY'
+import os
+import sys
+
+root = sys.argv[1]
+
+def create_device(name, bdf):
+    dev = os.path.join(root, name)
+    os.makedirs(dev, exist_ok=True)
+    cfg = bytearray(32)
+    cfg[0:4] = bytes((0x86, 0x80, 0x34, 0x12))
+    cfg[0x08] = 0x01
+    cfg[0x0b] = 0x03
+    cfg[0x0e] = 0x80
+    cfg[0x10:0x14] = bytes((0x00, 0x00, 0x00, 0xee))
+    with open(os.path.join(dev, "config"), "wb") as handle:
+        handle.write(cfg)
+    attrs = {
+        "vendor": "0x8086",
+        "device": "0x1234",
+        "revision": "0x01",
+        "subsystem_vendor": "0x0000",
+        "subsystem_device": "0x0000",
+    }
+    for key, value in attrs.items():
+        with open(os.path.join(dev, key), "w", encoding="ascii") as handle:
+            handle.write(value + "\n")
+    with open(os.path.join(dev, "uevent"), "w", encoding="ascii") as handle:
+        handle.write(
+            "PCI_CLASS=030000\n"
+            "PCI_ID=8086:1234\n"
+            "PCI_SUBSYS_ID=0000:0000\n"
+            f"PCI_SLOT_NAME={bdf}\n"
+        )
+
+create_device("decoy-wrong-bdf", "0000:02:00.0")
+create_device("decoy-same-bdf", "0000:01:00.0")
+PY
+
+cat > "$WORK/pascal-pinned-identity-test.pas" <<'EOF'
+program pascal_pinned_identity_test;
+
+{$mode objfpc}{$H+}
+
+uses
+  SysUtils, BaseUnix, gp107_identity;
+
+var
+  root, mode, decoy, bdfPath, devicePath, driverPath, driverTarget: string;
+  expected: Tgp107Inventory;
+  err: string;
+  rc, expectedCode: Integer;
+  bdfSwapped, driverChanged: Boolean;
+  driverFile: TextFile;
+
+procedure RequireOk(condition: Boolean; const messageText: string);
+begin
+  if not condition then
+  begin
+    WriteLn(StdErr, 'PASCAL-PINNED-TEST-FAIL ', messageText);
+    Halt(1);
+  end;
+end;
+
+begin
+  if ParamCount <> 4 then
+    Halt(64);
+  root := ParamStr(1);
+  mode := ParamStr(2);
+  decoy := ParamStr(3);
+  expectedCode := StrToInt(ParamStr(4));
+  bdfPath := IncludeTrailingPathDelimiter(root) +
+             'bus/pci/devices/0000:01:00.0';
+  devicePath := IncludeTrailingPathDelimiter(root) + 'devices/0000:01:00.0';
+  driverPath := IncludeTrailingPathDelimiter(devicePath) + 'driver';
+  driverTarget := IncludeTrailingPathDelimiter(root) +
+                  'bus/pci/drivers/nvidia';
+  bdfSwapped := False;
+  driverChanged := False;
+
+  rc := ScanInventory(root, '0000:01:00.0', expected, err);
+  RequireOk(rc = STATUS_OK, 'initial ScanInventory rc=' + IntToStr(rc) +
+            ' err=' + err);
+
+  try
+    if mode = 'unbound' then
+    begin
+      RequireOk(FpUnlink(PChar(driverPath)) = 0, 'remove driver link');
+      driverChanged := True;
+    end
+    else if mode = 'invalid-driver' then
+    begin
+      RequireOk(FpUnlink(PChar(driverPath)) = 0, 'remove driver link');
+      driverChanged := True;
+      AssignFile(driverFile, driverPath);
+      Rewrite(driverFile);
+      WriteLn(driverFile, 'not a symlink');
+      CloseFile(driverFile);
+    end
+    else if (mode = 'wrong-bdf') or (mode = 'same-bdf-wrong-device') then
+    begin
+      RequireOk(decoy <> '', 'missing decoy path');
+      RequireOk(FpUnlink(PChar(bdfPath)) = 0, 'remove BDF symlink');
+      RequireOk(FpSymlink(PChar(decoy), PChar(bdfPath)) = 0,
+                'point BDF symlink at decoy');
+      bdfSwapped := True;
+    end
+    else if mode <> 'bound' then
+      RequireOk(False, 'unknown mode=' + mode);
+
+    rc := VerifyPinnedIdentity(root, '0000:01:00.0', expected, err);
+    RequireOk(rc = expectedCode, 'mode=' + mode + ' expected=' +
+              IntToStr(expectedCode) + ' got=' + IntToStr(rc) +
+              ' err=' + err);
+    WriteLn('PASCAL-PINNED-IDENTITY-OK mode=', mode,
+            ' code=', rc);
+  finally
+    if bdfSwapped then
+    begin
+      FpUnlink(PChar(bdfPath));
+      FpSymlink(PChar(devicePath), PChar(bdfPath));
+    end;
+    if driverChanged then
+    begin
+      FpUnlink(PChar(driverPath));
+      FpSymlink(PChar(driverTarget), PChar(driverPath));
+    end;
+  end;
+end.
+EOF
+
+fpc -B -O2 -Mobjfpc -Sh -Fu"$ROOT/pascal" -FU"$WORK" -FE"$WORK" \
+  -o"$WORK/pascal-pinned-identity-test" \
+  "$WORK/pascal-pinned-identity-test.pas" >"$WORK/pinned-fpc.log" 2>&1 \
+  || { cat "$WORK/pinned-fpc.log" >&2; fail 'Pascal pinned identity helper did not compile'; }
+
+step 'pinned PCI directory keeps the current GP107 identity'
+"$WORK/pascal-pinned-identity-test" "$FIX" bound "" 16
+"$WORK/pascal-pinned-identity-test" "$FIX" unbound "" 0
+"$WORK/pascal-pinned-identity-test" "$FIX" invalid-driver "" 20
+"$WORK/pascal-pinned-identity-test" "$FIX" wrong-bdf \
+  "$FIX/devices/decoy-wrong-bdf" 14
+"$WORK/pascal-pinned-identity-test" "$FIX" same-bdf-wrong-device \
+  "$FIX/devices/decoy-same-bdf" 5
+echo 'PASCAL-PINNED-DIRFD-OK cases=5 layout=32/68/140 resource0=not-opened'
+
 step 'negative witness (second matching card is ambiguous)'
 mkdir -p "$FIX/bus/pci/devices/0000:02:00.0"
 cp "$FIX/bus/pci/devices/0000:01:00.0"/{config,vendor,device,resource0} \
