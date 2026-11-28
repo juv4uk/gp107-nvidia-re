@@ -113,13 +113,13 @@ def main() -> int:
     print()
 
     print("## Unnamed requests — UNPROVEN\n")
-    if unknown:
+    if all_unknown:
         print("These requests were observed but the decoder has no name for them.")
         print("They are listed separately on purpose: an unnamed request is not an")
-        print("absent one.\n")
+        print("absent one. Counts are combined across all supplied runs.\n")
         print("| request | dir | magic | nr | size | count |")
         print("| --- | --- | --- | --- | --- | --- |")
-        for (req, typ, nr, size), n in unknown.most_common():
+        for (req, typ, nr, size), n in all_unknown.most_common():
             dname = {0: "NONE", 1: "WRITE", 2: "READ", 3: "RD/WR"}[(req >> 30) & 3]
             print(f"| `{req:#010x}` | {dname} | {typ:#04x} | {nr:#04x} | {size} | {n} |")
     else:
