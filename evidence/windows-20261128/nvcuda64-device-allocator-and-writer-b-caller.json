@@ -1,0 +1,202 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T11:25:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subjects": [
+    {
+      "name": "nvcuda64.dll",
+      "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll"
+    }
+  ],
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000"
+  },
+  "observations": [
+    {
+      "evidence_id": "ev_8fb0d26ded1cd29edb54f7f37bacffd03bd90ccf272344e9c1c8524274eec701",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180204930; pdf @ 0x180204930",
+      "facts": [
+        "0x180204943: rbx=arg1 (state); 0x180204953: r13=arg3 (out); 0x180204956: rdi=arg2 (source)",
+        "0x180204948: ecx=0x73b8; 0x180204959: call 0x1817ee48c; 0x18020496f-0x18020497a: zero-fill of 0x73b8 bytes before InitializeCriticalSection calls",
+        "0x180204a74: ecx=dword [rbx]; 0x180204a7c: inc dword [rbx]",
+        "0x180204b19: mov qword [rbx+0x2d0], rcx — state tail updated to the new object",
+        "0x180205320: test r13,r13; 0x180205325: rax=[var_50h]; 0x180205329: mov [r13], rax — new object returned via out-parameter"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_0d5c91050a0153240198e0c7625919ac303d3306dcabccb286a5d7f7420000f9",
+      "subject": "nvcuda64.dll",
+      "command": "pd 16 @ 0x180204944",
+      "facts": [
+        "instruction-aligned window confirms ecx=0x73b8 at 0x180204948, call 0x1817ee48c at 0x180204959 and zero-fill arguments at 0x18020496f/0x180204971/0x180204977"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_ddcf473c4261b8146161f6688354105a435fd50e8cf3aad9d0ae5a5eb11a59b6",
+      "subject": "nvcuda64.dll",
+      "command": "pd 58 @ 0x180204a70",
+      "facts": [
+        "0x180204a8e/0x180204a95/0x180204aa0: the new object is linked at the head [state+0x2c8] and its +0x73a8 points to the former head; 0x180204aa7/0x180204ab3 maintain +0x73b0",
+        "on the non-empty branch 0x180204ac3-0x180204afe the object is linked after [state+0x2d0] using +0x73a8/+0x73b0",
+        "0x180204b20: call qword [rdi] (source callback); 0x180204b26: rcx=rdi (source); 0x180204b29: [new_object+0x72c8]=state; 0x180204b34: rdx=new_object; 0x180204b37: call qword [new_object+0x6c98] (Writer B)"
+      ],
+      "status": "statically_proven",
+      "coverage": "The first three decoded lines of the pd window start mid-instruction; only instructions from 0x180204a7f onward are cited."
+    },
+    {
+      "evidence_id": "ev_5e4e169cf658bcc38c87f677c63c945610c507efb595afb4de5e4f0269dac09d",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180204930; pdf @ 0x180204930~0x2c8",
+      "facts": [
+        "0x180204a8e reads [rbx+0x2c8] and 0x180204aa0 writes the new object back to [rbx+0x2c8] — the list head read by publisher 0x180208bf0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_7e86258005274cc25afcda4166c26b0e6862d9867c666c53c96f6a5283d8d185",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180204930; pdf @ 0x180204930~0x73a8",
+      "facts": [
+        "+0x73a8 forward links and +0x73b0 backward links are maintained at 0x180204a95/0x180204aa7/0x180204ab3/0x180204ad5/0x180204ae0/0x180204afe; publisher 0x180208bf0 traverses +0x73a8"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_707fc53addac8fb982dd0f2e528a0cd087b35f1779bbe302f3514f1093d9e42f",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x180204930",
+      "facts": [
+        "direct callers: 0x180024df6, jmp at 0x180026a80, 0x18036f667 in the method-table builder and 0x180409608 in Writer A"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr contained bin_file_strings warnings; CALL xrefs are unaffected."
+    },
+    {
+      "evidence_id": "ev_8f8e4e74277e9c628555c54d834b0ed3f545454998adbee23b83c091032c978b",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010",
+      "facts": [
+        "0x18040904a: [var_980h]=rcx (arg1); 0x1804095f7: rcx=[var_980h]; 0x1804095fc: r8=&var_9b0h; 0x180409608: call 0x180204930",
+        "0x180409615: rax=[var_9b0h]; 0x1804096ef: movups [rax+0xc06], xmm0 — Writer A writes the 16 bytes into the object returned by the allocator"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_b8d40ee3bdd6910d6a27150c874a72d811652f04901292808e252a55b324fd52",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~var_980",
+      "facts": [
+        "var_980h is the saved arg1 and is passed as rcx to the allocator at 0x1804095f7"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_41da9920bd6b77772d32f11fa5fb118cf6591a7ce91a67c5c417274622a47170",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~0x182004420",
+      "facts": [
+        "no literal reference to the global state address 0x182004420 appears in Writer A; its state arrives as arg1"
+      ],
+      "status": "coverage_limitation"
+    },
+    {
+      "evidence_id": "ev_0aaf2d2e6a96c7f31bbb757728e58f90d19d392b651295bdb2b37746d4a171ce",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036f270; pdf @ 0x18036f270",
+      "facts": [
+        "0x18036f652: rcx=[var_500h]; 0x18036f657: r8=&var_508h; 0x18036f65c: rdx=&var_4e8h; 0x18036f667: call 0x180204930",
+        "0x18036f695: rax=[var_508h]; 0x18036f69a: [rax+0x72e0]=rcx — the returned object is used as a device object"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_acf7a791390329776f5681ce95b83da1be7fc698950ae0f89c7b04d88867c945",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036f270; pdf @ 0x18036f270~36bb70",
+      "facts": [
+        "0x18036f2d2: lea rax, [0x18036bb70] — the Writer B method-table installer is referenced in the same builder that calls the allocator"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_2bd459e7ccf9a68d9e7646b054065e8e6fcdf39a32196d7daf0d7a69d7ae7120",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409f50; pdf @ 0x180409f50~r14",
+      "facts": [
+        "0x180409f62: r14=[arg2]; 0x18040a080: rcx=r14 before the Writer A call"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_0dc321939cebb40a228f7b9af3cc00d6ebac616e7de2bd37696212b74cba7d83",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x180409f50",
+      "facts": [
+        "no direct CALL xrefs to 0x180409f50; only DATA refs 0x180407ce9 and 0x18040a0e9, so it is invoked through [iface+0xc0]"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_f4896ba710ce29eb6a7800cbdb71442213ccbea380b3456919a3668c0067bcc2",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x182004420",
+      "facts": [
+        "the global state 0x182004420 is used by publisher callers 0x18018b02d and 0x18018ce54 and loaded by several other functions; no link to the context passed into 0x180409f50 was established"
+      ],
+      "status": "coverage_limitation"
+    },
+    {
+      "evidence_id": "ev_774e875facf772f86ec818f9176f45d8a7586126aa67741d3b80b65d6b88ff47",
+      "subject": "nvcuda64.dll",
+      "command": "pd 26 @ 0x180407cd0",
+      "facts": [
+        "the wrapper stores the caller's rcx into a 2-field context at [rsp+0x20] and calls [iface+0xc0] with rcx=0x180409f50 and rdx=&context"
+      ],
+      "status": "statically_proven",
+      "coverage": "pd window aligned on an instruction boundary for the cited addresses."
+    }
+  ],
+  "conclusions": [
+    {
+      "claim": "0x180204930 is the shared allocator/inserter of device objects with the +0x2c8/+0x73a8 list layout",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "Writer B is invoked indirectly through [object+0x6c98] from 0x180204930 with the new object as receiver and the source as first argument",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "Writer A writes the 16 bytes into the object returned by the same allocator via an out-parameter",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "the method-table builder 0x18036f270 also allocates through 0x180204930 and references the Writer B installer",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "the state object passed to Writer A is byte-identical to the global 0x182004420 used by the publisher",
+      "status": "UNPROVEN"
+    },
+    {
+      "claim": "the 16 bytes are a GPU UUID, their ultimate producer, and BDF↔RM gpu_id",
+      "status": "UNPROVEN"
+    },
+    {
+      "claim": "any of these paths executed on this host",
+      "status": "NOT_RUN"
+    }
+  ],
+  "limits": [
+    "Ghidra did not finish import/analysis of the 34 MB DLL; no Ghidra xrefs are claimed.",
+    "Rizin analysis does not persist between calls; axt was issued with aaa in the same command.",
+    "stderr contained bin_file_strings warnings; listed xrefs are not disproved by them.",
+    "no cuInit, cuDeviceGetUuid, CUDA/Vulkan/OpenGL init, D3DKMT/RM/UVM ioctl, GPU submit, MMIO, firmware, reboot, tag or release was performed."
+  ]
+}
