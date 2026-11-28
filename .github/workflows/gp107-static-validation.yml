@@ -24,6 +24,7 @@ on:
       - "scripts/**"
       - "evidence/**"
       - "experiments/**"
+      - "docs/**"
 
 permissions:
   contents: read
@@ -51,6 +52,9 @@ jobs:
           test "$(fpc -iV)" = "3.2.2"
           fpc -iV
           uname -srm
+
+      - name: Check that docs cite evidence that exists
+        run: bash scripts/test-doc-evidence-links.sh
 
       - name: Check shell syntax
         run: bash -n scripts/test-pascal-probe.sh
