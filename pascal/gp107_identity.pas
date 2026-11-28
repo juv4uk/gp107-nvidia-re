@@ -103,6 +103,9 @@ function VerifyPinnedIdentity(const root, expectBdf: string;
 
 implementation
 
+type
+  PLibcErrno = ^cint;
+
 const
   LINUX_O_DIRECTORY_FLAG = $10000;
   LINUX_O_NOFOLLOW_FLAG  = $20000;
@@ -112,9 +115,6 @@ function libc_openat(dirfd: cint; pathname: PChar; flags: cint;
                      mode: LongWord): cint; cdecl; external 'c' name 'openat';
 function libc_readlinkat(dirfd: cint; pathname: PChar; buffer: PChar;
                          bufsiz: SizeUInt): ssize_t; cdecl; external 'c' name 'readlinkat';
-
-type
-  PLibcErrno = ^cint;
 
 function libc_errno_location: PLibcErrno; cdecl; external 'c' name '__errno_location';
 
