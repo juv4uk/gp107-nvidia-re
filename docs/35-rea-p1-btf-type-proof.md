@@ -37,6 +37,7 @@ asm-first контракт [`docs/33`](33-asm-first-target-contract.md) не з�
 | BTF section | `.BTF`, SHA-256 `0de4d26929154f37cfc6c64f3482126fb06cd72430cc6716f61ff4995c9de845` |
 | BTF layout dump | `evidence/rea-20261128/btf-uvm-type-layout.txt`, SHA-256 `b305ddcf413cdf60c7675364dfde3b7c6c18d7231ee37b20ccfef5fe90008e51` |
 | REA bundle | `evidence/rea-20261128/evidence-p1-btf-parent-proof-restored.json`, 118 records, 4 unknown revisions, SHA-256 `41a6cf6eca784a6ddcb3a5ec333f7b119a20927ecba855a56c961fcae45b6a66` |
+| Loaded-module pairing | [`docs/36`](36-r580-artifact-pairing.md): sysfs Build ID `3ca683724fec50f550c2a7666394569e814f5691` = file Build ID; `runtime-proven`, witness SHA `b6db7f53d1fa91c3a44517ffe20d4313eb5a6b95cd2052f1f7190f368ee47dc5` |
 | Unknown | `unk_60e2b61cc14cb5c16774bf5bc277761da2726301ae73d05373cf6d060b104e92`, revision 4, `resolved` |
 | Tools | `pahole 1.32` (BTF layout), REA `execute_rizin_command` / `rizin 0.9.1` (provider version `null`) |
 

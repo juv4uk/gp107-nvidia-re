@@ -1,0 +1,140 @@
+# R580 artifact pairing — read-only host inventory
+# Commands executed on the RE host; outputs are raw and unmodified.
+# No vendor source or blob is copied: only package/DKMS metadata and build-log line pointers.
+
+=== date -u ===
+субота, 28 листопада 2026 00:22:29 +0000
+
+=== uname -r ===
+7.2.15+kali-amd64
+
+=== dpkg-query -S (installed module paths) ===
+dpkg-query: не знайдено шляху, що відповідає шаблону /lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia.ko.xz
+dpkg-query: не знайдено шляху, що відповідає шаблону /lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia-uvm.ko.xz
+rc_note: DKMS-generated files are not owned by a dpkg path entry.
+
+=== dpkg-query -W versions ===
+nvidia-driver	580.196.11-1	nvidia-graphics-drivers	install ok installed
+nvidia-kernel-dkms	580.196.11-1	nvidia-graphics-drivers	install ok installed
+
+=== dpkg-query -s nvidia-kernel-dkms (selected fields) ===
+Package: nvidia-kernel-dkms
+Status: install ok installed
+Source: nvidia-graphics-drivers
+Version: 580.196.11-1
+Depends: dkms (>= 3.1.8), firmware-nvidia-gsp (= 580.196.11), nvidia-kernel-support
+
+=== dpkg -V nvidia-kernel-dkms ===
+rc=0 stdout_bytes=0 stderr_bytes=0
+
+=== dkms status nvidia ===
+nvidia/580.196.11, 7.2.15+kali-amd64, x86_64: installed
+
+=== sha256sum installed compressed modules ===
+f19b0531bf269ebe715790b17173cc3110ebdccf9239f1d397ca034254953062  /lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia.ko.xz
+80132204f76981b2373baeb936866347e3c80e8527feb118bffe03f6adc10e8f  /lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia-uvm.ko.xz
+
+=== sha256sum DKMS-built compressed modules ===
+f19b0531bf269ebe715790b17173cc3110ebdccf9239f1d397ca034254953062  /var/lib/dkms/nvidia/580.196.11/7.2.15+kali-amd64/x86_64/module/nvidia.ko.xz
+80132204f76981b2373baeb936866347e3c80e8527feb118bffe03f6adc10e8f  /var/lib/dkms/nvidia/580.196.11/7.2.15+kali-amd64/x86_64/module/nvidia-uvm.ko.xz
+
+=== cmp installed vs DKMS outputs ===
+nvidia rc=0
+nvidia-uvm rc=0
+
+=== decompress and sha256sum unpacked modules ===
+95c5fa5ab0546ee40842cda2ec20ea3ec1e196a5afee1580944ecae2ffc75bbe  /tmp/opencode/rea-nvidia-uvm/nvidia.ko
+81b21527017a096f8276e7b93d04e82a414d03ac3b6a0831f9acba3a4ac488b6  /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+
+=== modinfo version/vermagic/filename ===
+--- /lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia.ko.xz ---
+version=580.196.11
+vermagic=7.2.15+kali-amd64 SMP preempt mod_unload 
+filename=/lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia.ko.xz
+--- /lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia-uvm.ko.xz ---
+version=580.196.11
+vermagic=7.2.15+kali-amd64 SMP preempt mod_unload 
+filename=/lib/modules/7.2.15+kali-amd64/updates/dkms/nvidia-uvm.ko.xz
+
+=== readelf -n build-id and Linux version notes ===
+--- /tmp/opencode/rea-nvidia-uvm/nvidia.ko ---
+  GNU                  0x00000014	NT_GNU_BUILD_ID (unique build ID bitstring)
+    Build ID: c0007bbb496887617532fcb7fc7ef8521c6a853f
+
+--
+   description data: 00 00 00 00 
+  Linux                0x00000012	OPEN
+   description data: 37 2e 32 2e 31 35 2b 6b 61 6c 69 2d 61 6d 64 36 34 00 
+--- /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko ---
+  GNU                  0x00000014	NT_GNU_BUILD_ID (unique build ID bitstring)
+    Build ID: 3ca683724fec50f550c2a7666394569e814f5691
+
+--
+   description data: 00 00 00 00 
+  Linux                0x00000012	OPEN
+   description data: 37 2e 32 2e 31 35 2b 6b 61 6c 69 2d 61 6d 64 36 34 00 
+
+=== tool versions ===
+Інструмент запитів програми керування пакунками Debian dpkg-query версії 1.23.11 (amd64).
+dkms-3.2.2
+GNU readelf (GNU Binutils for Debian) 2.47.50.20261021
+xz (XZ Utils) 5.8.4
+kmod version 34.2
+sha256sum (GNU coreutils) 9.12
+Програма керування пакунками Debian 'dpkg' версії 1.23.11 (amd64).
+od (GNU coreutils) 9.12
+
+=== loaded module versions (sysfs, read-only) ===
+nvidia: 580.196.11
+nvidia_uvm: 580.196.11
+
+=== loaded build-id and srcversion pairing ===
+--- nvidia ---
+sysfs srcversion: 65626331C62C6702B5D95C0
+file  srcversion: 65626331C62C6702B5D95C0
+srcversion comparison: MATCH (rc=0)
+sysfs build-id bytes: c0007bbb496887617532fcb7fc7ef8521c6a853f
+file  build-id: c0007bbb496887617532fcb7fc7ef8521c6a853f
+sysfs build-id: c0007bbb496887617532fcb7fc7ef8521c6a853f
+build-id comparison: MATCH (rc=0)
+--- nvidia_uvm ---
+sysfs srcversion: FCB6D1F791D311E34BEF9A5
+file  srcversion: FCB6D1F791D311E34BEF9A5
+srcversion comparison: MATCH (rc=0)
+sysfs build-id bytes: 3ca683724fec50f550c2a7666394569e814f5691
+file  build-id: 3ca683724fec50f550c2a7666394569e814f5691
+sysfs build-id: 3ca683724fec50f550c2a7666394569e814f5691
+build-id comparison: MATCH (rc=0)
+
+=== DKMS metadata ===
+dkms.conf sha256: b1063a96db05a927d378e72d1c8e9f27f129aefca22adb77521b5ac2a17ff2fc  /usr/src/nvidia-580.196.11/dkms.conf
+Kbuild sha256: 0edae2bcc1b6f1b9c36f8199ff268d05cc478e1de8e1f62876cea5bc686ef337  /usr/src/nvidia-580.196.11/Kbuild
+Makefile sha256: eec07e6dfc0d204af6f8a7c0dfc4af70a037bf92d61ec2b03166a242bf7536ec  /usr/src/nvidia-580.196.11/Makefile
+dpkg md5sums sha256: bd51ecd879ce15d4d6fce41dc75635169eda80e11cb43c648b341b78f815e268  /var/lib/dpkg/info/nvidia-kernel-dkms.md5sums
+PACKAGE_NAME="nvidia"
+PACKAGE_VERSION="580.196.11"
+BUILT_MODULE_NAME[0]="nvidia"
+DEST_MODULE_NAME[0]="$PACKAGE_NAME"
+DEST_MODULE_LOCATION[0]="/updates/dkms"
+BUILT_MODULE_NAME[1]="nvidia-modeset"
+DEST_MODULE_NAME[1]="$PACKAGE_NAME-modeset"
+DEST_MODULE_LOCATION[1]="/updates/dkms"
+BUILT_MODULE_NAME[2]="nvidia-drm"
+DEST_MODULE_NAME[2]="$PACKAGE_NAME-drm"
+DEST_MODULE_LOCATION[2]="/updates/dkms"
+BUILT_MODULE_NAME[3]="nvidia-uvm"
+DEST_MODULE_NAME[3]="$PACKAGE_NAME-uvm"
+DEST_MODULE_LOCATION[3]="/updates/dkms"
+BUILT_MODULE_NAME[4]="nvidia-peermem"
+DEST_MODULE_NAME[4]="$PACKAGE_NAME-peermem"
+DEST_MODULE_LOCATION[4]="/updates/dkms"
+
+=== DKMS make.log targeted lines ===
+make.log sha256: 7c133c82f200fad07ad6a4fc50bfe81d21ec488436dbb860ab66460027ddad26  /var/lib/dkms/nvidia/580.196.11/7.2.15+kali-amd64/x86_64/log/make.log
+5:# command: 'make' -j4 KERNEL_UNAME=7.2.15+kali-amd64 IGNORE_PREEMPT_RT_PRESENCE=1 IGNORE_XEN_PRESENCE=1 modules
+47961:  MODPOST Module.symvers
+47964:  CC [M]  nvidia-uvm.mod.o
+47968:  LD [M]  nvidia-uvm.ko
+47972:  LD [M]  nvidia.ko
+
+=== end ===

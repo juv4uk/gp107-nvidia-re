@@ -56,6 +56,7 @@
 | [`33-asm-first-target-contract.md`](docs/33-asm-first-target-contract.md) | opcode-послідовність як авторитетний артефакт під залізо власника; Pascal/C — обгортка/oracle, не реліз |
 | [`34-rea-p1-parent-object-and-test-context.md`](docs/34-rea-p1-parent-object-and-test-context.md) | батько з `g_uvm_global+0x28`, чотири call-site в `uvm_test_channel_sanity`; typed-ланцюг уточнено в docs/35 |
 | [`35-rea-p1-btf-type-proof.md`](docs/35-rea-p1-btf-type-proof.md) | BTF shipped-артефакта доводить `parent_gpus → uvm_parent_gpu_t → gpus → uvm_gpu_t → channel_manager`; роль `rdi` у гілці `r8==0` — UUID-джерело; caller-и `add_gpu` UNPROVEN |
+| [`36-r580-artifact-pairing.md`](docs/36-r580-artifact-pairing.md) | `runtime-proven` pairing REA-тарґета `81b21527…` зі встановленим і завантаженим `nvidia_uvm` через version/srcversion/Build ID; без MMIO й vendor source |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
