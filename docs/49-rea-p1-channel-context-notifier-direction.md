@@ -1,4 +1,4 @@
-# 42 — REA P1: напрямок channel / context / notifier
+# 49 — REA P1: напрямок channel / context / notifier
 
 Продовження [`docs/07`](07-next-research-direction.md) §E2–E4 і
 [`docs/40`](40-rea-p1-gpu-info-uuid-direction.md). UUID-гілка закрита: UUID
