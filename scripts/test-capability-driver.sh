@@ -26,6 +26,23 @@ bash -n "$ROOT/scripts/test-capability-identity.sh"
 echo 'SHELL-SYNTAX-OK'
 
 step 'driver firewall (code, not prose)'
+step 'Pascal raw assembly leaf is not part of the public unit interface'
+python3 - "$ROOT/pascal/gp107_mmio.pas" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+before, separator, implementation = source.partition("\nimplementation\n")
+if not separator:
+    raise SystemExit("PASCAL-ASM-API-FAIL missing implementation boundary")
+if re.search(r"(?im)^\\s*function\\s+Load32Asm\\s*\\(", before):
+    raise SystemExit("PASCAL-ASM-API-FAIL Load32Asm remains public")
+if not re.search(r"(?im)^\\s*function\\s+Load32Asm\\s*\\(", implementation):
+    raise SystemExit("PASCAL-ASM-API-FAIL private instruction reference missing")
+print("PASCAL-ASM-API-PRIVATE-OK public=no private=reference-only")
+PY
+
 if grep -nHE '\b(PROT_WRITE|MAP_FIXED|O_RDWR|FpWrite|pwrite|msync|nva|ioctl|NV_ESC|137000A1|Tested-by|RM_ALLOC)\b' \
      lib/*.c lib/*.h pascal/gp107_*.pas >>"$WORK/fw.txt"; then
   cat "$WORK/fw.txt" >&2
