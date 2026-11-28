@@ -7,7 +7,7 @@ read-only примітиву, а не до невідомих регістрів
 
 ## 1. Що саме на асемблері
 
-`lib/gp107_mmio_asm.S` — власний x86-64 SysV примітив:
+`lib/gp107_mmio_asm.S` — власний x86-64 SysV примітив; Pascal-декларація `Load32Asm()` є лише в `implementation` і не експортується з unit interface:
 
 ```text
 rdi = вже змапована read-only адреса
