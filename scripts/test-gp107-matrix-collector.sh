@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+trap 'rc=$?; printf "MATRIX-COLLECTOR-TEST-FAIL line=%s status=%s command=%s\\n" "$LINENO" "$rc" "$BASH_COMMAND" >&2; exit "$rc"' ERR
 FAKEBIN="$WORK/bin"
 SYS_ROOT="$WORK/sys"
 MARKER="$WORK/gpu-runtime-invoked"
