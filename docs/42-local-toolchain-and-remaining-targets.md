@@ -84,6 +84,14 @@ review. Для будь-якого runtime-кроку потрібні точн�
 
 ## 5. Локальні інструменти: що тримати під рукою
 
+**Один збирач замість ручного набору:** `bash scripts/collect-gp107-matrix-evidence.sh`
+збирає інвентаризацію нижче в один каталог і пише `99-manifest.txt` із SHA-256,
+який одразу перевіряє наявний гейт `scripts/test-evidence-manifest.sh`. Скрипт
+read-only: жодного запису в пристрій, mmap чи `resource0`; відсутній інструмент
+записується як `NOT_AVAILABLE` з назвою, а не як привід впасти чи вигадати значення;
+якщо карта не `10de:1c82`, результат фіксується як `TARGET=NOT_THE_REFERENCE_CARD`,
+щоб жодна клітинка матриці не стала `PASS` випадково.
+
 **Безпечна базова інвентаризація / source audit (без нового runtime):**
 
 - `ripgrep` / `git grep` по pinned дереву Nouveau, NVK і Mesa — source audit смуги A;
