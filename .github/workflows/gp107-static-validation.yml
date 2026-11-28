@@ -1,14 +1,29 @@
 name: GP107 static Pascal validation
 
 on:
+  # The repository commits directly to master, so a pull_request-only trigger
+  # meant these gates ran almost never. Every gate below is static and
+  # hardware-free; it belongs on the main line, not only on review branches.
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/gp107-static-validation.yml"
+      - "Makefile"
+      - "pascal/**"
+      - "lib/**"
+      - "scripts/**"
+      - "evidence/**"
+      - "experiments/**"
   pull_request:
     paths:
       - ".github/workflows/gp107-static-validation.yml"
       - "Makefile"
       - "pascal/**"
       - "lib/**"
-      - "scripts/test-pascal-probe.sh"
-      - "scripts/test-capability-driver.sh"
+      - "scripts/**"
+      - "evidence/**"
+      - "experiments/**"
 
 permissions:
   contents: read
@@ -68,7 +83,18 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          git diff --check "origin/${BASE_REF}...HEAD"
+          # On pull_request the base branch is known. On push there is no base
+          # ref, so compare against the parent commit; the very first commit of
+          # a repository has none and is skipped explicitly instead of failing.
+          if [ -n "${BASE_REF}" ]; then
+            range="origin/${BASE_REF}...HEAD"
+          elif git rev-parse --verify -q HEAD^ >/dev/null; then
+            range="HEAD^...HEAD"
+          else
+            echo "no parent commit; whitespace diff skipped"
+            exit 0
+          fi
+          git diff --check "$range"
 
       - name: Report hardware boundary
         run: |
