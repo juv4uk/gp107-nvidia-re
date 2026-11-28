@@ -126,22 +126,19 @@ def resolve_artifact(root: Path, manifest_path: Path, recorded_path: str) -> Pat
     else:
         candidates = [manifest_dir / recorded, manifest_dir.parent / recorded, manifest_dir / basename]
 
-    matches: list[Path] = []
+    # Preserve the manifest's established resolution precedence: a path
+    # relative to the manifest directory wins over the experiment-relative
+    # fallback. Do not reject a valid first match merely because a different
+    # file with the same basename exists in a parent directory.
     for candidate in candidates:
         try:
             resolved = candidate.resolve(strict=True)
             resolved.relative_to(root.resolve())
         except (OSError, ValueError):
             continue
-        if resolved.is_file() and resolved not in matches:
-            matches.append(resolved)
-
-    if len(matches) > 1:
-        raise ManifestError(
-            f"ambiguous artifact path {recorded_path!r} in {manifest_path}: "
-            + ", ".join(str(item) for item in matches)
-        )
-    return matches[0] if matches else None
+        if resolved.is_file():
+            return resolved
+    return None
 
 
 def sha256_file(path: Path) -> str:
