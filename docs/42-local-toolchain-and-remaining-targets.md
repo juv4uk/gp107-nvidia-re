@@ -9,9 +9,11 @@
    новий набір здогадів.
 
 Він не додає нових доказів і не змінює жодного статусу в інших документах.
-Статуси лишаються там, де їх зафіксовано: [`05`](05-gp107-capability-matrix.md),
-[`07`](07-next-research-direction.md), [`40`](40-rea-p1-gpu-info-uuid-direction.md),
-[`41`](41-rea-p1-libcuda-userspace-uuid-source.md).
+Статуси первинних R580/REA свідків лишаються там, де їх зафіксовано:
+[`05`](05-gp107-capability-matrix.md), [`07`](07-next-research-direction.md),
+[`40`](40-rea-p1-gpu-info-uuid-direction.md), [`41`](41-rea-p1-libcuda-userspace-uuid-source.md).
+Для окремого evidence-backed prefill відкритого Nouveau/NVK стека див.
+[`44`](44-open-stack-capability-matrix.md); він не змінює статуси першоджерел.
 
 ---
 
