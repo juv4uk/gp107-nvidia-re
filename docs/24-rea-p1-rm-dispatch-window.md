@@ -32,7 +32,7 @@ RM-кодом, не перетворюючи константи на довед�
 ```
 mov eax, edi
 imul rax, rax, 0xe8
-add  rax, <.rodata/base 0x08eb77e0>
+add  rax, <.bss/base 0x08eb77e0>
 ret
 ```
 
@@ -42,6 +42,17 @@ RM class/method ID, **UNPROVEN**. Викликається з `_nv046834rm`, `_n
 `_nv046784rm` (останні два — нові witness у цьому звіті).
 Evidence: `ev_0eb7e6e6f6f050d4d54c0b58d43f19ff0e105df6cd1d94bc2c8745b713b215a5`,
 `ev_25eb64481f71ef6bb5e9ab67adfe5085d37cbdfc02f5b4ec5bec15d72f3d5bb6`.
+
+Секція бази — **`.bss`**, не `.rodata` (виправлено; `statically proven`, тобто
+`PROVEN`). Релокація на `0x080cde3d` у тому самому записі читається
+`RELOC 32 .bss @ 0x08eaa6c0 + 0xd120`, тобто `0x08eaa6c0 + 0xd120 = 0x08eb77e0`,
+і `.rodata` цього самого `nvidia.ko` починається на `0x0906e630` — вище за
+таблицю. Попередній підпис `.rodata` було взято з імені прапорця Rizin
+(`reloc..rodata.8eb77e0`), а не з релокації; обґрунтування й контрольний
+випадок — [`docs/51`](51-rea-p1-table-section-and-nv049654rm-identity.md) §1.
+[`docs/49`](49-rea-p1-channel-context-notifier-direction.md) §10 успадковує це
+виправлення. Призначення таблиці, вміст записів і те, чи індекс є RM
+class/method ID, — і далі `UNPROVEN`.
 
 ### 2.2 `_nv046783rm`, `0x080d5c80`, 756 B
 
