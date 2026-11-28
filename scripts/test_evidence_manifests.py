@@ -71,7 +71,7 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
         parent.write_bytes(b"different parent file")
         local_sha = hashlib.sha256(local.read_bytes()).hexdigest()
         self.manifest.write_text(
-            "# static snapshot\\n" + f"{local_sha}  vk_min.h\\n",
+            "# static snapshot\n" + f"{local_sha}  vk_min.h\n",
             encoding="utf-8",
         )
         result, used = verify_manifest(self.root, self.manifest, {})
