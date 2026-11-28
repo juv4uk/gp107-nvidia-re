@@ -39,10 +39,12 @@ RM, firmware, reboot і фізичний MMIO не виконувалися.
 | 9 | Фізичний MMIO-доступ до реальної GP107 | **NOT RUN** | `nvidia` bound; cmdline без `wsm_open_driver=1`; жодного unbind/reboot |
 | 10 | BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, `BDF ↔ RM gpu_id` | **UNPROVEN / string-only** | Pascal не додає жодного нового твердження; константа відсутня у коді |
 | 11 | Використання Pascal як основи майбутнього релізу під плату власника | **design choice / interpretation** | owner-заява про цільове залізо; не release-рішення й не ABI-pin |
-| 12 | C і Pascal повторно звіряють PCI identity та driver binding через один pinned PCI directory fd | **source change; exact-head CI PENDING** | C використовує `openat/readlinkat`; Pascal додає вузькі FPC 3.2.2 libc bindings до `openat/readlinkat`, звіряє `uevent`, sysfs attributes, PCI config і driver entry на тому самому fd; code 21 лишається кінцевим safe-offset gate |
-| 13 | Pascal pinned-dirfd negatives: bound/unbound, invalid driver entry, BDF symlink swap та same-BDF wrong-device swap | **synthetic-fixture planned / CI PENDING** | п’ять сценаріїв додано до `scripts/test-capability-driver.sh` у PR #56; до exact-head run не трактувати як прийняте runtime evidence |
+| 12 | C і Pascal повторно звіряють PCI identity та driver binding через один pinned PCI directory fd | **source + compile + synthetic-fixture PASS** | GP107 PR #56 exact-head `df73a0a5cb17a58e899ea25ad680c54ebaa8a88c`; FPC 3.2.2 compile, C11 fail-closed gate і Pascal/C parity пройшли у CI run #46087161680; code 21 лишається кінцевим safe-offset gate |
+| 13 | Pascal pinned-dirfd negatives: bound/unbound, invalid driver entry, BDF symlink swap та same-BDF wrong-device swap | **synthetic-fixture PASS** | п’ять сценаріїв у `scripts/test-capability-driver.sh` пройшли в exact-head CI #46087161680; це fixture evidence, не тест фізичного hotplug або kernel remove/re-add race |
 
 ## 3. Межі
+
+- Exact-head CI run [#46087161680](https://github.com/juv4uk/gp107-nvidia-re/actions/runs/46087161680) passed on PR head `df73a0a5cb17a58e899ea25ad680c54ebaa8a88c`: static guard, FPC 3.2.2 compilation, C11 fail-closed gate and Pascal/C fixture parity. The runner reported `HOST-INVENTORY-SKIP reason=GP107-absent`; no probe executable or physical GPU operation was run.
 
 - Після `docs/33` авторитетним інструкційним контрактом є саме x86-64 `.S`
   (`gp107_mmio_load32_asm`, 6 байт); Pascal і C11 лишаються, відповідно,
