@@ -36,9 +36,9 @@ source = Path(sys.argv[1]).read_text(encoding="utf-8")
 before, separator, implementation = source.partition("\nimplementation\n")
 if not separator:
     raise SystemExit("PASCAL-ASM-API-FAIL missing implementation boundary")
-if re.search(r"(?im)^\\s*function\\s+Load32Asm\\s*\\(", before):
+if re.search(r"(?im)^\s*function\s+Load32Asm\s*\(", before):
     raise SystemExit("PASCAL-ASM-API-FAIL Load32Asm remains public")
-if not re.search(r"(?im)^\\s*function\\s+Load32Asm\\s*\\(", implementation):
+if not re.search(r"(?im)^\s*function\s+Load32Asm\s*\(", implementation):
     raise SystemExit("PASCAL-ASM-API-FAIL private instruction reference missing")
 print("PASCAL-ASM-API-PRIVATE-OK public=no private=reference-only")
 PY
