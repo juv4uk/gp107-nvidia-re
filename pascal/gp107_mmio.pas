@@ -101,6 +101,10 @@ begin
   if rc <> STATUS_OK then
     Exit(rc);
 
+  rc := VerifyPinnedIdentity(sysfsRoot, expectBdf, inv, err);
+  if rc <> STATUS_OK then
+    Exit(rc);
+
   if inv.pci.bar0_space <> 0 then
   begin
     err := 'MMIO-FAIL step=bar0-not-memory code=' + IntToStr(STATUS_CONFIG);
