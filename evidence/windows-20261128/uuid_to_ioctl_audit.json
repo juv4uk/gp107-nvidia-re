@@ -1,0 +1,242 @@
+{
+  "artifact": {
+    "image_base": "0x180000000",
+    "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll",
+    "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+    "size": 34562280
+  },
+  "checks": {
+    "artifact_sha256": true,
+    "bss_count_not_file_backed": true,
+    "bss_table_not_file_backed": true,
+    "call_target_is_helper": true,
+    "count_rip_target": true,
+    "cuuid_read_opcode": true,
+    "flag_not_file_backed": true,
+    "in_size_40": true,
+    "ioctl_immediate": true,
+    "no_xmm2_write_between": true,
+    "payload_store_opcode": true,
+    "pointer_table_rip_target": true,
+    "table_read_opcode": true,
+    "xmm2_read_at_payload_store": true
+  },
+  "cuuid_field": {
+    "bytes": "0f1080060c0000",
+    "instruction": "movups xmm0, xmmword ptr [rax + 0xc06]",
+    "object_identity_proven": false,
+    "read_va": "0x18004887d",
+    "same_offset_and_width": true
+  },
+  "data_flow": {
+    "call": {
+      "target": "0x1803396c0",
+      "va": "0x1803c5c09"
+    },
+    "destination": "0x22e034 input buffer +0x08..+0x17 at [rsp+0x68]",
+    "index_source": "r9d sign-extended to r10 at 0x1803c5a99; bounds check vs [0x182002a48]",
+    "input_size": "0x28",
+    "intermediate": "xmm2, no intervening write from 0x1803c5b41 to 0x1803c5c04",
+    "ioctl": "0x22e034",
+    "output_size": "0x28",
+    "source": "qword [0x182002848 + r10*8] -> [rcx+0xc06] (16 bytes)"
+  },
+  "function_ranges": {
+    "contains_cuuid_read": [
+      {
+        "begin": "0x180048780",
+        "end": "0x1800488c3",
+        "length": "0x143",
+        "pdata_file_offset": "0x2002424",
+        "unwind": "0x181ed7984"
+      }
+    ],
+    "contains_payload_store_and_call": [
+      {
+        "begin": "0x1803c5bbf",
+        "end": "0x1803c5c30",
+        "length": "0x71",
+        "pdata_file_offset": "0x2031230",
+        "unwind": "0x181f1e070"
+      }
+    ],
+    "contains_table_read": [
+      {
+        "begin": "0x1803c5a70",
+        "end": "0x1803c5bbf",
+        "length": "0x14f",
+        "pdata_file_offset": "0x2031224",
+        "unwind": "0x181f1e058"
+      }
+    ],
+    "contains_third_copy_call": [
+      {
+        "begin": "0x1803e4c75",
+        "end": "0x1803e4ce1",
+        "length": "0x6c",
+        "pdata_file_offset": "0x2032ab4",
+        "unwind": "0x181f2050c"
+      }
+    ]
+  },
+  "global_flag": {
+    "file_backed": false,
+    "rva": "0xcbc8",
+    "section": ".data",
+    "va": "0x182004bc8"
+  },
+  "instructions": [
+    {
+      "bytes": "0f1091060c0000",
+      "instruction": "movups xmm2, xmmword ptr [rcx + 0xc06]",
+      "size": 7,
+      "va": "0x1803c5b41"
+    },
+    {
+      "bytes": "443b1517cfc301",
+      "instruction": "cmp r10d, dword ptr [rip + 0x1c3cf17]",
+      "size": 7,
+      "va": "0x1803c5b2a"
+    },
+    {
+      "bytes": "488d0d0bcdc301",
+      "instruction": "lea rcx, [rip + 0x1c3cd0b]",
+      "size": 7,
+      "va": "0x1803c5b36"
+    },
+    {
+      "bytes": "4a8b0cd1",
+      "instruction": "mov rcx, qword ptr [rcx + r10*8]",
+      "size": 4,
+      "va": "0x1803c5b3d"
+    },
+    {
+      "bytes": "ba34e02200",
+      "instruction": "mov edx, 0x22e034",
+      "size": 5,
+      "va": "0x1803c5bea"
+    },
+    {
+      "bytes": "41b928000000",
+      "instruction": "mov r9d, 0x28",
+      "size": 6,
+      "va": "0x1803c5bdf"
+    },
+    {
+      "bytes": "0f11542468",
+      "instruction": "movups xmmword ptr [rsp + 0x68], xmm2",
+      "size": 5,
+      "va": "0x1803c5c04"
+    },
+    {
+      "bytes": "e8b23af7ff",
+      "instruction": "call 0x1803396c0",
+      "size": 5,
+      "va": "0x1803c5c09"
+    },
+    {
+      "bytes": "0f1080060c0000",
+      "instruction": "movups xmm0, xmmword ptr [rax + 0xc06]",
+      "size": 7,
+      "va": "0x18004887d"
+    }
+  ],
+  "method": "pefile VA mapping + bounded capstone decode from pdata-aligned starts. No linear whole-section sweep, no target execution.",
+  "rdata_rva_refs": {
+    "function_start_0x1803c5a70": [
+      {
+        "file_offset": "0x1f1d078",
+        "following_dwords": [
+          "0x3c5bbf",
+          "0x1f1e058",
+          "0x21"
+        ],
+        "section": ".rdata",
+        "va": "0x181f1e078"
+      },
+      {
+        "file_offset": "0x1f1d088",
+        "following_dwords": [
+          "0x3c5bbf",
+          "0x1f1e058",
+          "0x82219"
+        ],
+        "section": ".rdata",
+        "va": "0x181f1e088"
+      },
+      {
+        "file_offset": "0x2031224",
+        "following_dwords": [
+          "0x3c5bbf",
+          "0x1f1e058",
+          "0x3c5bbf"
+        ],
+        "section": ".pdata",
+        "va": "0x18206fe24"
+      }
+    ],
+    "function_start_0x1803e4c10": [
+      {
+        "file_offset": "0x1f1f514",
+        "following_dwords": [
+          "0x3e4c75",
+          "0x1f204f8",
+          "0x21"
+        ],
+        "section": ".rdata",
+        "va": "0x181f20514"
+      },
+      {
+        "file_offset": "0x1f1f524",
+        "following_dwords": [
+          "0x3e4c75",
+          "0x1f204f8",
+          "0x72219"
+        ],
+        "section": ".rdata",
+        "va": "0x181f20524"
+      },
+      {
+        "file_offset": "0x2032aa8",
+        "following_dwords": [
+          "0x3e4c75",
+          "0x1f204f8",
+          "0x3e4c75"
+        ],
+        "section": ".pdata",
+        "va": "0x1820716a8"
+      }
+    ]
+  },
+  "rip_targets": [
+    {
+      "file_backed": false,
+      "instruction_va": "0x1803c5b2a",
+      "rva": "0xaa48",
+      "section": ".data",
+      "va": "0x182002a48"
+    },
+    {
+      "file_backed": false,
+      "instruction_va": "0x1803c5b36",
+      "rva": "0xa848",
+      "section": ".data",
+      "va": "0x182002848"
+    }
+  ],
+  "tools": {
+    "capstone": "5.0.7",
+    "pefile": "2024.8.26",
+    "python": "3.12.10",
+    "rizin_cross_check": "0.9.1 (separate REA Evidence, not required here)"
+  },
+  "verdict": {
+    "proven": "16 bytes at object+0xc06 are copied into 0x22e034 input+0x08",
+    "unproven": [
+      "the object at [0x182002848+r10*8] is a CUdevice",
+      "0x22e034 equals Linux UVM_REGISTER_GPU (0x25)",
+      "r10 is an RM gpu_id or CUDA ordinal",
+      "runtime values of the BSS count, table and flag"
+    ]
+  }
+}

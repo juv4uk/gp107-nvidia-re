@@ -11,6 +11,11 @@
 Windows-еквівалент Linux `UVM_REGISTER_GPU (0x25)`. Обидва твердження лишаються
 `UNPROVEN`.
 
+**Оновлення:** [`docs/53`](51-windows-uuid-to-uvm-ioctl-payload.md) знайшов
+конкретний site, де 16 байт із `obj+0xc06` потрапляють у `0x22e034 input+0x08`
+(`statically proven` для зсуву/ширини й цільового поля). Тип об'єкта й
+відповідність IOCTL лишаються `UNPROVEN`; інші рядки цього звіту не змінено.
+
 ## 0. Triage
 
 | Позначка | Що | Рішення |
@@ -189,7 +194,7 @@ call site-ів. **UNPROVEN**: тотожність `[r9]` з `CUuuid` з `device
 | `0x1803396c0`, IOCTL-helper | `af853a5b…d407` | Rizin 0.9.1 + pefile/capstone | 58 caller-ів; callee `KERNEL32!DeviceIoControl` @`0x1803396f3` | `statically proven` | Чи існує серед 58 кодів реєстрація GPU? |
 | `0x18033a8e0`, `0x22e030`, buf `0x388` | `af853a5b…d407` | Rizin 0.9.1 | caller-ів не знайдено; callee `0x1817d67a0`, helper `0x1803396c0` | `statically proven` для коду/розміру; caller — `coverage limitation` | Чи є `0x22e030` списком GPU для реєстрації? |
 | `0x18033a980`, `0x22e034`, 16 байт | `af853a5b…d407` | Rizin 0.9.1 + pefile/capstone | caller-ів не знайдено; callee `0x1803396c0`, `0x1817c6290`; data-ref `0x181ff8010` | `statically proven` для payload; походження `[r9]` — `UNPROVEN` | Чи `[r9]` = `CUuuid` з `device+0xc06`? |
-| `0x1803c5c09`, `0x22e034` (копія 2) | `af853a5b…d407` | Rizin 0.9.1 + capstone | див. `ev_cc8356…`; прямий caller не знайдено | `statically proven` для структури | Хто формує попередній `xmm`? |
+| `0x1803c5c09`, `0x22e034` (копія 2) | `af853a5b…d407` | Rizin 0.9.1 + capstone | див. `ev_cc8356…`; прямий caller не знайдено | `statically proven` для структури; джерело `xmm2` — див. docs/53 | Хто формує попередній `xmm`? (відповідь для цього site: `obj+0xc06`) |
 | `0x1803e4cc0`, `0x22e034` (копія 3) | `af853a5b…d407` | Rizin 0.9.1 + capstone | RVA в `.rdata` @`0x181f20514`/`0x181f20524`; caller не знайдено | `statically proven` для структури; призначення таблиці — `UNPROVEN` | Чи це dispatch-таблиця UVM/CUDA? |
 | `\\.\UVMLiteController` @`0x181e803c0` | `af853a5b…d407` | Rizin 0.9.1 | xrefs `0x1801f00d6`, `0x1803399b4`, `0x18033a834`, `0x1803c58b7`, `0x1803e49f6` | `string-only` + `statically proven` для xrefs | Який із п'яти шляхів реєструє GPU? |
 
@@ -211,8 +216,10 @@ Linux-ланцюг лишається незмінним: `/dev/nvidia0` → `0x
 1. Чи є `0x22e034` (`0x28`-байтний per-GPU запит) Windows-еквівалентом
    `UVM_REGISTER_GPU`, чи лише запитом/оновленням UUID?
 2. Чи дорівнює 16 байт `[r9]` у `0x18033a980` значенню `device+0xc06` /
-   `+0xc27`, яке читає `cuDeviceGetUuid`? Для відповіді потрібен прямий
-   caller або value-flow через indirect dispatch — зараз `UNPROVEN`.
+   `+0xc27`, яке читає `cuDeviceGetUuid`? Для цього конкретного site-у
+   value-flow знайдено в docs/53 (`obj+0xc06` → `0x22e034 input+0x08`,
+   `statically proven` для зсуву/ширини); для `0x18033a980` і тотожності
+   об'єкта — `UNPROVEN`.
 3. Хто початковий виробник 16 байт у `arg3+0x1f8+i*0x198` і `rdi+0x481`
    (docs/45 §4)?
 4. Чи існує Windows-еквівалент Linux callback `[holder+0x30]`?
