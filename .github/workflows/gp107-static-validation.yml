@@ -65,6 +65,9 @@ jobs:
         # no workflow ran it, so a regression would have been invisible.
         run: bash scripts/check-no-driver-overreach.sh
 
+      - name: Matrix collector runtime firewall and manifest verification
+        run: bash scripts/test-gp107-matrix-collector.sh
+
       - name: Run host-independent fail-closed source guard
         run: make test-valid-cards-static
 

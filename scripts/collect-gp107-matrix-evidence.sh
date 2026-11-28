@@ -74,17 +74,15 @@ record kernel_modules "collected"
 
 capture 04-lspci-verbose.txt lspci -nnvv -s 01:00.0
 
-# --- 3. відкритий стек: хто насправді обслуговує карту --------------------
-capture 05-vulkaninfo.txt vulkaninfo --summary
-capture 06-glxinfo.txt glxinfo -B
-
-if command -v vulkaninfo >/dev/null 2>&1; then
-  vulkaninfo --summary 2>/dev/null | grep -i "deviceName" | head -3 \
-    > "$OUT/07-renderer.txt" || printf 'NOT_AVAILABLE: renderer\n' > "$OUT/07-renderer.txt"
-else
-  printf 'NOT_AVAILABLE: vulkaninfo\n' > "$OUT/07-renderer.txt"
-fi
-record renderer "collected"
+# --- 3. GPU runtime: навмисно поза read-only collector -----------------
+# vulkaninfo/glxinfo ініціалізують драйвер і GPU. Їх запускають лише в окремій
+# owner-approved runtime-сесії; цей collector не виконує Vulkan/OpenGL API.
+GPU_RUNTIME_STATE="NOT_RUN: owner-approved runtime session required"
+printf '%s\n' "$GPU_RUNTIME_STATE" > "$OUT/05-gpu-runtime.txt"
+printf '%s\n' "$GPU_RUNTIME_STATE" > "$OUT/07-renderer.txt"
+record gpu_runtime "NOT_RUN:owner-approval-required"
+record renderer "NOT_RUN:owner-approval-required"
+note "gpu runtime" "NOT_RUN (потрібен окремий дозвіл власника)"
 
 # --- 4. частоти/температури без nvidia-smi --------------------------------
 {
@@ -131,10 +129,8 @@ done
 # Маніфест не може хешувати сам себе; гейт це знає і пропускає 99-manifest.txt.
 if bash "$ROOT/scripts/test-evidence-manifest.sh" "$MANIFEST" > "$OUT/10-manifest-check.txt" 2>&1; then
   note "manifest" "self-check OK"
-  record manifest "self-check=OK"
 else
   note "manifest" "self-check FAILED"
-  record manifest "self-check=FAILED"
   echo "COLLECT-FAIL: власний маніфест не проходить перевірку — див. 10-manifest-check.txt" >&2
   exit 2
 fi
