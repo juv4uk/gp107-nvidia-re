@@ -1,4 +1,4 @@
-# 42 — GP107: global non-stall event index versus per-runlist channel ID
+# 43 — GP107: global non-stall event index versus per-runlist channel ID
 
 Цей документ доповнює [docs/09](09-gp107-fifo-nonstall-source-audit.md)
 та [issue #18](https://github.com/juv4uk/gp107-nvidia-re/issues/18).
