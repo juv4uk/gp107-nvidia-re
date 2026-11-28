@@ -56,9 +56,13 @@ jobs:
         run: bash -n scripts/test-pascal-probe.sh
 
       - name: Evidence manifest integrity
-        # ~2 minutes: 140 manifests verify, 2 are recorded debt in
-        # scripts/manifest-exceptions.txt, 1 is a deliberate negative control.
+        # ~2 minutes: tracked immutable evidence is hash-verified.
         run: bash scripts/test-evidence-manifest.sh
+
+      - name: Matrix collector safe-default regression
+        # Synthetic sysfs only: proves passive default, explicit graphics opt-in,
+        # dynamic BDF selection and PCI-filtered telemetry. No physical GPU access.
+        run: bash scripts/test-matrix-collector.sh
 
       - name: Driver-overreach firewall
         # Static and host-runnable: no GPU, no root. It was in the tree but
