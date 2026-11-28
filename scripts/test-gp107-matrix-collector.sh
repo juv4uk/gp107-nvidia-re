@@ -95,7 +95,7 @@ make_minimal_path() {
   local destination="$1"
   shift
   mkdir "$destination"
-  for tool in dirname date mkdir mktemp awk cat basename readlink sha256sum grep tail rm bash python3 cp; do
+  for tool in dirname date mkdir mktemp awk cat basename readlink sha256sum grep tail rm bash python3 cp git; do
     local resolved
     resolved="$(command -v "$tool")"
     ln -s "$resolved" "$destination/$tool"
@@ -197,5 +197,18 @@ make_minimal_path "$MINBIN_NO_UNAME" lspci lsmod dmesg
 OUT_NO_UNAME="$WORK/no-uname"
 PATH="$MINBIN_NO_UNAME" /bin/bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_UNAME" > "$WORK/no-uname.log"
 grep -Fxq 'system=NOT_AVAILABLE:no-uname' "$OUT_NO_UNAME/00-status.txt"
+
+# A present uname that exits nonzero is a command failure, not NOT_AVAILABLE.
+cat > "$FAKEBIN/uname" <<'UNAME'
+#!/usr/bin/env bash
+echo "fake uname failure" >&2
+exit 9
+UNAME
+chmod +x "$FAKEBIN/uname"
+OUT_FAIL_UNAME="$WORK/uname-failure"
+PATH="$FAKEBIN:$PATH" bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_FAIL_UNAME" > "$WORK/uname-failure.log"
+grep -Fxq 'system=FAILED:rc=9' "$OUT_FAIL_UNAME/00-status.txt"
+grep -q 'fake uname failure' "$OUT_FAIL_UNAME/02-system.txt"
+rm "$FAKEBIN/uname"
 
 echo "MATRIX-COLLECTOR-OK unique-bdf=1 output-immutable=1 telemetry-scoped=1 command-status=honest runtime=NOT_RUN"
