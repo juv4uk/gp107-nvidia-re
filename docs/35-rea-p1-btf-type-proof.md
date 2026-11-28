@@ -12,7 +12,7 @@
 | `ALREADY_DONE` | docs/23–28, 34: RM dispatch, call-site, `uvm_test_channel_sanity`, шлях до `g_uvm_global+0x28` | не повторювати |
 | `PARTIAL` | docs/34: інструкції доведені, але назва типу й роль `rdi` — `interpretation`/`UNPROVEN` | цей звіт |
 | `UPSTREAM_EXISTS` | Nouveau/NVKM/NVK channel manager | implementation authority, не реверсити |
-| `UNIQUE_GAP` | BTF-доведення, що `+0x28` = `parent_gpus[]`, `+0x08` = `parent->gpus[]`, `+0x19f8` = `channel_manager`, і роль першого аргументу `add_gpu` у гілці `r8==0` | цей звіт |
+| `UNIQUE_GAP` | BTF-доведення, що `+0x28` = `parent_gpus[]`, `+0x08` = `parent->gpus[]`, `+0x19f8` = `channel_manager`, і роль першого аргументу `add_gpu` у гілці `r8==0` | цей звіт; call-site див. [`docs/37`](37-rea-p1-add-gpu-call-sites.md) |
 
 Pin-и v8/v9, SENS, CML, `wsm-os-lisp`, ADR, target contract, ABI-pin і
 asm-first контракт [`docs/33`](33-asm-first-target-contract.md) не змінено.
@@ -118,11 +118,12 @@ gpus[] → uvm_gpu_t`.
 
 ## 4. Що лишилося недоведеним
 
-- Прямі caller-и `add_gpu`: `axt @ 0x0801c120` порожньо на відновленому
-  тарґеті (**coverage limitation**, не absence-proof); `ir~add_gpu` дає лише
-  PLT-виклики до інших функцій. `uvm_gpu_init @ 0x0801e100` приймає
-  `uvm_peer_copy` (`strcmp "phys"/"virt"`) і викликає `uvm_hal_init_table`,
-  тобто не є цим caller-ом.
+- Прямі caller-и `add_gpu` знайдено в [`docs/37`](37-rea-p1-add-gpu-call-sites.md):
+  `0x0801eb42` і `0x0801ebf7`, обидва в `uvm_gpu_retain_by_uuid`.
+  `axt @ 0x0801c120` лишається порожнім (**coverage limitation**, не
+  absence-proof); `ir~add_gpu` дає лише PLT-виклики до інших функцій.
+  `uvm_gpu_init @ 0x0801e100` приймає `uvm_peer_copy` (`strcmp "phys"/"virt"`)
+  і викликає `uvm_hal_init_table`, тобто не є цим caller-ом.
 - Хит `/x 10c10108 @ 0x08000dc8` — `patchable_function_entries`,
   **rejected observation**, не call-site.
 - RM class/runlist/notifier/fence, `+0x1e0` як RM handle, `BOOT0`,
@@ -139,19 +140,21 @@ gpus[] → uvm_gpu_t`.
 | `gpu+0x19f8` = `channel_manager`, `manager+0x0` = `gpu` | **statically proven** (BTF + REA) |
 | Розміри allocation `0x1d98`/`0xc228` відповідають `uvm_gpu_t`/`uvm_parent_gpu_t` | **statically proven** |
 | Перший аргумент `add_gpu` у гілці `r8==0` = UUID-джерело | **statically proven** |
-| Повний прототип `add_gpu` і його caller-и | **`UNPROVEN`** |
+| Повний прототип `add_gpu` | **`UNPROVEN`**; прямі caller-и — **`statically proven`** у [`docs/37`](37-rea-p1-add-gpu-call-sites.md) |
 | RM-семантика полів | **`interpretation`/`UNPROVEN`** |
 
 ## 6. Найменший наступний крок
 
-Найменший крок — знайти прямий `call` на `0x0801c120` цільовими вікнами в
-межах уже відомих symbol-range (наприклад, навколо функцій із BTF-іменами,
-пов'язаними з GPU registration), після чого звірити перший аргумент безпосередньо
-на `call`-site. Без broad `/r`, без MMIO, без RM-запитів.
+Цей крок виконано в [`docs/37`](37-rea-p1-add-gpu-call-sites.md): прямі
+`call`-site знайдено перерахунком у межах відомого символу, перший аргумент
+звірено на них. Наступний найменший крок — перевірити використання
+`[rbp-0x118]` пізніше у гілці `r8!=0` (див. `docs/37`, розділ 7). Без MMIO
+і без RM-запитів.
 
 ## Ukrainian one-liner
 
 BTF з того самого shipped `nvidia-uvm.ko` доводить ланцюг
 `g_uvm_global+0x28 → uvm_parent_gpu_t → +0x08 → uvm_gpu_t → +0x19f8 →
 uvm_channel_manager`; роль першого аргументу `add_gpu` у гілці `r8==0` —
-UUID-джерело, а caller-и лишаються `UNPROVEN`.
+UUID-джерело. Прямі caller-и (`0x0801eb42`, `0x0801ebf7`) і роль `rdi` на
+першому з них доведені в `docs/37`.

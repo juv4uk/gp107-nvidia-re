@@ -1,0 +1,132 @@
+REA P1 — direct call sites of add_gpu in shipped nvidia-uvm.ko
+==============================================================
+
+Target: /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+SHA-256: 81b21527017a096f8276e7b93d04e82a414d03ac3b6a0831f9acba3a4ac488b6
+Size: 4662893 bytes
+Provider: REA execute_rizin_command (Rizin 0.9.1 @ linux-x86-64; provider version null)
+Cross-check: GNU objdump (GNU Binutils for Debian) 2.47.50.20261021
+Full canonical Evidence bundle: evidence-p1-add-gpu-call-sites.json (136 records, 4 unknowns)
+
+Address mapping (statically proven from readelf -SW):
+  .text section file offset = 0x4660, ELF vaddr base = 0
+  Rizin virtual address = 0x08000000 + file_offset = 0x08004660 + ELF vaddr
+  ELF add_gpu = 0x17ac0, size 8055 -> Rizin 0x0801c120
+  ELF uvm_gpu_retain_by_uuid = 0x1a2f0, size 740 -> Rizin 0x0801e950
+
+-------------------------------------------------------------------------------
+1. Direct call enumeration (read-only, targeted at the known symbol)
+-------------------------------------------------------------------------------
+Command:
+  objdump -d --no-show-raw-insn /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko \
+    | grep -E '(call|jmp)[[:space:]].*<add_gpu>'
+
+Observed output (exactly two lines):
+   1a4e2: call   17ac0 <add_gpu>
+   1a597: call   17ac0 <add_gpu>
+
+Command:
+  readelf -rW /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko | grep -i 'add_gpu'
+No relocation whose target is `add_gpu`; the matches are other symbols whose
+names contain "add_gpu" (uvm_perf_heuristics_add_gpu, uvm_ats_add_gpu,
+uvm_va_range_add_gpu_va_space, uvm_va_block_add_gpu_va_space,
+uvm_perf_thrashing_add_gpu, uvm_test_va_range_inject_add_gpu_va_space_error).
+
+REA observation (previously retained, evidence ev_a55f19619282a71e6567596ce479bc37b0bac1ff0602cab3824242d2f2026819):
+  axt @ 0x0801c120  -> empty stdout, exit 0, completion_status complete
+This is a coverage limitation of Rizin's static xref analysis, NOT absence-proof.
+
+-------------------------------------------------------------------------------
+2. Call site 1 — Rizin 0x0801eb42 (ELF 0x1a4e2)
+-------------------------------------------------------------------------------
+REA command: pd 60 @ 0x0801eb10
+Evidence ID: ev_eaa459a1a6ab6f2730a55f3fc11d4ede23e01ab3081951aead4a5dac069a2563
+Raw decisive lines:
+  | :::::   0x0801eb1a      cmp   qword [rbp*8+0x810b0d0], 0x00        ; RELOC 32 g_uvm_global @ 0x0810b0a8 + 0x28
+  |`======< 0x0801eb23      jnz   0x801eafe
+  | :::::   0x0801eb2e      xor   r8d, r8d
+  | :::::   0x0801eb31      push  rax
+  | :::::   0x0801eb32      lea   esi, qword [r13*8+0x01]
+  | :::::   0x0801eb3a      mov   rdi, r12
+  | :::::   0x0801eb3d      lea   rcx, qword [rsp+0x18]
+  | :::::   0x0801eb42      call  sym.add_gpu
+
+REA command: pd 120 @ 0x0801e950
+Evidence ID: ev_a050e97cc2571910067d049b059a52c9c0cd4331d6e2f2af148e9088ba7c5654
+Raw decisive lines:
+  0x0801e96a      mov   r12, rdi
+  0x0801e9ed      mov   rdi, r12
+  0x0801e9f8      call  sym.uvm_parent_gpu_get_by_uuid_locked
+
+REA command: pd 45 @ 0x0801e370
+Evidence ID: ev_e68b38ab8f495592e47764ba6c0395a390be0b181572f434dd10ea97be598b0d
+Raw decisive lines:
+  0x0801e37c      mov   rbp, rdi
+  0x0801e3c1      lea   rdi, qword [rbx+0x50]      ; &parent->uuid
+  0x0801e3c5      mov   rsi, rbp                   ; first argument of caller
+  0x0801e3c8      call  sym.uvm_uuid_eq_0x8016700
+
+Conclusion: rdi at call site 1 = r12 = first argument of uvm_gpu_retain_by_uuid,
+which is used as a UUID pointer by uvm_parent_gpu_get_by_uuid_locked.
+r8 = 0 selects the parent-creation branch of add_gpu, where the saved rdi
+([rbp-0x118]) is the source of uvm_uuid_copy into &parent->uuid.
+
+-------------------------------------------------------------------------------
+3. Call site 2 — Rizin 0x0801ebf7 (ELF 0x1a597)
+-------------------------------------------------------------------------------
+REA command: pd 50 @ 0x0801ebc0
+Evidence ID: ev_efd11d06e5968cfa22e9e9890f2966bbfd537afb02b2d91011550ace517ee8cd
+Raw decisive lines:
+    ::::    0x0801ebd8      mov   edx, dword [rbp+0x1c8]
+    ::::    0x0801ebde      mov   r9, r15
+    ::::    0x0801ebe1      mov   r8, rbp
+    ::::    0x0801ebe4      mov   rdi, r12
+    ::::    0x0801ebe7      lea   rcx, qword [rsp+0x10]
+    ::::    0x0801ebec      lea   esi, qword [rax+rdx*8-0x07]
+    ::::    0x0801ebf0      mov   rax, rsp
+    ::::    0x0801ebf3      mov   rdx, rbx
+    ::::    0x0801ebf6      push  rax
+    ::::    0x0801ebf7      call  sym.add_gpu
+
+r8 = rbp = result of uvm_parent_gpu_get_by_uuid_locked (existing parent).
+rdi = the same r12 UUID pointer as at call site 1. In the r8 != 0 branch the
+UUID source for the new gpu is [rdx+0x40], so the semantic use of rdi inside
+that branch is UNPROVEN.
+
+-------------------------------------------------------------------------------
+4. add_gpu argument registers at entry
+-------------------------------------------------------------------------------
+REA command: pd 60 @ 0x0801c120
+Evidence ID: ev_e218f83a26c62f546e2e34aa84eeaef58a0525deaddebfb852a20d2cc6f65532
+Raw decisive lines:
+  0x0801c138      mov   r12, r8
+  0x0801c13f      mov   r13d, esi
+  0x0801c146      mov   r14, rdx
+  0x0801c151      mov   qword [rbp-0x118], rdi
+  0x0801c16d      test  r8, r8
+  ,=< 0x0801c170      jz    0x801c862
+  0x0801c182      mov   edi, 0x1d98
+  0x0801c1a9      mov   qword [rbx], r12
+  0x0801c1af      mov   dword [rbx+0x80], r13d
+  0x0801c1cf      mov   qword [r12+r13*8+0x08], rbx
+  0x0801c1d4      add   dword [r12+0x04], 0x01
+
+Meaning: r8 = parent pointer (base of parent->gpus[]), esi = gpu id,
+rdx = alternate UUID/info source, rdi = first argument saved at [rbp-0x118].
+The earlier oral claim "rdi = &parent->gpus" was WRONG and is retracted.
+
+-------------------------------------------------------------------------------
+5. Retracted readings (not evidence)
+-------------------------------------------------------------------------------
+- 0x0801e9e9 is `jz 0x801eb90`, not a call (ev_aec8bacd... / ev_a050e97...).
+- 0x0801ea10 is `call nvUvmInterfaceGetGpuInfo`, not add_gpu.
+- 0x0801c8e5 is `lea rdi,[r10+0xc0e8]`, not a recursive call
+  (ev_9b9f9d40c8f277d2102a93aec74fe7d5caaded8643e20269edc712de0c7b9275).
+- `/x 4df9ffff @ 0x08000000+0x1000000` returned
+  `ERROR: search: failed to read at 0x08147e08`; no matches were produced
+  (ev_299e0e9ca0f8b9d45560f401c94e8e481bec253f484650553789c6776397a997).
+- BTF member name for gpu+0x19f8 is `channel_manager` in `uvm_gpu_struct`
+  (btf-uvm-type-layout.txt line 364); the claimed rename to `gpu` was wrong.
+
+All commands above are read-only. No MMIO, no RM ioctl, no vendor source,
+no Ghidra pseudocode, no Ghidra synthetic `af`, no broad `/r`, `/c`, `izz~`.
