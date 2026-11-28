@@ -90,7 +90,10 @@ def main() -> int:
         text = Path(path).read_text(encoding="utf-8", errors="replace")
         parsed.append(parse_log(text))
 
-    decoded, unknown, others = parsed[0]
+    decoded, _, others = parsed[0]
+    all_unknown: Counter = Counter()
+    for _, run_unknown, _ in parsed:
+        all_unknown.update(run_unknown)
 
     print("## E1 — observed calls\n")
     if others:
@@ -139,8 +142,13 @@ def main() -> int:
                     print(f"- `{req:#010x}` {label}")
         print()
 
-    if args.strict and unknown:
-        print(f"E1-STRICT-FAIL: {len(unknown)} unnamed request(s) — see UNPROVEN table", file=sys.stderr)
+    if args.strict and all_unknown:
+        observations = sum(all_unknown.values())
+        print(
+            f"E1-STRICT-FAIL: {observations} unnamed request observation(s) "
+            f"across {len(parsed)} run(s) — see UNPROVEN table",
+            file=sys.stderr,
+        )
         return 1
     if args.require_stable:
         if len(parsed) != 2:
