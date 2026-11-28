@@ -64,6 +64,7 @@
 | [`41-rea-p1-libcuda-userspace-uuid-source.md`](docs/41-rea-p1-libcuda-userspace-uuid-source.md) | `statically proven`: UUID для `UVM_REGISTER_GPU` і `cuDeviceGetUuid` читається з `device+0xc06` у shipped `libcuda`; кінцевий виробник поля й `BDF ↔ RM gpu_id` — `UNPROVEN`; хибна чернеткова мапа — `retracted observation` |
 | [`42-local-toolchain-and-remaining-targets.md`](docs/42-local-toolchain-and-remaining-targets.md) | три смуги робіт (відкритий стек / runtime-спостереження / статичний RE), ліцензійний gate, таблиця «ціль → питання → інструмент» і порядок дій для #61, #62, E1–E6, #28, #5, #18 |
 | [`43-gp107-nonstall-mainline-indexing.md`](docs/43-gp107-nonstall-mainline-indexing.md) | Pinned Linux master source chain: GP107 global non-stall event index versus per-runlist user-channel ID; nonzero runlist risk remains conditional, H170 user-channel correlation UNPROVEN |
+| [`44-open-stack-capability-matrix.md`](docs/44-open-stack-capability-matrix.md) | evidence-backed попередньо заповнена матриця Nouveau/NVK: зовнішній GP107 witness, bounded compute PASS, межі H170 та WSM acceptance |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
