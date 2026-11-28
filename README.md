@@ -47,14 +47,15 @@
 | [`25-rea-p1-uvm-caller-map.md`](docs/25-rea-p1-uvm-caller-map.md) | Call-site карти `nvUvmInterfaceMemory*`/`Channel*` у shipped `nvidia-uvm.ko`; runlist, notifier, RM class і BOOT0 лишаються UNPROVEN |
 | [`26-rea-p1-uvm-alloc-enum-and-alignment.md`](docs/26-rea-p1-uvm-alloc-enum-and-alignment.md) | Enum-розгалуження `uvm_rm_mem_alloc` і виправлення disalignment у `channel_pool_add`; RM-семантика лишається UNPROVEN |
 | [`27-rea-p1-uvm-object-field-aliasing.md`](docs/27-rea-p1-uvm-object-field-aliasing.md) | Offset `+0x1e0` має різні базові об'єкти в `nvidia-uvm.ko`; RM-handle/feature-flag лишаються UNPROVEN |
-| [`28-rea-p1-uvm-channel-manager-callers.md`](docs/28-rea-p1-uvm-channel-manager-callers.md) | 5 call-site `uvm_channel_manager_create`: `rdi=parent`, `rsi=&parent+0x19f8`; RM-семантика лишається UNPROVEN |
+| [`28-rea-p1-uvm-channel-manager-callers.md`](docs/28-rea-p1-uvm-channel-manager-callers.md) | 5 call-site `uvm_channel_manager_create`: `rdi=gpu`, `rsi=&gpu+0x19f8` (тип уточнено в docs/34–35); RM-семантика лишається UNPROVEN |
 | [`29-userspace-capability-driver.md`](docs/29-userspace-capability-driver.md) | C11 sysfs identity + gated C/ASM MMIO API; фізичний MMIO NOT AUTHORIZED / NOT RUN |
 | [`30-userspace-capability-ledger.md`](docs/30-userspace-capability-ledger.md) | PCI config-header і capability ledger; software gate ≠ owner approval, RM/BOOT0 UNPROVEN |
 | [`31-x86-64-assembly-slice.md`](docs/31-x86-64-assembly-slice.md) | Власний x86-64 read-only asm-примітив з еквівалентністю до C; не release, hardware MMIO NOT_RUN |
 | [`tests/nvk-gp107-vector-add/README.md`](tests/nvk-gp107-vector-add/README.md) | NVK GP107 vector-add harness: compile-only CI, fail-closed gates; фізичний GPU тест NOT_RUN |
 | [`32-freepascal-primary-slice.md`](docs/32-freepascal-primary-slice.md) | Free Pascal 3.2.2 як основна реалізація; C/asm лишаються еталонами, hardware MMIO NOT_RUN |
 | [`33-asm-first-target-contract.md`](docs/33-asm-first-target-contract.md) | opcode-послідовність як авторитетний артефакт під залізо власника; Pascal/C — обгортка/oracle, не реліз |
-| [`34-rea-p1-parent-object-and-test-context.md`](docs/34-rea-p1-parent-object-and-test-context.md) | батько з `g_uvm_global+0x28`, чотири call-site в `uvm_test_channel_sanity`; назва типу лишається interpretation |
+| [`34-rea-p1-parent-object-and-test-context.md`](docs/34-rea-p1-parent-object-and-test-context.md) | батько з `g_uvm_global+0x28`, чотири call-site в `uvm_test_channel_sanity`; typed-ланцюг уточнено в docs/35 |
+| [`35-rea-p1-btf-type-proof.md`](docs/35-rea-p1-btf-type-proof.md) | BTF shipped-артефакта доводить `parent_gpus → uvm_parent_gpu_t → gpus → uvm_gpu_t → channel_manager`; роль `rdi` у гілці `r8==0` — UUID-джерело; caller-и `add_gpu` UNPROVEN |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:

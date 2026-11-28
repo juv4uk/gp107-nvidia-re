@@ -100,7 +100,9 @@ test eax, eax               ; статус
 - `rsi` — вказівник на слот `parent+0x19f8`, куди записується новий менеджер;
 - у `add_gpu` той самий `rbx` далі використовується як `rbx+0x80` (gpu mask),
   `rbx+0x90`, `rbx+0xb8`, `rbx+0x1910`, `rbx+0x1938` — **statically proven** як
-  offset-и; назва типу `uvm_gpu_t` — **`interpretation`**, не факт із бінарника.
+  offset-и; на момент цього документа назва типу `uvm_gpu_t` була
+  **`interpretation`**. Пізніше BTF того самого shipped-артефакта зняв це
+  обмеження — **`statically proven`** у [`docs/35`](35-rea-p1-btf-type-proof.md).
 
 Побічне підтвердження: перед `0x080bad5a` є `uvm_channel_manager_destroy`
 з аргументом `edi = [rsi+0x19f8]` (за адресою `0x080bad40`), тобто той самий
@@ -129,10 +131,11 @@ call nvUvmInterfaceQueryCopyEnginesCaps
 
 | Твердження | Статус |
 |---|---|
-| 5 call-site, аргументи `rdi=parent`, `rsi=&parent+0x19f8`, перевірка `eax` | `statically proven` |
+| 5 call-site, аргументи `rdi=gpu`, `rsi=&gpu+0x19f8`, перевірка `eax` | `statically proven` (тип із docs/35) |
 | `uvm_channel_manager_destroy` працює з тим самим слотом `+0x19f8` | `statically proven` |
-| `+0x19f8`, `+0x80`, `+0x90`, `+0xb8`, `+0x1910`, `+0x1938` — інструкційні offset-и | `statically proven`; семантика `interpretation` |
-| Тип батьківського об'єкта = `uvm_gpu_t`; `+0x1e0` = RM handle; BOOT0; runlist/notifier/fence; причина NVK↔NVIDIA gap | `UNPROVEN`/`string-only` без змін |
+| `+0x19f8`, `+0x80`, `+0x90`, `+0xb8`, `+0x1910`, `+0x1938` — інструкційні offset-и | `statically proven`; `+0x19f8` = `channel_manager` за BTF (docs/35), решта семантика `interpretation` |
+| Тип батьківського об'єкта = `uvm_gpu_t` | `statically proven` (BTF, docs/35) |
+| `+0x1e0` = RM handle; BOOT0; runlist/notifier/fence; причина NVK↔NVIDIA gap | `UNPROVEN`/`string-only` без змін |
 | Порожний `axt` і відсутній символ для `0x080bad…` | coverage limitation, не absence-proof |
 
 Не робилось: MMIO/BAR read/write, `nva`, RM-ioctl, reboot, GPU compute,
@@ -145,11 +148,11 @@ Store у `parent+0x19f8` уже доведено в самій callee (`[r12]=ra
 `r12=rsi=&parent+0x19f8`); окремий пошук store не потрібен. Наступний найменший
 крок — звузити питання до типу батька: перевірити перший аргумент `add_gpu`
 та call-site області `0x080bad…` у межах уже відкритих вікон (без `/r`,
-без `izz~`), не змішуючи з runlist. Назва типу лишається `interpretation`,
-доки немає source-proven символу. Виконано в `docs/34`: власник чотирьох
+без `izz~`), не змішуючи з runlist. Виконано в `docs/34`: власник чотирьох
 call-site — `uvm_test_channel_sanity`, а батько береться з таблиці
-`g_uvm_global+0x28`; назва типу й роль першого аргументу `add_gpu` лишаються
-`interpretation`/`UNPROVEN`.
+`g_uvm_global+0x28`. У `docs/35` BTF того ж артефакта довів тип
+`uvm_gpu_t` і роль `rdi` у гілці `r8==0` як UUID-джерела; `UNPROVEN` лишаються
+повний прототип і прямі caller-и `add_gpu`.
 
 ## Ukrainian one-liner
 

@@ -1,0 +1,492 @@
+# BTF type-layout evidence from shipped nvidia-uvm.ko (restored target)
+# target=/tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+# artifact_sha256=81b21527017a096f8276e7b93d04e82a414d03ac3b6a0831f9acba3a4ac488b6
+# tool=pahole 1.32 (reads ELF .BTF section)
+# commands:
+#   objcopy --dump-section .BTF=/tmp/opencode/uvm.btf.restored /tmp/opencode/uvm-objcopy-input.ko /tmp/opencode/uvm-objcopy-output.ko
+#   pahole -C uvm_global_struct /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+#   pahole -C uvm_parent_gpu_struct /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+#   pahole -C uvm_gpu_struct /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+#   pahole -C uvm_channel_manager_struct /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+===== uvm_global_struct =====
+struct uvm_global_struct {
+	uvm_processor_mask_t       retained_gpus;        /*     0    40 */
+	uvm_parent_gpu_t *         parent_gpus[32];      /*    40   256 */
+	/* --- cacheline 4 boundary (256 bytes) was 40 bytes ago --- */
+	uvmGpuSessionHandle        rm_session_handle;    /*   296     8 */
+	uvm_parent_gpu_peer_t      parent_gpu_peers[496]; /*   304 190464 */
+	/* --- cacheline 2980 boundary (190720 bytes) was 48 bytes ago --- */
+	uvm_gpu_peer_copy_mode_t   peer_copy_mode;       /* 190768     4 */
+	atomic_t                   fatal_error;          /* 190772     4 */
+	bool                       disable_fatal_error_assert; /* 190776     1 */
+
+	/* XXX 7 bytes hole, try to pack */
+
+	/* --- cacheline 2981 boundary (190784 bytes) --- */
+	uvm_mutex_t                global_lock __attribute__((__aligned__(64))); /* 190784    24 */
+	struct {
+		uvm_rw_semaphore_t lock;                 /* 190808    32 */
+		bool               is_suspended;         /* 190840     1 */
+	} __attribute__((__aligned__(8))) pm;                                            /* 190808    40 */
+
+	/* XXX last struct has 7 bytes of padding */
+
+	/* --- cacheline 2982 boundary (190848 bytes) --- */
+	uvm_spinlock_irqsave_t     gpu_table_lock;       /* 190848    16 */
+	unsigned int               num_simulated_devices; /* 190864     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	nv_kthread_q_t             global_q;             /* 190872    72 */
+	/* --- cacheline 2983 boundary (190912 bytes) was 32 bytes ago --- */
+	nv_kthread_q_t             deferred_release_q;   /* 190944    72 */
+	/* --- cacheline 2984 boundary (190976 bytes) was 40 bytes ago --- */
+	struct {
+		bool               supported;            /* 191016     1 */
+		bool               enabled;              /* 191017     1 */
+	} ats;                                           /* 191016     2 */
+
+	/* XXX 6 bytes hole, try to pack */
+
+	struct {
+		uvm_mutex_t        lock;                 /* 191024    24 */
+		/* --- cacheline 2985 boundary (191040 bytes) was 8 bytes ago --- */
+		struct list_head   list;                 /* 191048    16 */
+
+		/* XXX last struct has 16 bytes of padding */
+	} va_spaces __attribute__((__aligned__(8)));     /* 191024    40 */
+	struct {
+		NvU64 *            ptr;                  /* 191064     8 */
+		struct page *      page;                 /* 191072     8 */
+	} unload_state;                                  /* 191064    16 */
+	bool                       conf_computing_enabled; /* 191080     1 */
+
+	/* XXX 7 bytes hole, try to pack */
+
+	struct {
+		uvm_mutex_t        lock;                 /* 191088    24 */
+		/* --- cacheline 2986 boundary (191104 bytes) was 8 bytes ago --- */
+		struct list_head   list;                 /* 191112    16 */
+
+		/* XXX last struct has 16 bytes of padding */
+	} devmem_ranges __attribute__((__aligned__(8))); /* 191088    40 */
+
+	/* size: 191128, cachelines: 2987, members: 18 */
+	/* sum members: 191104, holes: 4, sum holes: 24 */
+	/* paddings: 1, sum paddings: 7 */
+	/* forced alignments: 3, forced holes: 3, sum forced holes: 20 */
+	/* last cacheline: 24 bytes */
+};
+
+
+===== uvm_parent_gpu_struct =====
+struct uvm_parent_gpu_struct {
+	nv_kref_t                  gpu_kref;             /*     0     4 */
+	NvU32                      num_retained_gpus;    /*     4     4 */
+	uvm_gpu_t *                gpus[8];              /*     8    64 */
+	/* --- cacheline 1 boundary (64 bytes) was 8 bytes ago --- */
+	long unsigned int          valid_gpus[1];        /*    72     8 */
+	NvProcessorUuid            uuid;                 /*    80    16 */
+	char                       name[115];            /*    96   115 */
+
+	/* XXX 5 bytes hole, try to pack */
+
+	/* --- cacheline 3 boundary (192 bytes) was 24 bytes ago --- */
+	UvmGpuInfo                 rm_info;              /*   216   240 */
+	/* --- cacheline 7 boundary (448 bytes) was 8 bytes ago --- */
+	uvm_parent_gpu_id_t        id;                   /*   456     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	struct pci_dev *           pci_dev;              /*   464     8 */
+	int                        closest_cpu_numa_node; /*   472     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	uvmGpuDeviceHandle         rm_device;            /*   480     8 */
+	NvU64                      max_allocatable_address; /*   488     8 */
+	NvU64                      static_bar1_start;    /*   496     8 */
+	NvU64                      static_bar1_size;     /*   504     8 */
+	/* --- cacheline 8 boundary (512 bytes) --- */
+	NvBool                     static_bar1_write_combined; /*   512     1 */
+	bool                       device_p2p_initialised; /*   513     1 */
+	bool                       cdmm_enabled;         /*   514     1 */
+
+	/* XXX 5 bytes hole, try to pack */
+
+	NvU64                      dma_addressable_start; /*   520     8 */
+	NvU64                      dma_addressable_limit; /*   528     8 */
+	atomic64_t                 mapped_cpu_pages_size; /*   536     8 */
+	uvm_host_hal_t *           host_hal;             /*   544     8 */
+	uvm_ce_hal_t *             ce_hal;               /*   552     8 */
+	uvm_arch_hal_t *           arch_hal;             /*   560     8 */
+	uvm_fault_buffer_hal_t *   fault_buffer_hal;     /*   568     8 */
+	/* --- cacheline 9 boundary (576 bytes) --- */
+	uvm_access_counter_buffer_hal_t * access_counter_buffer_hal; /*   576     8 */
+	uvm_sec2_hal_t *           sec2_hal;             /*   584     8 */
+	bool                       ce_phys_vidmem_write_supported; /*   592     1 */
+
+	/* XXX 3 bytes hole, try to pack */
+
+	uvm_gpu_peer_copy_mode_t   peer_copy_mode;       /*   596     4 */
+	UVM_VIRT_MODE              virt_mode;            /*   600     4 */
+	bool                       prefetch_fault_supported; /*   604     1 */
+
+	/* XXX 3 bytes hole, try to pack */
+
+	NvU32                      num_hshub_tlb_invalidate_membars; /*   608     4 */
+	bool                       gpfifo_in_vidmem_supported; /*   612     1 */
+	bool                       replayable_faults_supported; /*   613     1 */
+	bool                       non_replayable_faults_supported; /*   614     1 */
+	bool                       access_counters_supported; /*   615     1 */
+	bool                       fault_cancel_va_supported; /*   616     1 */
+	bool                       scoped_atomics_supported; /*   617     1 */
+	bool                       has_clear_faulted_channel_method; /*   618     1 */
+	bool                       has_clear_faulted_channel_sw_method; /*   619     1 */
+	bool                       sparse_mappings_supported; /*   620     1 */
+	bool                       map_remap_larger_page_promotion; /*   621     1 */
+	bool                       plc_supported;        /*   622     1 */
+
+	/* XXX 1 byte hole, try to pack */
+
+	struct {
+		NvBool             va_invalidate_supported; /*   624     1 */
+		NvBool             va_range_invalidate_supported; /*   625     1 */
+
+		/* XXX 2 bytes hole, try to pack */
+
+		union {
+			NvU32      max_pages;            /*   628     4 */
+			NvU32      max_ranges;           /*   628     4 */
+		};                                       /*   628     4 */
+	} tlb_batch;                                     /*   624     8 */
+
+	/* XXX last struct has 1 hole */
+
+	NvU64                      max_channel_va;       /*   632     8 */
+	/* --- cacheline 10 boundary (640 bytes) --- */
+	NvU64                      max_host_va;          /*   640     8 */
+	bool                       can_map_sysmem_with_large_pages; /*   648     1 */
+	bool                       is_integrated_gpu;    /*   649     1 */
+	bool                       sticky_l2_coherent_cache_lines; /*   650     1 */
+	struct {
+		bool               per_channel_key_rotation; /*   651     1 */
+	} conf_computing;                                /*   651     1 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	NvU64                      rm_va_base;           /*   656     8 */
+	NvU64                      rm_va_size;           /*   664     8 */
+	NvU64                      peer_va_base;         /*   672     8 */
+	NvU64                      peer_va_size;         /*   680     8 */
+	NvU64                      uvm_mem_va_base;      /*   688     8 */
+	NvU64                      uvm_mem_va_size;      /*   696     8 */
+	/* --- cacheline 11 boundary (704 bytes) --- */
+	NvU64                      flat_vidmem_va_base;  /*   704     8 */
+	NvU64                      flat_sysmem_va_base;  /*   712     8 */
+	uvm_chunk_sizes_mask_t     mmu_user_chunk_sizes; /*   720     4 */
+	uvm_chunk_sizes_mask_t     mmu_kernel_chunk_sizes; /*   724     4 */
+	struct {
+		struct proc_dir_entry * dir;             /*   728     8 */
+		struct proc_dir_entry * fault_stats_file; /*   736     8 */
+		struct proc_dir_entry * access_counters_file; /*   744     8 */
+		struct proc_dir_entry * dir_peers;       /*   752     8 */
+	} procfs;                                        /*   728    32 */
+	uvm_isr_info_t             isr;                  /*   760  2408 */
+	/* --- cacheline 49 boundary (3136 bytes) was 32 bytes ago --- */
+	uvm_fault_buffer_t         fault_buffer;         /*  3168 46136 */
+	/* --- cacheline 770 boundary (49280 bytes) was 24 bytes ago --- */
+	nv_kthread_q_t             lazy_free_q;          /* 49304    72 */
+	/* --- cacheline 771 boundary (49344 bytes) was 32 bytes ago --- */
+	uvm_access_counter_buffer_t * access_counter_buffer; /* 49376     8 */
+	uvm_mutex_t                access_counters_enablement_lock; /* 49384    24 */
+	/* --- cacheline 772 boundary (49408 bytes) --- */
+	uvm_tracker_t              access_counters_clear_tracker; /* 49408    24 */
+	uvm_mutex_t                access_counters_clear_tracker_lock; /* 49432    24 */
+	NvU32                      utlb_per_gpc_count;   /* 49456     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	uvm_rb_tree_t              tsg_table __attribute__((__aligned__(8))); /* 49464    24 */
+	/* --- cacheline 773 boundary (49472 bytes) was 16 bytes ago --- */
+	uvm_rb_tree_t              instance_ptr_table;   /* 49488    24 */
+	uvm_spinlock_t             instance_ptr_table_lock; /* 49512     4 */
+	struct {
+		bool               supported;            /* 49516     1 */
+		bool               enabled;              /* 49517     1 */
+	} smc;                                           /* 49516     2 */
+
+	/* XXX 2 bytes hole, try to pack */
+
+	struct {
+		NvU64              num_replayable_faults; /* 49520     8 */
+		NvU64              num_non_replayable_faults; /* 49528     8 */
+		/* --- cacheline 774 boundary (49536 bytes) --- */
+		atomic64_t         num_pages_out;        /* 49536     8 */
+		atomic64_t         num_pages_in;         /* 49544     8 */
+	} stats;                                         /* 49520    32 */
+	struct {
+		bool               is_nvswitch_connected; /* 49552     1 */
+
+		/* XXX 7 bytes hole, try to pack */
+
+		NvU64              fabric_memory_window_start; /* 49560     8 */
+		NvU64              egm_fabric_memory_window_start; /* 49568     8 */
+	} nvswitch_info;                                 /* 49552    24 */
+
+	/* XXX last struct has 1 hole */
+
+	struct {
+		uvm_gpu_link_type_t link;                /* 49576     4 */
+		NvU32              link_rate_mbyte_per_s; /* 49580     4 */
+		NvU64              memory_window_start;  /* 49584     8 */
+		NvU64              memory_window_end;    /* 49592     8 */
+	} system_bus;                                    /* 49576    24 */
+	/* --- cacheline 775 boundary (49600 bytes) --- */
+	struct {
+		bool               non_pasid_ats_enabled:1; /* 49600: 0  1 */
+		bool               no_ats_range_required:1; /* 49600: 1  1 */
+
+		/* XXX 6 bits hole, try to pack */
+		/* XXX 3 bytes hole, try to pack */
+
+		uvm_dma_map_invalidation_t dma_map_invalidation; /* 49604     4 */
+		struct {
+			uvm_mutex_t smmu_lock;           /* 49608    24 */
+			struct page * smmu_cmdq;         /* 49632     8 */
+			void *     smmu_cmdqv_base;      /* 49640     8 */
+			long unsigned int smmu_prod;     /* 49648     8 */
+			long unsigned int smmu_cons;     /* 49656     8 */
+		} smmu_war;                              /* 49608    56 */
+	} ats;                                           /* 49600    64 */
+
+	/* XXX last struct has 1 hole, 1 bit hole */
+
+	/* --- cacheline 776 boundary (49664 bytes) --- */
+	struct {
+		bool               enabled;              /* 49664     1 */
+		NvU8               local_peer_id;        /* 49665     1 */
+
+		/* XXX 6 bytes hole, try to pack */
+
+		NvU64              base_address;         /* 49672     8 */
+	} egm;                                           /* 49664    16 */
+
+	/* XXX last struct has 1 hole */
+
+	struct {
+		bool               is_direct_connected;  /* 49680     1 */
+
+		/* XXX 7 bytes hole, try to pack */
+
+		NvU64              peer_gpa_memory_window_start; /* 49688     8 */
+	} peer_address_info;                             /* 49680    16 */
+
+	/* XXX last struct has 1 hole */
+
+	uvm_test_parent_gpu_inject_error_t test;         /* 49696     6 */
+	bool                       ats_supported;        /* 49702     1 */
+
+	/* size: 49704, cachelines: 777, members: 80 */
+	/* sum members: 49668, holes: 10, sum holes: 35 */
+	/* padding: 1 */
+	/* member types with holes: 5, total: 5, bit holes: 1, total: 1 */
+	/* forced alignments: 1, forced holes: 1, sum forced holes: 4 */
+	/* last cacheline: 40 bytes */
+};
+
+
+===== uvm_gpu_struct =====
+struct uvm_gpu_struct {
+	uvm_parent_gpu_t *         parent;               /*     0     8 */
+	NvProcessorUuid            uuid;                 /*     8    16 */
+	char                       name[90];             /*    24    90 */
+
+	/* XXX 6 bytes hole, try to pack */
+
+	/* --- cacheline 1 boundary (64 bytes) was 56 bytes ago --- */
+	atomic64_t                 retained_count;       /*   120     8 */
+	/* --- cacheline 2 boundary (128 bytes) --- */
+	uvm_gpu_id_t               id;                   /*   128     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	NvU64                      magic;                /*   136     8 */
+	struct {
+		NvU64              size;                 /*   144     8 */
+		NvU64              phys_start;           /*   152     8 */
+		NvU64              max_allocatable_address; /*   160     8 */
+		NvU64              max_vidmem_page_size; /*   168     8 */
+		struct {
+			bool       enabled;              /*   176     1 */
+
+			/* XXX 3 bytes hole, try to pack */
+
+			int        node_id;              /*   180     4 */
+		} numa;                                  /*   176     8 */
+
+		/* XXX last struct has 1 hole */
+	} mem_info;                                      /*   144    40 */
+	struct {
+		NvU32              internal_size;        /*   184     4 */
+	} big_page;                                      /*   184     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	/* --- cacheline 3 boundary (192 bytes) --- */
+	struct {
+		volatile NvU32  *  time0_register;       /*   192     8 */
+		volatile NvU32  *  time1_register;       /*   200     8 */
+	} time;                                          /*   192    16 */
+	uvm_gpu_identity_mapping_t peer_mappings[256];   /*   208  6144 */
+	/* --- cacheline 99 boundary (6336 bytes) was 16 bytes ago --- */
+	struct {
+		uvm_processor_mask_t peer_gpu_mask;      /*  6352    40 */
+		uvm_spinlock_t     peer_gpu_lock;        /*  6392     4 */
+	} peer_info;                                     /*  6352    48 */
+
+	/* XXX last struct has 4 bytes of padding */
+
+	/* --- cacheline 100 boundary (6400 bytes) --- */
+	NvU32                      max_subcontexts;      /*  6400     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	uvmGpuAddressSpaceHandle   rm_address_space;     /*  6408     8 */
+	uvm_page_tree_t            address_space_tree;   /*  6416   208 */
+	/* --- cacheline 103 boundary (6592 bytes) was 32 bytes ago --- */
+	bool                       rm_address_space_moved_to_page_tree; /*  6624     1 */
+
+	/* XXX 7 bytes hole, try to pack */
+
+	uvm_gpu_semaphore_pool_t * semaphore_pool;       /*  6632     8 */
+	uvm_gpu_semaphore_pool_t * secure_semaphore_pool; /*  6640     8 */
+	uvm_channel_manager_t *    channel_manager;      /*  6648     8 */
+	/* --- cacheline 104 boundary (6656 bytes) --- */
+	uvm_pmm_gpu_t              pmm;                  /*  6656   632 */
+	/* --- cacheline 113 boundary (7232 bytes) was 56 bytes ago --- */
+	union {
+		uvm_gpu_identity_mapping_t static_flat_mapping; /*  7288    24 */
+		struct {
+			uvm_gpu_root_chunk_mapping_t * array; /*  7288     8 */
+			/* --- cacheline 114 boundary (7296 bytes) --- */
+			size_t     count;                /*  7296     8 */
+			uvm_bit_locks_t bitlocks;        /*  7304     8 */
+		} root_chunk_mappings;                   /*  7288    24 */
+	};                                               /*  7288    24 */
+	/* --- cacheline 114 boundary (7296 bytes) was 16 bytes ago --- */
+	struct {
+		NvU64              mapping_size;         /*  7312     8 */
+		uvm_gpu_identity_mapping_t * array;      /*  7320     8 */
+		size_t             count;                /*  7328     8 */
+		uvm_bit_locks_t    bitlocks;             /*  7336     8 */
+	} sysmem_mappings;                               /*  7312    32 */
+	struct {
+		uvm_conf_computing_dma_buffer_pool_t dma_buffer_pool; /*  7344    48 */
+		/* --- cacheline 115 boundary (7360 bytes) was 32 bytes ago --- */
+		uvm_mem_t *        iv_mem;               /*  7392     8 */
+		uvm_rm_mem_t *     iv_rm_mem;            /*  7400     8 */
+	} conf_computing;                                /*  7344    64 */
+	struct {
+		bool               enabled;              /*  7408     1 */
+
+		/* XXX 7 bytes hole, try to pack */
+
+		volatile NvU32  *  hw_interrupt_tree_location; /*  7416     8 */
+		/* --- cacheline 116 boundary (7424 bytes) --- */
+		NvU32              mask;                 /*  7424     4 */
+
+		/* XXX 4 bytes hole, try to pack */
+
+		NvBool *           error_notifier;       /*  7432     8 */
+	} ecc;                                           /*  7408    32 */
+
+	/* XXX last struct has 2 holes */
+
+	struct {
+		bool               enabled;              /*  7440     1 */
+
+		/* XXX 3 bytes hole, try to pack */
+
+		atomic_t           injected_error;       /*  7444     4 */
+		volatile NvU32  *  hw_interrupt_tree_location; /*  7448     8 */
+		NvU32              mask;                 /*  7456     4 */
+
+		/* XXX 4 bytes hole, try to pack */
+
+		NvBool *           error_notifier;       /*  7464     8 */
+	} nvlink_status;                                 /*  7440    32 */
+
+	/* XXX last struct has 2 holes */
+
+	struct {
+		NvU32              swizz_id;             /*  7472     4 */
+
+		/* XXX 4 bytes hole, try to pack */
+
+		uvmGpuDeviceHandle rm_device;            /*  7480     8 */
+	} smc;                                           /*  7472    16 */
+
+	/* XXX last struct has 1 hole */
+
+	/* --- cacheline 117 boundary (7488 bytes) --- */
+	struct {
+		struct proc_dir_entry * dir;             /*  7488     8 */
+		struct proc_dir_entry * dir_symlink;     /*  7496     8 */
+		struct proc_dir_entry * gpu_instance_uuid_symlink; /*  7504     8 */
+		struct proc_dir_entry * info_file;       /*  7512     8 */
+	} procfs;                                        /*  7488    32 */
+	uvm_perf_module_data_desc_t perf_modules_data[3]; /*  7520    24 */
+	bool                       uvm_test_force_upper_pushbuffer_segment; /*  7544     1 */
+
+	/* XXX 7 bytes hole, try to pack */
+
+	/* --- cacheline 118 boundary (7552 bytes) --- */
+	uvm_mutex_t                device_p2p_lock __attribute__((__aligned__(64))); /*  7552    24 */
+
+	/* size: 7576, cachelines: 119, members: 29 */
+	/* sum members: 7544, holes: 6, sum holes: 32 */
+	/* member types with holes: 3, total: 5 */
+	/* paddings: 1, sum paddings: 4 */
+	/* forced alignments: 1, forced holes: 1, sum forced holes: 7 */
+	/* last cacheline: 24 bytes */
+};
+
+
+===== uvm_channel_manager_struct =====
+struct uvm_channel_manager_struct {
+	uvm_gpu_t *                gpu;                  /*     0     8 */
+	uvm_pushbuffer_t *         pushbuffer;           /*     8     8 */
+	uvm_channel_pool_t *       channel_pools;        /*    16     8 */
+	unsigned int               num_channel_pools;    /*    24     4 */
+
+	/* XXX 4 bytes hole, try to pack */
+
+	long unsigned int          ce_mask[1];           /*    32     8 */
+	struct {
+		uvm_channel_pool_t * default_for_type[8]; /*    40    64 */
+		/* --- cacheline 1 boundary (64 bytes) was 40 bytes ago --- */
+		uvm_channel_pool_t * gpu_to_gpu[256];    /*   104  2048 */
+	} pool_to_use;                                   /*    40  2112 */
+	/* --- cacheline 33 boundary (2112 bytes) was 40 bytes ago --- */
+	struct {
+		struct proc_dir_entry * channels_dir;    /*  2152     8 */
+		struct proc_dir_entry * pending_pushes;  /*  2160     8 */
+	} procfs;                                        /*  2152    16 */
+	struct {
+		NvU32              num_gpfifo_entries;   /*  2168     4 */
+		UVM_BUFFER_LOCATION gpfifo_loc;          /*  2172     4 */
+		/* --- cacheline 34 boundary (2176 bytes) --- */
+		UVM_BUFFER_LOCATION gpput_loc;           /*  2176     4 */
+		UVM_BUFFER_LOCATION pushbuffer_loc;      /*  2180     4 */
+	} conf;                                          /*  2168    16 */
+	struct {
+		bool               wlc_ready;            /*  2184     1 */
+		bool               key_rotation_enabled; /*  2185     1 */
+	} conf_computing;                                /*  2184     2 */
+
+	/* size: 2192, cachelines: 35, members: 9 */
+	/* sum members: 2182, holes: 1, sum holes: 4 */
+	/* padding: 6 */
+	/* last cacheline: 16 bytes */
+};

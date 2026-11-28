@@ -80,26 +80,26 @@ Caller/callee для самого `add_gpu`: прямих caller-ів не зн�
 ## 3. Джерело батьківського об'єкта
 
 `g_uvm_global @ 0x0810b0a8`, GLOBAL OBJ, 191128 B (`ev_399288286ff4a321a49e33926b342d9d94f44bf70d97b15933a0eca8fc96d57b`).
-Зсув `+0x28` = `0x0810b0d0` — це таблиця покажчиків, до якої звертаються і
-`add_gpu`, і тест:
+Зсув `+0x28` = `0x0810b0d0`; інструкції звертаються до тієї самої таблиці:
 
 | Адреса | Інструкція | Статус |
 |---|---|---|
-| `0x0801c1cf` | `mov [r12+r13*8+0x08], rbx` — новий об'єкт записується в елемент таблиці | **statically proven** |
-| `0x0801c1d4` | `add dword [r12+0x04], 1` — лічильник | **statically proven** |
+| `0x0801c1cf` | `mov [r12+r13*8+0x08], rbx` — новий об'єкт записується в `parent->gpus[]` | **statically proven** (тип із BTF, див. docs/35) |
+| `0x0801c1d4` | `add dword [r12+0x04], 1` — `parent->num_retained_gpus++` | **statically proven** |
 | `0x0801c46d` | `mov rax, [r13*8+0x810b0d0]` | **statically proven** |
-| `0x0801c484` | `mov r13, [rax+rdx*8+0x08]` — елемент таблиці як об'єкт | **statically proven** |
+| `0x0801c484` | `mov r13, [rax+rdx*8+0x08]` — елемент `parent->gpus[]` | **statically proven** |
 | `0x0801c7e6` | `mov r12, [r14*8+0x810b0d0]` | **statically proven** |
 | `0x0801d4d5` | `mov [r12*8+0x810b0d0], r10` | **statically proven** |
-| `0x080bacc7` | `mov rax, [r14*8+0x810b0d0]` | **statically proven** |
-| `0x080bacdc` | `mov r14, [rax+r13*8+0x08]` — батько `uvm_channel_manager_create` | **statically proven** |
-| `0x080bacea` | `cmp qword [r14+0x78], 1` — перевірка стану перед destroy/create | **statically proven** |
+| `0x080bacc7` | `mov rax, [r14*8+0x810b0d0]` — `parent_gpus[r14]` | **statically proven** |
+| `0x080bacdc` | `mov r14, [rax+r13*8+0x08]` — `parent->gpus[r13]` = `uvm_gpu_t *` | **statically proven** |
+| `0x080bacea` | `cmp qword [r14+0x78], 1` — `gpu->retained_count == 1` | **statically proven** |
 
-Тобто **інструкційний факт**: батько — елемент тієї самої глобальної таблиці,
-куди `add_gpu` записує щойно алокований об'єкт, а слот `+0x19f8` належить цьому
-елементу. Назва типу `uvm_gpu_t` для елемента лишається **`interpretation`**;
-`+0x08` як «масив GPU-вказівників» — **`interpretation`**, поки немає
-source-proven символу або доведених caller-ів.
+BTF того ж shipped-артефакта (`docs/35`) робить типи **`statically proven`**:
+`g_uvm_global+0x28` = `uvm_global_struct.parent_gpus[32]` (`uvm_parent_gpu_t *`),
+`parent+0x08` = `uvm_parent_gpu_struct.gpus[8]` (`uvm_gpu_t *`), а
+`gpu+0x19f8` = `uvm_gpu_struct.channel_manager` (`uvm_channel_manager_t *`).
+Отже батько для `uvm_channel_manager_create` — **`uvm_gpu_t *`**, з проміжним
+ланцюгом `parent_gpus[] → uvm_parent_gpu_t → gpus[] → uvm_gpu_t`.
 
 ## 4. Перший аргумент `add_gpu`
 
@@ -108,29 +108,34 @@ source-proven символу або доведених caller-ів.
 `0x0801c263` (`mov [rbp-0x118], r10`), а перше читання — `0x0801c26f`. У гілці
 `r8 != 0` початкове `rdi` не читається з цього слоту до перезапису; у гілці
 `r8 == 0` («`alloc_parent_gpu`», `0x0801c871`) слот читається як `rsi` на
-`0x0801c899` для `uvm_uuid_copy`. Отже:
+`0x0801c899` для `uvm_uuid_copy` з `rdi = &parent->uuid` (`+0x50` за BTF).
+Отже:
 
 - `mov [rbp-0x118], rdi`, перезапис і порядок читань — **statically proven**;
-- роль першого аргументу як сталого «батька» — **`interpretation`/`UNPROVEN`**:
-  це compiler spill slot, а не стабільний абстрактний аргумент;
-- назва типу — `UNPROVEN`.
+- у гілці `r8==0` перший аргумент є UUID-джерелом для `parent->uuid` —
+  **statically proven** (BTF + `uvm_uuid_copy`);
+- у гілці `r8!=0` перший аргумент не використовується до перезапису слоту —
+  **statically proven**;
+- повний прототип `add_gpu` і його caller-и — **`UNPROVEN`**.
 
 Паралельно **statically proven** з того самого вікна: `rdi` для
 `nvUvmInterfaceDeviceCreate` на `0x0801c248` береться з `g_uvm_global+0x128`
-(`0x0810b1d0`), а не з першого аргументу; `bts [g_uvm_global], rax` на
-`0x0801c776` — бітовий масив у тій самій глобальній структурі.
+(`0x0810b1d0`, BTF: `rm_session_handle`), а не з першого аргументу; `bts
+[g_uvm_global], rax` на `0x0801c776` — бітовий масив у тій самій глобальній
+структурі.
 
 ## 5. Статуси й межі
 
 | Твердження | Статус |
 |---|---|
-| 5 call-site, `rdi=parent`, `rsi=&parent+0x19f8`, перевірка `eax` | **statically proven** (docs/28 + ці вікна) |
+| 5 call-site, `rdi=uvm_gpu_t *`, `rsi=&gpu+0x19f8`, перевірка `eax` | **statically proven** (docs/28, 34, 35) |
 | Чотири call-site в `0x080bad…` належать `uvm_test_channel_sanity` | **statically proven** (symbol range) |
-| Батько = елемент таблиці за `g_uvm_global+0x28`, зсув `+0x08` | **statically proven** як інструкції; **`interpretation`** як тип |
-| `uvm_gpu_t`, RM handle `+0x1e0`, слот `+0x19f8` як channel-manager pointer | **`interpretation`** |
+| Ланцюг `+0x28 → parent → +0x08 → gpu → +0x19f8 → manager` | **statically proven** (BTF + REA) |
+| Розміри 0x1d98/0xc228 = `uvm_gpu_t`/`uvm_parent_gpu_t` | **statically proven** (BTF) |
+| RM handle `+0x1e0`, RM class/runlist/notifier/fence | **`interpretation`/`UNPROVEN`** |
 | Caller-и `add_gpu` з source-proven іменами | **`UNPROVEN`** (`axt` порожньо) |
-| Порожний `axt`, відхилений `/c`, синтетичний `af` | **coverage limitation / rejected observation**, не absence-proof |
-| BOOT0, `0x137000A1`, RM class/runlist/notifier/fence, `BDF ↔ RM gpu_id`, причина NVK↔NVIDIA | **`UNPROVEN` / `string-only` / `PARTIAL`** без змін |
+| Порожний `axt`, відхилений `/c`, синтетичний `af`, хит у `patchable_function_entries` | **coverage limitation / rejected observation**, не absence-proof |
+| BOOT0, `0x137000A1`, `BDF ↔ RM gpu_id`, причина NVK↔NVIDIA | **`UNPROVEN` / `string-only` / `PARTIAL`** без змін |
 | Фізичний MMIO, RM-запити, compute, PR #21 | **`NOT RUN`** |
 
 Не робилось: MMIO/BAR read/write, `nva`, RM-ioctl, reboot, GPU compute,
@@ -139,16 +144,16 @@ release/tag/publish, зміни pin-ів/SENS/CML/ADR/target contract/asm-first 
 
 ## 6. Питання без відповіді й найменший крок
 
-`unk_60e2b61cc14cb5c16774bf5bc277761da2726301ae73d` (`investigating`):
-чи є елемент `g_uvm_global+0x28` саме `uvm_gpu_t`, і яка роль `rdi` у гілці
-`r8 == 0`? Найменший крок — знайти прямих caller-ів `add_gpu` через цільові
-Rizin-вікна навколо вже відомих symbol-range (без broad `/r`), звірити перший
-аргумент на `call`-site й ініціалізацію таблиці `+0x28` у функції з
-source-proven іменем. Без цього назва типу лишається `interpretation`.
+`unk_60e2b61cc14cb5c16774bf5bc277761da2726301ae73d05373cf6d060b104e92`
+закрито на revision 4 (`resolved`) у частині типу й ролі `rdi` для `r8==0`.
+Лишається `UNPROVEN`: прямий caller `add_gpu` і повний прототип. Найменший
+крок — цільові Rizin-вікна в межах відомих symbol-range, без broad `/r`,
+з подальшою перевіркою першого аргументу безпосередньо на `call`-site.
 
 ## Ukrainian one-liner
 
 Чотири виклики `uvm_channel_manager_create` в області `0x080bad…` належать
-`uvm_test_channel_sanity`, а батько береться з елемента таблиці
-`g_uvm_global+0x28`; назва типу `uvm_gpu_t` і роль першого аргументу `add_gpu`
-лишаються `interpretation`/`UNPROVEN`.
+`uvm_test_channel_sanity`; BTF доводить ланцюг `parent_gpus[] →
+uvm_parent_gpu_t → gpus[] → uvm_gpu_t → channel_manager`, а роль першого
+аргументу `add_gpu` у гілці `r8==0` — UUID-джерело. Caller-и лишаються
+`UNPROVEN`.
