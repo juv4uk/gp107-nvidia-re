@@ -1,0 +1,147 @@
+REA P1 — UUID call chain: uvm_api_register_gpu -> add_gpu
+=========================================================
+
+Target: /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+SHA-256: 81b21527017a096f8276e7b93d04e82a414d03ac3b6a0831f9acba3a4ac488b6
+Provider: REA execute_rizin_command (Rizin 0.9.1 @ linux-x86-64, provider version null)
+Cross-check: GNU objdump/readelf (Binutils 2.47.50.20261021)
+
+Address mapping (statically proven):
+  Rizin address = 0x08004660 + ELF .text VMA = 0x08000000 + file offset
+  ELF VMA 0x1be60 -> Rizin 0x080204c0  uvm_api_register_gpu
+  ELF VMA 0x21370 -> Rizin 0x080259d0  uvm_va_space_register_gpu
+  ELF VMA 0x1a2f0 -> Rizin 0x0801e950  uvm_gpu_retain_by_uuid
+  ELF VMA 0x17ac0 -> Rizin 0x0801c120  add_gpu
+
+-------------------------------------------------------------------------------
+1. ioctl handler — uvm_api_register_gpu @ 0x080204c0 (ELF 0x1be60)
+-------------------------------------------------------------------------------
+REA command: pd 45 @ 0x080204c0
+Evidence ID: ev_ea5ef8055c11519b496620e63ef7492a1592c89496e49f73c3c5ee1391ec70fa
+Raw decisive lines:
+  0x080204ce      mov   rbx, rdi
+  0x080204e6      mov   rdi, rsi
+  0x080204e9      mov   esi, 0x02
+  0x080204ee      call  sym.uvm_fd_get_type
+  0x080204f3      mov   edx, dword [rbx+0x20]
+  0x080204f6      mov   rcx, qword [rbx+0x18]
+  0x080204fa      lea   r8, qword [rbx+0x14]
+  0x080204fe      lea   r9, qword [rsp+0x20]
+  0x08020503      mov   rsi, rbx
+  0x08020506      mov   rdi, rax
+  0x08020509      mov   qword [rsp+0x20], 0x00
+  0x08020512      mov   qword [rsp+0x14], rcx
+  0x08020517      lea   rcx, qword [rbx+0x10]
+  0x0802051b      mov   dword [rsp+0x1c], edx
+  0x0802051f      lea   rdx, qword [rsp+0x14]
+  0x08020524      mov   qword [rsp+0x28], 0x00
+  0x0802052d      call  sym.uvm_va_space_register_gpu
+  0x0802054f      lea   rsi, qword [rsp+0x20]
+  0x08020554      mov   rdi, rbx
+  0x0802055b      call  sym.uvm_uuid_copy_0x8016830
+
+Relocation cross-check (readelf -rW):
+  000000000001be8f ... R_X86_64_PLT32 00000000000354d0 uvm_fd_get_type - 4
+  000000000001bece ... R_X86_64_PLT32 0000000000021370 uvm_va_space_register_gpu - 4
+
+Conclusion: the UUID passed downward is the first argument of the ioctl
+handler (rbx = arg1), i.e. the API parameter structure. The resulting UUID is
+copied back to rbx+0 by uvm_uuid_copy. Who builds that structure in userspace
+is NOT in this kernel artifact -> UNPROVEN.
+
+-------------------------------------------------------------------------------
+2. uvm_va_space_register_gpu @ 0x080259d0 (ELF 0x21370)
+-------------------------------------------------------------------------------
+REA command: pd 80 @ 0x080259d0
+Evidence ID: ev_b71903e5993b0f19597185c65b0676b495b70c97e6a00d6fa4419080bd76612b
+Raw decisive lines:
+  0x080259e2      mov   rbx, rdi
+  0x080259e5      mov   rdi, rsi
+  0x080259e8      mov   rsi, rdx
+  0x080259f0      lea   rdx, qword [rbx+0x59dea]
+  0x080259fc      mov   r14, rcx
+  0x080259ff      lea   rcx, qword [rsp+0x30]
+  0x08025a09      mov   r15, r8
+  0x08025a1e      mov   r12, r9
+  0x08025a21      mov   qword [rsp+0x30], 0x00
+  0x08025a2a      call  sym.uvm_gpu_retain_by_uuid
+  0x08025a6c      mov   rax, qword [rsp+0x30]
+  0x08025a71      mov   rdx, qword [rax+0x08]
+  0x08025a75      mov   qword [r12], rdx
+  0x08025a79      mov   rdx, qword [rax+0x10]
+  0x08025a7d      mov   qword [r12+0x08], rdx
+
+Conclusion: arg2 (rsi) of uvm_va_space_register_gpu becomes arg1 (rdi) of
+uvm_gpu_retain_by_uuid. The out-pointer rcx becomes a local slot whose +0x08
+and +0x10 are copied to the caller's out array (r12).
+
+-------------------------------------------------------------------------------
+3. uvm_gpu_retain_by_uuid @ 0x0801e950 (ELF 0x1a2f0)
+-------------------------------------------------------------------------------
+REA command: pd 120 @ 0x0801e950
+Evidence ID: ev_a050e97cc2571910067d049b059a52c9c0cd4331d6e2f2af148e9088ba7c5654
+Raw decisive lines:
+  0x0801e96a      mov   r12, rdi
+  0x0801e9ed      mov   rdi, r12
+  0x0801e9f8      call  sym.uvm_parent_gpu_get_by_uuid_locked
+
+REA command: pd 45 @ 0x0801e370
+Evidence ID: ev_e68b38ab8f495592e47764ba6c0395a390be0b181572f434dd10ea97be598b0d
+Raw decisive lines:
+  0x0801e37c      mov   rbp, rdi
+  0x0801e3c1      lea   rdi, qword [rbx+0x50]
+  0x0801e3c5      mov   rsi, rbp
+  0x0801e3c8      call  sym.uvm_uuid_eq_0x8016700
+
+-------------------------------------------------------------------------------
+4. add_gpu @ 0x0801c120 — closing [rbp-0x118]
+-------------------------------------------------------------------------------
+REA command: pd 60 @ 0x0801c120
+Evidence ID: ev_e218f83a26c62f546e2e34aa84eeaef58a0525deaddebfb852a20d2cc6f65532
+Raw decisive lines:
+  0x0801c16d      test  r8, r8
+  ,=< 0x0801c170      jz    0x801c862
+  0x0801c151      mov   qword [rbp-0x118], rdi
+
+REA command: pd 70 @ 0x0801c850
+Evidence ID: ev_3a72c27e17eaa891dcebe183106c686e45be642d34f727ec8fc0db32327ceb69
+Raw decisive lines:
+  0x0801c862      mov   qword [rbp-0x08], r15
+  0x0801c87f      mov   edi, 0xc228
+  0x0801c884      call  sym.__uvm_kvmalloc_zero
+  0x0801c899      mov   rsi, qword [rbp-0x118]
+  0x0801c8ba      lea   rax, qword [r10+0x50]
+  0x0801c8be      mov   rdi, rax
+  0x0801c8c8      call  sym.uvm_uuid_copy_0x8016830
+
+objdump enumeration of every write to -0x118(%rbp) in add_gpu
+(ELF 0x17ac0..0x19a37; Rizin = ELF + 0x08004660):
+  0x17af1 (0x0801c151) initial rdi
+  0x17c03 (0x0801c263) r10
+  0x17cd2 (0x0801c332) r10
+  0x17d0e (0x0801c36e) r10
+  0x17e41 (0x0801c4a1) r10
+  0x17ed2 (0x0801c532) r10
+  0x17f45 (0x0801c5a5) r10
+  0x1800f (0x0801c66f) r10
+  0x1805a (0x0801c6ba) r10
+  0x180d8 (0x0801c738) r10
+  ... plus later spills after 0x18239
+The branch `jz 0x801c862` at 0x0801c170 (ELF 0x17b10) jumps over ALL of
+0x17c03..0x180d8. The r8==0 path therefore reaches 0x0801c899 with the
+original rdi still in [rbp-0x118]. This is statically proven, not an
+interpretation: the slot has no write on that path.
+
+-------------------------------------------------------------------------------
+5. Symbols used for mapping
+-------------------------------------------------------------------------------
+REA command: is~add_gpu
+Evidence ID: ev_90da4b74b1d22568083678ebd57f7f1edec54f5eb101fc05e8b6d5281fb83f90
+  441 0x0001c120 0x0801c120 LOCAL FUNC 8055 add_gpu
+
+REA command: is~uvm_gpu_retain_by_uuid
+Evidence ID: ev_bbfbbf26324f0d261d4375ad7be9f64fa47e7440ec6216b2e07a408947f1ccf1
+  3358 0x0001e950 0x0801e950 GLOBAL FUNC 740 uvm_gpu_retain_by_uuid
+
+All commands read-only. No MMIO, no RM ioctl, no vendor source, no Ghidra
+pseudocode, no synthetic af, no broad /r, /c, izz~.

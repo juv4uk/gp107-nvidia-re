@@ -142,7 +142,7 @@ call-site → аргумент → використання: **`statically prove
 | Рівно два прямі `call`/`jmp` на `add_gpu` у дизасембльованих код-секціях `.ko` | **`statically proven`** |
 | `r8` — батько/база `parent->gpus[]`; `esi` — gpu id; `rdi` — перший аргумент | **`statically proven`** |
 | Call-site 1: `rdi` = UUID-джерело, яке потім іде в `parent->uuid` | **`statically proven`** |
-| Call-site 2: `rdi` = той самий UUID-вказівник; використання в гілці `r8!=0` | **`UNPROVEN`** |
+| Call-site 2: `rdi` = той самий UUID-вказівник; у гілці `r8!=0` слот `[rbp-0x118]` перевикористовується, початковий `rdi` не використовується | **`statically proven`** ([`docs/38`](38-rea-p1-register-gpu-uuid-chain.md)) |
 | Повний прототип `add_gpu` (типи всіх 7 аргументів і повернення) | **`UNPROVEN`** |
 | `axt @ 0x0801c120` порожньо | **coverage limitation**, не absence-proof |
 | BOOT0 / `0x137000A1` / RM class-runlist-notifier-fence / BDF↔RM gpu_id | `UNPROVEN` / `string-only` без змін |
@@ -150,12 +150,13 @@ call-site → аргумент → використання: **`statically prove
 
 ## 7. Безвідповідальне питання й найменший крок
 
-Безвідповідальне: чому `rdi` зберігається в `[rbp-0x118]` і чи
-використовується він пізніше у гілці `r8!=0` (після `0x0801c1d4`).
+Це питання закрите в [`docs/38`](38-rea-p1-register-gpu-uuid-chain.md):
+усі записи в `[rbp-0x118]` лежать на гілці `r8!=0`, яку `jz @0x0801c170`
+оминає, тому на шляху `r8==0` слот містить початковий `rdi`.
 
-Найменший крок — targeted `pd` вікна `0x0801c1d4`–`0x0801c880` з
-пошуком `[rbp-0x118]` у межах уже відомої функції; без MMIO, без RM-запитів,
-без синтетичного `af`.
+Найменший наступний крок — у shipped `nvidia.ko` (`95c5fa5a…`) перевірити
+`nvUvmInterfaceGetGpuInfo` як можливе джерело UUID; без MMIO, без RM-запитів
+і без синтетичного `af`.
 
 ## Ukrainian one-liner
 
