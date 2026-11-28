@@ -92,7 +92,7 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             artifact.write_bytes(b"external evidence")
             digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
             manifest = bundle / "99-manifest.txt"
-            manifest.write_text(f"{digest}  artifact.txt\\n", encoding="utf-8")
+            manifest.write_text(f"{digest}  artifact.txt\n", encoding="utf-8")
 
             result = check_repository(ROOT, [manifest])
 
@@ -124,7 +124,7 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             outside.write_bytes(b"must not be read")
             digest = hashlib.sha256(outside.read_bytes()).hexdigest()
             manifest = bundle / "99-manifest.txt"
-            manifest.write_text(f"{digest}  ../outside.txt\\n", encoding="utf-8")
+            manifest.write_text(f"{digest}  ../outside.txt\n", encoding="utf-8")
 
             with self.assertRaisesRegex(ManifestError, "traverses its directory"):
                 check_repository(ROOT, [manifest])
