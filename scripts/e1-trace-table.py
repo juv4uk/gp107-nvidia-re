@@ -77,6 +77,8 @@ def main() -> int:
     ap.add_argument("logs", nargs="+", help="strace log file(s); one or two")
     ap.add_argument("--strict", action="store_true",
                     help="fail if any request could not be named (E1 negative)")
+    ap.add_argument("--require-stable", action="store_true",
+                    help="fail if the two runs did not observe the same requests (E1 green)")
     args = ap.parse_args()
 
     if len(args.logs) > 2:
@@ -127,7 +129,8 @@ def main() -> int:
         only_first = first - second
         only_second = second - first
         print("## Stability across the two runs\n")
-        if not only_first and not only_second:
+        unstable = bool(only_first or only_second)
+        if not unstable:
             print("Both runs observed the same set of requests.")
         else:
             for label, items in (("only in run 1", only_first), ("only in run 2", only_second)):
@@ -139,6 +142,13 @@ def main() -> int:
     if args.strict and unknown:
         print(f"E1-STRICT-FAIL: {len(unknown)} unnamed request(s) — see UNPROVEN table", file=sys.stderr)
         return 1
+    if args.require_stable:
+        if len(parsed) != 2:
+            print("E1-STABLE-FAIL: --require-stable needs two logs to compare", file=sys.stderr)
+            return 2
+        if unstable:
+            print("E1-STABLE-FAIL: the two runs observed different requests", file=sys.stderr)
+            return 1
     return 0
 
 

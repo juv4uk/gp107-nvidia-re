@@ -119,6 +119,25 @@ class CliTest(unittest.TestCase):
         result = self.run_script(first, second)
         self.assertIn("Both runs observed the same set of requests", result.stdout)
 
+    def test_require_stable_fails_when_runs_differ(self) -> None:
+        first = self.write("a.log", LOG)
+        second = self.write("b.log", LOG.replace("0xc0007a05", "0xc0007a06"))
+        result = self.run_script(first, second, "--require-stable")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("E1-STABLE-FAIL", result.stderr)
+
+    def test_require_stable_passes_on_identical_runs(self) -> None:
+        first = self.write("a.log", LOG)
+        second = self.write("b.log", LOG)
+        result = self.run_script(first, second, "--require-stable")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_require_stable_needs_two_logs(self) -> None:
+        single = self.write("a.log", LOG)
+        result = self.run_script(single, "--require-stable")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("needs two logs", result.stderr)
+
     def test_more_than_two_logs_is_refused(self) -> None:
         path = self.write("a.log", LOG)
         result = self.run_script(path, path, path)
