@@ -17,16 +17,26 @@
 
 ## 1. Три смуги робіт, і чому їх не можна змішувати
 
-| Смуга | Що це | Ліцензійний gate | Доказ, який вона дає |
-| --- | --- | --- | --- |
-| **A. Відкритий стек** | Nouveau / NVK / NAK / Mesa / Rusticl / linux-firmware | **не потрібен** | runtime-proven на власній карті |
-| **B. Runtime-спостереження shipped-стеку** | власний LD_PRELOAD-shim, `strace`, `bpftrace`, sysfs/debugfs | **не потрібен** — це не аналіз бінарника, це спостереження викликів | спостережувана послідовність ioctl/mmap, без vendor-коду |
-| **C. Статичний аналіз proprietary бінарників** | REA/rizin, Ghidra по `libcuda`, `nvidia.ko`, `nvidia-uvm.ko` | **потрібен письмовий дозвіл власника** (див. gate у [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62)) | `statically proven` факти про конкретний SHA |
+| Смуга | Що це | Ліцензійний / правовий gate | Операційний дозвіл | Доказ, який вона дає |
+| --- | --- | --- | --- | --- |
+| **A. Відкритий стек** | Nouveau / NVK / NAK / Mesa / Rusticl / linux-firmware та відкритий source audit | Для аналізу публічного відкритого коду окремий proprietary-RE clearance не потрібен | Read-only source audit та огляд наявних логів/інвентаризації можна виконувати. Завантаження драйвера, `vulkaninfo`/`glxinfo`, GPU enumeration/submit, stress, suspend/resume чи reboot — лише після окремого owner-approved test plan | source-proven факти; runtime-proven на власній карті — лише після дозволеного тесту |
+| **B. Runtime-спостереження shipped-стеку** | власний LD_PRELOAD-shim, `strace`, `bpftrace`, sysfs/debugfs, RM API | Відсутність статичного vendor-binary RE сама по собі не створює окремого copyright-analysis gate; застосовні умови продукту й ОС усе одно діють | **Кожна конкретна сесія потребує окремого scope/owner approval.** Запуск traced application, `cuInit`, CUDA/Vulkan initialization, RM/UVM ioctl, RM alloc/control, GPU submit, ptrace attach, BPF/kprobe/ftrace/perf attach, driver switch/unbind, firmware, BAR/MMIO, BOOT0, reboot та hardware stress не дозволені цим документом | спостережувана послідовність викликів — лише після окремо дозволеного запуску; це не статичний доказ ABI |
+| **C. Статичний аналіз proprietary бінарників** | REA/rizin, Ghidra по `libcuda`, `nvidia.ko`, `nvidia-uvm.ko` | **Потрібен письмовий дозвіл власника** (див. gate у [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62)) та перевірка точного дозволеного scope | Clearance на статичний аналіз не надає дозволу на runtime взаємодію з драйвером/GPU; вона потребує окремого погодження | `statically proven` факти про конкретний SHA |
 
-Правило: **робота в смузі C не починається, доки власник не зафіксує
-clearance**. До того моменту з C дозволено лише те, що вже опубліковано в
-[`41`](41-rea-p1-libcuda-userspace-uuid-source.md) (owner-approved evidence), і
-перевірку публічних CUDA/NVIDIA ABI-заголовків — без нового розкриття бінарника.
+Правило: **ліцензійний clearance і дозвіл на експеримент — два незалежні gate-и**.
+Робота в смузі C не починається, доки власник письмово не зафіксує clearance
+для конкретних артефактів і методів. До того моменту з C дозволено лише те, що
+вже опубліковано в [`41`](41-rea-p1-libcuda-userspace-uuid-source.md)
+(owner-approved evidence), і перевірку публічних CUDA/NVIDIA ABI-заголовків —
+без нового розкриття бінарника.
+
+Позначка «ліцензійний gate не потрібен» у смугах A/B **не є операційним дозволом**.
+Цей документ не надає blanket approval на запуск інструментів, GPU workload або
+драйверних інтерфейсів. Поточний безпечний обсяг без нового owner approval —
+публічний source audit, аналіз уже наявних evidence та read-only inventory/log
+review. Для будь-якого runtime-кроку потрібні точна команда, цільовий пристрій,
+очікувані ioctl/API, межі часу/ресурсів, критерії зупинки й окреме явне
+погодження власника.
 
 Це не формальність: саме змішування смуг дає найдорожчі помилки — коли
 спостереження за викликами подають як «доведений ABI», а один вдалий запуск — як
@@ -63,39 +73,50 @@ clearance**. До того моменту з C дозволено лише те,
 
 ## 4. Порядок, який дає найбільше за найменшу ціну
 
-1. **#28 (смуга A)** — не потребує ні дозволу, ні нових знань: матриця
-   повноцінності перетворює «здається, працює» на таблицю станів. Це те, що
-   можна робити вже сьогодні й що робить усі наступні результати порівнюваними.
-2. **E1 (смуга B)** — найдешевше спостереження, яке дає структуру для E2–E6.
-3. **#5 + E2 (смуга B)** — lifecycle і channel дають перший реальний шлях
-   подання команд.
-4. **#61 / #62 (смуга C)** — лише після письмового clearance. До того — тільки
-   публічні ABI-заголовки й зіставлення з відкритим кодом.
+1. **[#28](https://github.com/juv4uk/gp107-nvidia-re/issues/28) (смуга A)** — першим завершити матрицю з уже наявних evidence, pinned source audit та read-only inventory. Це документаційна робота; не запускати нові GPU probes під виглядом заповнення таблиці.
+2. **[#18](https://github.com/juv4uk/gp107-nvidia-re/issues/18) (смуга A)** — продовжити лише source/package provenance для Nouveau FIFO/non-stall; runtime correlation не виводити з source або TOP inventory.
+3. Runtime-частина смуги A (renderer enumeration, NVK harness, graphics/compute correctness, stress, suspend/resume) — тільки після owner-approved окремого boot/test plan для конкретної GTX 1050 Ti.
+4. **E1 (смуга B)** — лише після окремого approval на точний app invocation і спостережувані syscalls; спершу обмежити request whitelist, timeout, output fields та sanitization. `strace`/LD_PRELOAD можуть запустити або змінити поведінку програми й не є пасивною інвентаризацією.
+5. **[#5](https://github.com/juv4uk/gp107-nvidia-re/issues/5) + E2–E6 (смуга B)** — не виконувати без окремого погодження кожної операції. RM_ALLOC/CONTROL, GPU submission, kernel probes, BAR/MMIO та BOOT0 є окремими високоризиковими експериментами, а не автоматичним продовженням E1.
+6. **[#61](https://github.com/juv4uk/gp107-nvidia-re/issues/61) / [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62) (смуга C)** — лише після письмового clearance на статичний proprietary RE. До того — тільки вже owner-approved evidence, публічні ABI-заголовки й зіставлення з відкритим кодом.
 
 ## 5. Локальні інструменти: що тримати під рукою
 
-**Обовʼязкове (усі смуги):**
+**Безпечна базова інвентаризація / source audit (без нового runtime):**
 
-- `pciutils` — `lspci -nnvv -s 01:00.0` для BAR/регіонів/драйвера в привʼязці;
-- `strace` з `-yy -f` — єдиний спосіб побачити реальний порядок `ioctl`/`mmap`;
-- `bpftrace` — kprobes/uprobes без перезбирання ядра;
-- `linux-tools`/`perf` — `perf trace` як альтернатива strace, коли потрібні таймстемпи;
-- `ripgrep` по pinned дереву Nouveau — для смуги A замість Ghidra.
+- `ripgrep` / `git grep` по pinned дереву Nouveau, NVK і Mesa — source audit смуги A;
+- `sha256sum`, `readelf`, `modinfo`, `dpkg-query` — ідентичність уже наявних артефактів і package provenance;
+- `lspci -nnk`, `lsusb`, `journalctl -k -b` — read-only inventory/наявні boot logs; публікувати без serial, UUID, MAC і персональних шляхів;
+- `lspci -vv` може показати resource ranges, але не читає й не записує BAR contents; це не дозвіл на BAR/MMIO mapping.
+
 
 **Для смуги A (відкритий стек):**
 
-- `vulkaninfo --summary` і `glxinfo -B` — фіксують, **який саме** renderer
-  обслуговує карту (NVK чи llvmpipe) — без цього будь-який FPS нічого не значить;
-- `dmesg -w` + `/sys/kernel/debug/dri/*/` — nouveau-специфічні стани;
-- `/sys/class/drm/card*/device/hwmon/*/` — температури й частоти без `nvidia-smi`;
-- наявний `tests/nvk-gp107-vector-add` — correctness-якір для compute.
+- `vulkaninfo --summary` і `glxinfo -B` можуть ініціалізувати Vulkan/OpenGL
+  driver stack та GPU; запускати їх лише в окремо схваленій runtime-сесії.
+  Вони фіксують renderer (NVK чи llvmpipe), але самі не доводять correctness;
+- `dmesg -w` — лише спостереження за новими kernel log events; обмежити час
+  та sanitize output;
+- `/sys/class/drm/card*/device/hwmon/*/` — read-only temperature/frequency
+  inventory; відсутність файлів означає unavailable, не нуль;
+- `/sys/kernel/debug/dri/*/` — читати лише відомі read-only nodes; не робити
+  debugfs writes;
+- наявний `tests/nvk-gp107-vector-add` — correctness harness, але runtime mode
+  виконує GPU submission і потребує окремої owner-approved test session.
 
-**Для смуги B (спостереження shipped-стеку):**
+
+**Для смуги B (лише після окремого owner-approved runtime plan):**
 
 - власний LD_PRELOAD-shim (не копіюючи vendor-код) — лише номер `ioctl`,
-  напрямок, розмір параметрів, імʼя публічної константи, статус;
-- `strace -f -yy -e trace=ioctl,mmap,openat` як незалежний другий свідок;
-- **ніколи** `PROT_WRITE` на `resource0` — BAR0 лишається read-only до E5.
+  напрямок, розмір параметрів, імʼя публічної константи, статус; shim може
+  змінити таймінг і control flow програми, тому потрібні timeout/stop rules;
+- `strace -f -yy -e trace=ioctl,mmap,openat` лише для конкретно схваленого
+  app invocation; це не «пасивний» запуск і не дозвіл на невідомі ioctl;
+- `bpftrace`, kprobes/uprobes, tracefs та `perf` attach потребують окремого
+  погодження на instrumentation scope; до нього не виконувати attach;
+- BAR0 лишається недоторканим: жодних `resource0` mmap/read/write, `PROT_WRITE`,
+  BOOT0 або firmware/VBIOS операцій без окремого owner-approved plan для E5.
+
 
 **Для смуги C (лише після clearance):**
 
@@ -117,6 +138,11 @@ clearance**. До того моменту з C дозволено лише те,
   стосується GP107.
 - **Змішування смуг.** Runtime-спостереження не стає `statically proven`, а один
   успішний запуск не стає `PASS` у матриці.
+
+**Поточна авторизація:** до окремого погодження власника дозволені лише
+публічний source audit, аналіз уже наявних evidence та read-only inventory /
+log review. Наявність інструмента в системі чи відсутність окремого ліцензійного
+gate не змінює цього операційного статусу.
 
 ## 7. Що цим документом **не** зроблено
 
