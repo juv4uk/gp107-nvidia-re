@@ -2,3 +2,4 @@
 d468ec8993a7ece110ecf492b109033348cdb5fb3b7b9ad822178d836954308e  nvcuda64-uuid-and-uvm-facts.txt
 b6527ec1cc43cafd3f7fe5d12b69b0a85224791b3269bd36542b09af45a557e7  rizin-commands.txt
 f7aa2836e40ad7de537f14ad2894f3955db30c05fb2c00ffa54e9f2583df6cdc  pe_ioctl_audit.json
+f93f0b8986be699eea8c3cfeb8f8cb6076f5b79b566fe3bc850de0eee19e8bee  nvcuda64-private-field-to-uuid-writers.json

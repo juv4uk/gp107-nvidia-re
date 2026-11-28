@@ -1,0 +1,322 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T08:30:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subjects": [
+    {
+      "name": "nvcuda64.dll",
+      "file_version": "32.0.15.8278",
+      "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+      "size_bytes": 34562280,
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll"
+    },
+    {
+      "name": "nvdxgdmal64.dll",
+      "file_version": "",
+      "sha256": "9353f1b598f2c8649a33b59db011763474e8ef2a6749385a23d9f78af25feceb",
+      "size_bytes": 614632,
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvdxgdmal64.dll"
+    }
+  ],
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000",
+    "analysis_note": "aaa was run in the same command as axt; Rizin analysis state is not persisted across separate REA calls."
+  },
+  "observations": [
+    {
+      "evidence_id": "ev_65eafe01a6f87f883d68701350d1298f2a133459eb12782725e8a479f8eefd44",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x1800050c0; pdf @ 0x1800050c0",
+      "facts": [
+        "0x1800050c0 constructs a D3DKMT_QUERYADAPTERINFO-shaped stack block {ecx, edx, r8, r9d, 0}",
+        "0x1800050c0 calls the dynamically resolved pointer at [0x18008d088], identified in the prior evidence set as D3DKMTQueryAdapterInfo"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_0820887c8939f40c818c5253b9bcc9cdc682ddbb6d5277c967cad55665959dd7",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540",
+      "facts": [
+        "0x18000590e: edx=0, r8=r15, r9d=0xc115, ecx=r14d, call 0x1800050c0",
+        "the call at 0x18000590e supplies the private adapter buffer in r15 used by the later normalization step"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_ca6b40e6185910abb5dd865f3134bc781ffbff9f086c1df1c6951efc5d733eed",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540",
+      "facts": [
+        "0x1800058e2: r8=rdi; 0x1800058e5: lea rdx,[var_148h]; 0x1800058ec: lea rcx,[var_2988h]; 0x1800058f3: call 0x18002d2a0",
+        "0x18000591d: rdx=r15 (QueryAdapterInfo result buffer); 0x180005920: lea rcx,[var_2a48h]; 0x180005927: call 0x180002080",
+        "0x180005932: r8=[var_2a48h]; 0x180005939: lea rdx,[var_2a48h]; 0x180005940: mov rcx,r12; 0x180005943: call 0x18002d2a0",
+        "r12 is the 0x28f8-byte object allocated by nvcuda64.dll and filled through the [iface+0xc8] callback path"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_f3e458b4ae567dd8e14201ff974cacdb92f54985a5d85353689a2e165bba9c31",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540~var_2a48h",
+      "facts": [
+        "0x1800055c3: lea rcx,[var_2a48h]",
+        "0x18000563f: mov qword [var_2a48h],rax — this qword is later used as the size argument of the normalized-buffer copy",
+        "0x180005920, 0x180005932 and 0x180005939 show the same local object used as destination, size source and copy source"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_b71ddd08ee5e23babcbf33b82f877af4b9b376abf4e55edaf1bd9412d9eb4315",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x18002d2a0; pdf @ 0x18002d2a0",
+      "facts": [
+        "0x18002d2a0 is a memcpy-like routine with dest=rcx, src=rdx, size=r8",
+        "it is used both to copy query data into the normalized local buffer and to copy that buffer into the caller's object"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_c7017d26580208cc099a3d387b63ddeb5ef4e0eff230c1bc4c44d2923dfc29be",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180002080; pdf @ 0x180002080",
+      "facts": [
+        "entry sets rdi=rcx (destination object) and rbx=rdx (private adapter buffer)",
+        "0x180002155: lea rcx,[rbx+0xc095] — the 32-byte private field begins at private+0xc095"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_5d3663cc9adf0f291cae5df305af5ca38003c51fb487ba2ed4ddad10639ac84c",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180002080; pdf @ 0x180002080~0xc095",
+      "facts": [
+        "xmm0 is loaded from [private+0xc095] and stored at [desc+0xa0]",
+        "xmm1 is loaded from [private+0xc0a5] and stored at [desc+0xb0]",
+        "together these are 32 bytes moved into offsets +0xa0/+0xb0 of the normalized descriptor"
+      ],
+      "status": "statically_proven",
+      "note": "This is a separate field from the per-adapter 16-byte slots copied at 0x1800013a0; no statement is made here that it is the UUID read by cuDeviceGetUuid."
+    },
+    {
+      "evidence_id": "ev_f2ede7a31737afcdb337f3fd358dbc61a12154cee69d7b11b60640696f655239",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x1800013a0; pdf @ 0x1800013a0",
+      "facts": [
+        "entry: eax=[rdx+0x3c69], r8=rdx (private buffer), rbx=rcx (destination object)",
+        "0x1800013ab: [rcx+0x1e8]=eax, with a fallback of 1 when the count is zero",
+        "loop variable r11d starts at 0; rcx=i*0x198 and r10=i*0x10",
+        "0x1800013e1: [rcx+rbx+0x1f0]=0x198 — the recorded stride of each adapter slot",
+        "0x1800013ed: xmm0=[r10+r8+0x1442] and 0x1800013f6: [rcx+rbx+0x1f8]=xmm0 — 16 bytes copied from private+0x1442+i*0x10 to object+0x1f8+i*0x198",
+        "0x180001975: loop continues while r11d < [rbx+0x1e8]; 0x180001987 returns 0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_4c0cc8d76c7c38a69a375ca716a92ec14e65a526b9ab557b1e70b0020bf58189",
+      "subject": "nvdxgdmal64.dll",
+      "command": "aaa; axt @ 0x1800013a0",
+      "facts": [
+        "the only direct call is fcn.180002080 at 0x1800026a3"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr reported several ESIL Cannot-peek errors in unrelated addresses; the listed call xref is unaffected."
+    },
+    {
+      "evidence_id": "ev_7ca6b2ca55bf55817c14691d58cf0d2a4df0cf6b40e1d68668cad606bfc4cfe6",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180002080; pdf @ 0x180002080~0x1800013a0",
+      "facts": [
+        "0x1800026a3: call 0x1800013a0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_586b0693bb9239516d696c8f9fc6ebe37320637610a19210c1b0106f34ec7744",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180002080; pdf @ 0x180002080~0x1800026a",
+      "facts": [
+        "after 0x1800026a3 the function tests eax and restores rdx=private, rcx=destination; the call is part of the same normalization path, not a separate query"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_d72ebd0bd702b32cf1f80688849ad11ada5897cace4b934ee3e4b177b39b3c69",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540~0x180002080",
+      "facts": [
+        "0x180005927: call 0x180002080"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_f7ee9fa5b536987cf5b3a167306d028a72e4f2beb71b6388f432800a5fde63d1",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540~0x1800013a0",
+      "facts": [
+        "no direct call from 0x180005540 to 0x1800013a0; the path goes through 0x180002080"
+      ],
+      "status": "coverage_limitation"
+    },
+    {
+      "evidence_id": "ev_a5c1f73a6262451a60bfd0db712fb210bda89d0c7e788029795ed36dbe20d126",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409f50; pdf @ 0x180409f50",
+      "facts": [
+        "0x180409f50 builds an 0x18-byte block {0x18, rbp, rbx} before call qword [rdx+0x18]",
+        "the callback at [iface+0xc8] is invoked with a slot that receives the table used by the [table+0x18] method"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_9f8789d952545a84daed9fe96340697a4f1923e7fa3fb06d50d720c11d9c5542",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540~0x18000594",
+      "facts": [
+        "0x180005940: mov rcx,r12; 0x180005943: call 0x18002d2a0 — the normalized buffer is copied into the caller-supplied object"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_a10db552a678660754544e055b57bebff8907ab304a222ce005999acdb3faa45",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010",
+      "facts": [
+        "0x1804093dd: r8d=0x20; 0x1804093e7: lea rdx,[rsi+0xa0]; 0x1804093ee: lea rcx,[var_8d7h]; 0x1804093f2: call 0x1817f2010 — 32 bytes from object+0xa0 are copied to the local var_8d7h buffer",
+        "0x1804096e3: rcx=[var_998h]; 0x1804096e8: xmm0=[rcx-0xf0]; 0x1804096ef: [rax+0xc06]=xmm0 — 16 bytes are written to device+0xc06"
+      ],
+      "status": "statically_proven",
+      "note": "The var_8d7h copy is a separate 32-byte field; the device write sources [rcx-0xf0], which is resolved below to the per-adapter slot."
+    },
+    {
+      "evidence_id": "ev_cb90768f991b0ea2204b03bb22c349db04093e5b5f4d0d8ae0929f738d220b92",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~var_8d7",
+      "facts": [
+        "var_8d7h is at stack -0x8d7 and is addressed only by the 32-byte copy at 0x1804093ee"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_78e8cc38bdb4891bd626be305d861d48c02f61cc6dad90ba53878f581c5c2644",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010",
+      "facts": [
+        "0x1804091e9: movsxd rax,r13d; 0x1804091ec: imul rax,rax,0x198; 0x1804091f3: add rax,0x2e8; 0x1804091f9: add rax,rsi; 0x1804091fc: mov [var_998h],rax",
+        "therefore [rcx-0xf0] at 0x1804096e8 resolves to object+0x1f8+i*0x198"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_c01c48870a211c7e891bfac087200db6e9ff5ce5ffe362381a1b217ad057acc4",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~var_998",
+      "facts": [
+        "var_998h is written at 0x1804091fc and read at 0x1804096e3 before the device+0xc06 store"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_78452d29c33cd64c225da957579f2b4640bf680f912d5cf7bab153b5863e3b29",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~rbp",
+      "facts": [
+        "0x18040901d: lea rbp,[var_917h+0x3f], so rbp corresponds to stack -0x8d8 and var_8d7h is rbp+1"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_cc84ca9b4a58cf49149a4d1f30bda03d19f966cf6e6ea128cfcddf0a6426e1c6",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~0xc06",
+      "facts": [
+        "0x1804096e8: movups xmm0,[rcx-0xf0]; 0x1804096ef: movups [rax+0xc06],xmm0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_bd2799b0c5f5108e8902434feacea8f648bfddaac416d070084b1014e1a53094",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~rsi+0xa0",
+      "facts": [
+        "the 32-byte object field +0xa0 is the source of the local var_8d7h copy in Writer A"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_a9683dc11c6b5378255202595896dec0076045ccd842906da41995c26bd7337d",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036d300; pdf @ 0x18036d300",
+      "facts": [
+        "Writer B: 0x18036d627 sets [rbx+0x5e49] |= 1",
+        "0x18036d637: xmm0=[rdi+0x481]; 0x18036d645: [rbx+0xc27]=xmm0",
+        "0x18036d64c: [rdi+0x471] -> [rbx+0xc16]; 0x18036d65a: byte [rdi+0x470] -> [rbx+0xc26]"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_017ffc95b0428d8db5a041b08e1740b03b31ce262868665296cdbb4d8b4fecaf",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x18036d300",
+      "facts": [
+        "no direct call to Writer B was observed; the only reference is a DATA lea from 0x18036bb70, the slot-installation routine"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included bin_file_strings interval warnings and ESIL Cannot-peek errors; no Ghidra xrefs are claimed."
+    },
+    {
+      "evidence_id": "ev_a34fd0bd03b1d41ac9522b107ac83523a857db4b0198061d69eee8fc1cbea407",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x18036bb70",
+      "facts": [
+        "0x18036d37d: call fcn.18036bb70",
+        "0x18036f2d2: lea rax,[0x18036bb70] — the slot installer is also embedded in the table built by fcn.18036f270"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included bin_file_strings interval warnings and ESIL Cannot-peek errors; no claim is made about the runtime caller of the installed slot."
+    },
+    {
+      "evidence_id": "ev_16bbf5e0be859dea9fd002f2e9e3247d275dbd8e8ab1f5454879d5722ec82665",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036f270; pdf @ 0x18036f270",
+      "facts": [
+        "0x18036f2d2 installs the pointer 0x18036bb70 into a local method table",
+        "0x18036f2f1-0x18036f342 copy 0x80-byte blocks from rdx into that local table in a loop"
+      ],
+      "status": "statically_proven"
+    }
+  ],
+  "unproven": [
+    "whether the 16 bytes at private+0x1442+i*0x10 are literally the GPU UUID rather than another 16-byte adapter field",
+    "ultimate producer of those bytes (RM, NVML, D3DKMT kernel data, PCI configuration or VBIOS)",
+    "whether the separate 32-byte field at private+0xc095/+0xc0a5 is related to cuDeviceGetUuid",
+    "origin of Writer B's source field rdi+0x481 and its relation to the normalized adapter buffer",
+    "identity of the routine that stores populated device objects into [0x182002520+idx*8]",
+    "BDF to RM gpu_id mapping",
+    "equivalence with the Linux libcuda.so.580.196.11 fields from docs/41"
+  ],
+  "coverage_limitations": [
+    "Ghidra import/analysis of the 34 MB nvcuda64.dll did not finish within the configured 900000 ms startup deadline (provider_timeout); no Ghidra xrefs are claimed here.",
+    "Rizin analysis state is not persisted across REA calls; axt results require aaa in the same command.",
+    "Some pd windows started mid-instruction; conclusions use aligned af/pdf output and are cross-checked with explicit address slices.",
+    "axt for 0x1800013a0 and 0x18036d300 reported ESIL Cannot-peek errors and bin_file_strings interval warnings; these do not invalidate the listed disassembly or call xrefs.",
+    "A direct call search from 0x180005540 to 0x1800013a0 was empty; the proven path is via 0x180002080.",
+    "No public D3DKMT header was consulted in this lane; query type 0xc115 is reported as an observed constant, not a decoded public name.",
+    "The final attempt to trace Writer B's indirect caller was interrupted by an REA server restart; no further REA query was run after the restart, so that source remains UNPROVEN."
+  ],
+  "not_run": [
+    "process execution",
+    "cuInit",
+    "cuDeviceGetUuid",
+    "RM/UVM/D3DKMT ioctl",
+    "CUDA/Vulkan/OpenGL initialization or compute",
+    "GPU submit",
+    "MMIO/BAR/BOOT0/firmware",
+    "driver install or switch",
+    "reboot",
+    "tag or release"
+  ]
+}
