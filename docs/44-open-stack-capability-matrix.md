@@ -20,6 +20,15 @@
 
 **Процедурна примітка до compute witness:** docs/14 фіксує реальний історичний NVK vector-add dispatch із signaled fence та правильним CPU readback/checksum. Водночас docs/18 прямо фіксує `runtime-proven deviation`: погоджений source/BTF preflight не був повністю завершений до цього dispatch. Тому результат слід читати як `HISTORICAL_EXTERNAL_GP107_COMPUTE_WITNESS / PROCEDURAL_DEVIATION`, а не як clean acceptance, щоденний stability PASS або дозвіл повторити workload. Це не змінює факт конкретного успішного dispatch, але обмежує його доказову силу.
 
+> **Правило версій для кожної клітинки.** На цій карті версія ядра змінює
+> відповідь, і це не теорія: регресія atomic modesetting у 7.3.x дає NULL deref
+> під час ініціалізації дисплея саме на GP107 (звіт 2026-11-02, фікс
+> `ed7fb901fce3` у mainline 2026-11-25). Тому кожен `PASS` і кожен
+> `NOT_AVAILABLE` мусить називати трійку — **ядро / Mesa (або NVIDIA) / снапшот
+> linux-firmware** — інакше клітинка описує невідому конфігурацію, і «KMS
+> працює» без версії ядра не є твердженням. Деталі й джерела — у
+> [`48`](48-gp107-open-stack-status-2026-11.md) §3.1–3.2.
+
 | Область | Поточний стан | Що вже доведено | Чого це не доводить / наступна межа |
 |---|---|---|---|
 | PCI identity / фізичне визначення GPU | **PASS — зовнішній GP107 witness** | PCI vendor/device 10de:1c82, BDF 0000:01:00.0 та назва GTX 1050 Ti узгоджуються в sysfs і Vulkan device record. [13](13-nouveau-nvk-boot-witness-result.md), [14](14-nvk-vector-add-compute-result.md). | Точна retail-модель плати й її VBIOS identity — окремі питання; H170 native inventory — NOT_RUN. |
@@ -34,7 +43,7 @@
 | NVDEC / NVENC | **NOT_MEASURED** | У наявних документах немає прийнятого runtime acceptance для відкритого GP107 stack. | Перевіряти кожен backend окремо; не оголошувати NOT_AVAILABLE без перевіреного scope/джерела. |
 | Pascal reclocking | **NOT_AVAILABLE — практичний Nouveau шлях** | Upstream Nouveau/Mesa research вказує на firmware/signing обмеження reclocking для GP10x/Pascal. [06](06-open-driver-landscape.md). | Це не означає, що базові KMS, OpenGL або compute функції відсутні. Будь-яка частота/продуктивність має бути позначена як boot-clock чи інший фактично доведений стан. |
 | Температура, clocks, power telemetry | **NOT_MEASURED** | Для збору доступних показників визначено read-only hwmon шлях у [42](42-local-toolchain-and-remaining-targets.md). | Відсутність hwmon node означає unavailable/not exposed, а не нуль. Дані ще не прийняті як виміряний baseline. |
-| Suspend/resume, runtime PM, GPU reset/recovery | **NOT_MEASURED** | Немає окремого прийнятого runtime свідка. | Потрібен окремий owner-approved тест-план із recovery/stop criteria; не запускати під час інвентаризації. |
+| Suspend/resume, runtime PM, GPU reset/recovery | **NOT_MEASURED** | Немає окремого прийнятого runtime свідка; пошук по виконанню (`grep "PM: suspend"`) по репозиторію дає нуль, а `ACPI: PM: (supports S0 S3 S4 S5)` — це оголошення платформи, не цикл. | Потрібен окремий owner-approved тест-план із recovery/stop criteria; не запускати під час інвентаризації. Чернетка плану — [`48`](48-gp107-open-stack-status-2026-11.md) §3.7 (`rtcwake`, три повтори, stop criteria). |
 | 30–60 хв змішаного навантаження / VRAM pressure | **NOT_MEASURED** | Наявний vector-add — короткий correctness smoke. | Немає довготривалого stability evidence, OOM/pressure або recovery results. |
 | WSM H170 native hardware acceptance | **NOT_MEASURED** | Цільова конфігурація відома з owner-side hardware context. | Немає native Linux H170 inventory/log bundle та пов'язаного WSM hardware report. Зовнішній Kali witness не може закрити цей пункт; H170 runtime — NOT_RUN. |
 | WSM Guix Compatibility acceptance на H170 | **NOT_MEASURED** | У WSM є окремий Compatibility profile/backend plan. | Немає H170-specific installation/boot/driver evidence. Це integration/provenance задача, не завдання для нового RM reverse engineering. |
