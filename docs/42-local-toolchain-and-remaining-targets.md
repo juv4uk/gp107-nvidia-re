@@ -1,0 +1,127 @@
+# 42 — Локальний toolchain, залишкові цілі RE і те, що впирається в ліцензійний gate
+
+Цей документ відповідає на два питання, які виникають щоразу перед новою сесією
+дослідження:
+
+1. **Що саме ще треба зʼясувати** для `10de:1c82` (GTX 1050 Ti, GP107) — і в
+   якому порядку.
+2. **Якими інструментами** це робити локально, щоб не перетворити кожен крок на
+   новий набір здогадів.
+
+Він не додає нових доказів і не змінює жодного статусу в інших документах.
+Статуси лишаються там, де їх зафіксовано: [`05`](05-gp107-capability-matrix.md),
+[`07`](07-next-research-direction.md), [`40`](40-rea-p1-gpu-info-uuid-direction.md),
+[`41`](41-rea-p1-libcuda-userspace-uuid-source.md).
+
+---
+
+## 1. Три смуги робіт, і чому їх не можна змішувати
+
+| Смуга | Що це | Ліцензійний gate | Доказ, який вона дає |
+| --- | --- | --- | --- |
+| **A. Відкритий стек** | Nouveau / NVK / NAK / Mesa / Rusticl / linux-firmware | **не потрібен** | runtime-proven на власній карті |
+| **B. Runtime-спостереження shipped-стеку** | власний LD_PRELOAD-shim, `strace`, `bpftrace`, sysfs/debugfs | **не потрібен** — це не аналіз бінарника, це спостереження викликів | спостережувана послідовність ioctl/mmap, без vendor-коду |
+| **C. Статичний аналіз proprietary бінарників** | REA/rizin, Ghidra по `libcuda`, `nvidia.ko`, `nvidia-uvm.ko` | **потрібен письмовий дозвіл власника** (див. gate у [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62)) | `statically proven` факти про конкретний SHA |
+
+Правило: **робота в смузі C не починається, доки власник не зафіксує
+clearance**. До того моменту з C дозволено лише те, що вже опубліковано в
+[`41`](41-rea-p1-libcuda-userspace-uuid-source.md) (owner-approved evidence), і
+перевірку публічних CUDA/NVIDIA ABI-заголовків — без нового розкриття бінарника.
+
+Це не формальність: саме змішування смуг дає найдорожчі помилки — коли
+спостереження за викликами подають як «доведений ABI», а один вдалий запуск — як
+«драйвер працює».
+
+## 2. Що вже доведено — не переробляти
+
+За [`07`](07-next-research-direction.md) runtime-proven є рівно це:
+
+- PCI/RM-ідентичність і шлях GPU-вузла через `minor_number`;
+- RM-ланцюжок до `NV20_SUBDEVICE_0` і `MC_GET_ARCH_INFO`;
+- явний `NV_ESC_RM_FREE` у зворотному порядку, включно з частковими відмовами;
+- fail-closed BAR0-negative: `OPEN_DENIED`, `MMAP_DENIED`;
+- `NV_PMC_BOOT_0` лишається **`UNPROVEN`** — і `arch=0x130 / impl=0x7` не є
+  дозволом на MMIO.
+
+Будь-яка нова сесія починається з цього списку, а не з нуля.
+
+## 3. Залишкові цілі: ціль → питання → інструмент → смуга
+
+| # | Ціль | Невідоме | Інструмент | Смуга | Критерій green |
+| --- | --- | --- | --- | --- | --- |
+| [#61](https://github.com/juv4uk/gp107-nvidia-re/issues/61) | userspace UUID producer для `UVM_REGISTER_GPU` | хто формує поле `device+0xc06` | REA/rizin по `libcuda` (SHA `20ad4403…`) | **C** | writer поля + ланцюг до нього, два незалежні прогони |
+| [#62](https://github.com/juv4uk/gp107-nvidia-re/issues/62) | callback producer `device+0xc06`, `BDF ↔ RM gpu_id` | що встановлює `[holder+0x30]`; чи є прямий mapping | REA (статично) + `lspci -vv` / RM `GET_PROBED_IDS` (runtime) | **C** + **B** | callback writer доведено; BDF↔gpu_id або доведено, або явно `NOT_AVAILABLE` |
+| E1 | порядок `ioctl`/`mmap` для `cuCtxCreate…cuLaunchKernel` | реальна послідовність викликів | власний LD_PRELOAD-shim + `strace -f -yy -e trace=ioctl,mmap,openat` | **B** | таблиця викликів, два прогони, невідомий request = окремий `UNPROVEN` рядок |
+| E2 | channel/context lifecycle | які RM-класи приймає R580 | власний C-зонд `NV_ESC_RM_ALLOC`/`RM_CONTROL` | **B** | alloc → control → free у зворотному порядку; інʼєкція часткової відмови звільняє рівно створене |
+| E3 | pushbuffer/GPFIFO формат | мінімальний запис команди | власні структури + `SizeOf`-asserts, submission через E2 | **B** | власний маркер submitted + звірка порядку полів із trace |
+| E4 | синхронізація | семафори/fence/notifier | `bpftrace` kprobes на nouveau/nvidia, tracefs, явний timeout | **B** | два прогони з однаковим фінальним статусом; timeout не приховується |
+| E5 | MMIO seam | `NV_PMC_BOOT_0` | UEFI/bare-metal або ізольований процес із підтвердженим доступом | **B** (окремий seam) | документ із власником доступу, chipset-маскою і реальним read |
+| E6 | DMA/GVA + launch | UVM-алокації, GVA, параметри grid/block | інкрементальний підтверджений піднабір після E2–E4 | **B** | один підтверджений під-крок, не «драйвер одразу» |
+| [#28](https://github.com/juv4uk/gp107-nvidia-re/issues/28) | матриця повноцінності й benchmark | що саме вважати PASS на відкритому стеку | `vulkaninfo --summary`, `glxinfo -B`, наявний `tests/nvk-gp107-vector-add`, власний harness | **A** | кожна клітинка матриці має стан і сирі логи |
+| [#5](https://github.com/juv4uk/gp107-nvidia-re/issues/5) | RM object lifecycle | cleanup після часткової відмови | той самий C-зонд, інʼєкція відмови | **B** | жодного витоку обʼєкта після відмови |
+| [#18](https://github.com/juv4uk/gp107-nvidia-re/issues/18) | legacy FIFO non-stall event index, runlist ID | індекси й ID | pinned Nouveau source (`ripgrep`), [`09`](09-gp107-fifo-nonstall-source-audit.md) | **A** | source-audit із точними файлами й рядками, без бінарників |
+
+## 4. Порядок, який дає найбільше за найменшу ціну
+
+1. **#28 (смуга A)** — не потребує ні дозволу, ні нових знань: матриця
+   повноцінності перетворює «здається, працює» на таблицю станів. Це те, що
+   можна робити вже сьогодні й що робить усі наступні результати порівнюваними.
+2. **E1 (смуга B)** — найдешевше спостереження, яке дає структуру для E2–E6.
+3. **#5 + E2 (смуга B)** — lifecycle і channel дають перший реальний шлях
+   подання команд.
+4. **#61 / #62 (смуга C)** — лише після письмового clearance. До того — тільки
+   публічні ABI-заголовки й зіставлення з відкритим кодом.
+
+## 5. Локальні інструменти: що тримати під рукою
+
+**Обовʼязкове (усі смуги):**
+
+- `pciutils` — `lspci -nnvv -s 01:00.0` для BAR/регіонів/драйвера в привʼязці;
+- `strace` з `-yy -f` — єдиний спосіб побачити реальний порядок `ioctl`/`mmap`;
+- `bpftrace` — kprobes/uprobes без перезбирання ядра;
+- `linux-tools`/`perf` — `perf trace` як альтернатива strace, коли потрібні таймстемпи;
+- `ripgrep` по pinned дереву Nouveau — для смуги A замість Ghidra.
+
+**Для смуги A (відкритий стек):**
+
+- `vulkaninfo --summary` і `glxinfo -B` — фіксують, **який саме** renderer
+  обслуговує карту (NVK чи llvmpipe) — без цього будь-який FPS нічого не значить;
+- `dmesg -w` + `/sys/kernel/debug/dri/*/` — nouveau-специфічні стани;
+- `/sys/class/drm/card*/device/hwmon/*/` — температури й частоти без `nvidia-smi`;
+- наявний `tests/nvk-gp107-vector-add` — correctness-якір для compute.
+
+**Для смуги B (спостереження shipped-стеку):**
+
+- власний LD_PRELOAD-shim (не копіюючи vendor-код) — лише номер `ioctl`,
+  напрямок, розмір параметрів, імʼя публічної константи, статус;
+- `strace -f -yy -e trace=ioctl,mmap,openat` як незалежний другий свідок;
+- **ніколи** `PROT_WRITE` на `resource0` — BAR0 лишається read-only до E5.
+
+**Для смуги C (лише після clearance):**
+
+- REA (`execute_rizin_command`, rizin 0.9.1) і Ghidra 12.2 — уже зафіксовані в
+  [`41`](41-rea-p1-libcuda-userspace-uuid-source.md) як робочий toolchain;
+- перед кожним прогоном — повторне підтвердження SHA-256 цілі: `libcuda`
+  `20ad4403…`, `nvidia-uvm.ko` `81b21527…`, `nvidia.ko` `95c5fa5a…`;
+- `nvdisasm`/`cuobjdump` — для SASS/ELF, не для «розуміння драйвера».
+
+## 6. Антипатерни, які вже коштували часу
+
+- **`arch=0x130` як дозвіл на MMIO.** Це ідентичність, не право. BAR0 — read-only
+  до E5 з явним власником доступу.
+- **`rev=0xa1` як ознака готовності.** Не є. Готовність — це fence/notifier із
+  явним timeout.
+- **«Модуль завантажився» як «драйвер працює».** Рівні доказу різні; див.
+  [`05`](05-gp107-capability-matrix.md).
+- **FPS без фіксації renderer.** Якщо `vulkaninfo` каже llvmpipe, число не
+  стосується GP107.
+- **Змішування смуг.** Runtime-спостереження не стає `statically proven`, а один
+  успішний запуск не стає `PASS` у матриці.
+
+## 7. Що цим документом **не** зроблено
+
+- Жодного нового доказу не додано: усі статуси лишаються там, де були.
+- Жодного аналізу proprietary бінарників не виконано — смуга C чекає на
+  письмовий clearance власника.
+- Жодного запуску на фізичній карті не було: усе вище — план і toolchain, не
+  вимір.
