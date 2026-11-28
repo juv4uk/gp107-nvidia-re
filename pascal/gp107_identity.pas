@@ -223,7 +223,7 @@ var
 begin
   Result := False;
   savedErr := 0;
-  fd := libc_openat(dirfd, 'config',
+  fd := libc_openat(dirfd, PChar('config'),
                     O_RDONLY or O_CLOEXEC or LINUX_O_NOFOLLOW_FLAG or
                     LINUX_O_NONBLOCK_FLAG, 0);
   if fd < 0 then
@@ -344,7 +344,7 @@ begin
   err := '';
   FillChar(outDriver, SizeOf(outDriver), 0);
   FillChar(buf, SizeOf(buf), 0);
-  n := libc_readlinkat(dirfd, 'driver', PChar(@buf[0]), SizeOf(buf) - 1);
+  n := libc_readlinkat(dirfd, PChar('driver'), PChar(@buf[0]), SizeOf(buf) - 1);
   if n < 0 then
   begin
     saved := fpgeterrno;
@@ -369,7 +369,7 @@ begin
     base := target;
   if (Length(base) = 0) or (Length(base) >= Length(outDriver.name)) then
   begin
-    err := 'MMIO-FAIL step=driver-name-invalid code='
+    err := 'MMIO-FAIL step=driver-name-invalid code=' +
            IntToStr(STATUS_BINDING);
     Exit(STATUS_BINDING);
   end;
