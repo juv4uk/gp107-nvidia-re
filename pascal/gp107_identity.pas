@@ -97,8 +97,36 @@ function ReadSmallFile(const path: string; out text: string): Boolean;
 function ParseHex16(const s: string; out value: Word): Boolean;
 function ScanInventory(const root, expectBdf: string;
                        out inv: Tgp107Inventory; out err: string): Integer;
+function VerifyPinnedIdentity(const root, expectBdf: string;
+                              const expected: Tgp107Inventory;
+                              out err: string): Integer;
 
 implementation
+
+type
+  PLibcErrno = ^cint;
+
+const
+  LINUX_O_DIRECTORY_FLAG = $10000;
+  LINUX_O_NOFOLLOW_FLAG  = $20000;
+  LINUX_O_NONBLOCK_FLAG  = $0800;
+
+function libc_openat(dirfd: cint; pathname: PChar; flags: cint;
+                     mode: LongWord): cint; cdecl; external 'c' name 'openat';
+function libc_readlinkat(dirfd: cint; pathname: PChar; buffer: PChar;
+                         bufsiz: SizeUInt): ssize_t; cdecl; external 'c' name 'readlinkat';
+
+function libc_errno_location: PLibcErrno; cdecl; external 'c' name '__errno_location';
+
+function LibCErrno: cint;
+var
+  location: PLibcErrno;
+begin
+  location := libc_errno_location;
+  if location = nil then
+    Exit(ESysEio);
+  Result := location^;
+end;
 
 procedure FailNamed(const step: string; code: Integer);
 begin
@@ -148,6 +176,344 @@ begin
     Exit;
   value := Word(v);
   Result := True;
+end;
+
+function ReadSmallAt(dirfd: cint; const name: string;
+                    out text: string; out savedErr: cint): Boolean;
+var
+  fd: cint;
+  n: ssize_t;
+  st: TStat;
+  buf: array[0..2047] of Byte;
+begin
+  Result := False;
+  text := '';
+  savedErr := 0;
+  fd := libc_openat(dirfd, PChar(name),
+                    O_RDONLY or O_CLOEXEC or LINUX_O_NOFOLLOW_FLAG or
+                    LINUX_O_NONBLOCK_FLAG, 0);
+  if fd < 0 then
+  begin
+    savedErr := LibCErrno;
+    Exit;
+  end;
+  try
+    if FpFStat(fd, st) <> 0 then
+    begin
+      savedErr := fpgeterrno;
+      Exit;
+    end;
+    if (st.st_mode and S_IFMT) <> S_IFREG then
+    begin
+      savedErr := ESysEinval;
+      Exit;
+    end;
+    FillChar(buf, SizeOf(buf), 0);
+    n := FpRead(fd, buf[0], SizeOf(buf) - 1);
+    if n < 0 then
+    begin
+      savedErr := fpgeterrno;
+      Exit;
+    end;
+    if n >= SizeOf(buf) - 1 then
+    begin
+      savedErr := ESysEinval;
+      Exit;
+    end;
+    SetLength(text, n);
+    if n > 0 then
+      Move(buf[0], text[1], n);
+    Result := True;
+  finally
+    FpClose(fd);
+  end;
+end;
+
+function ReadConfigAt(dirfd: cint; out cfg: array of Byte;
+                      out savedErr: cint): Boolean;
+var
+  fd: cint;
+  n: ssize_t;
+  st: TStat;
+begin
+  Result := False;
+  savedErr := 0;
+  fd := libc_openat(dirfd, PChar('config'),
+                    O_RDONLY or O_CLOEXEC or LINUX_O_NOFOLLOW_FLAG or
+                    LINUX_O_NONBLOCK_FLAG, 0);
+  if fd < 0 then
+  begin
+    savedErr := LibCErrno;
+    Exit;
+  end;
+  try
+    if FpFStat(fd, st) <> 0 then
+    begin
+      savedErr := fpgeterrno;
+      Exit;
+    end;
+    if (st.st_mode and S_IFMT) <> S_IFREG then
+    begin
+      savedErr := ESysEinval;
+      Exit;
+    end;
+    FillChar(cfg[0], Length(cfg), 0);
+    n := FpPRead(fd, cfg[0], Length(cfg), 0);
+    if n < 0 then
+    begin
+      savedErr := fpgeterrno;
+      Exit;
+    end;
+    Result := n = Length(cfg);
+    if not Result then
+      savedErr := ESysEio;
+  finally
+    FpClose(fd);
+  end;
+end;
+
+function UeventValue(const uevent, key: string; out value: string): Boolean;
+var
+  remaining, line: string;
+  newlineAt, prefixLength: SizeInt;
+begin
+  Result := False;
+  value := '';
+  remaining := uevent;
+  prefixLength := Length(key) + 1;
+  while remaining <> '' do
+  begin
+    newlineAt := Pos(#10, remaining);
+    if newlineAt > 0 then
+    begin
+      line := Copy(remaining, 1, newlineAt - 1);
+      Delete(remaining, 1, newlineAt);
+    end
+    else
+    begin
+      line := remaining;
+      remaining := '';
+    end;
+    if (Length(line) > prefixLength) and
+       (Copy(line, 1, prefixLength) = key + '=') then
+    begin
+      value := Trim(Copy(line, prefixLength + 1, MaxInt));
+      Result := value <> '';
+      Exit;
+    end;
+  end;
+end;
+
+function ParseHexPair(const text: string; out first, second: Word): Boolean;
+var
+  separator: SizeInt;
+begin
+  Result := False;
+  first := 0;
+  second := 0;
+  separator := Pos(':', text);
+  if separator <= 1 then
+    Exit;
+  if not ParseHex16(Copy(text, 1, separator - 1), first) then
+    Exit;
+  if not ParseHex16(Copy(text, separator + 1, MaxInt), second) then
+    Exit;
+  Result := True;
+end;
+
+function InventoryBdf(const inv: Tgp107Inventory): string;
+var
+  i: Integer;
+begin
+  Result := '';
+  for i := Low(inv.bdf) to High(inv.bdf) do
+  begin
+    if inv.bdf[i] = #0 then
+      Break;
+    Result := Result + inv.bdf[i];
+  end;
+end;
+
+function DriverName(const driver: Tgp107Driver): string;
+var
+  i: Integer;
+begin
+  Result := '';
+  for i := Low(driver.name) to High(driver.name) do
+  begin
+    if driver.name[i] = #0 then
+      Break;
+    Result := Result + driver.name[i];
+  end;
+end;
+
+function ReadBindingAt(dirfd: cint; var outDriver: Tgp107Driver;
+                       out err: string): Integer;
+var
+  buf: array[0..511] of Byte;
+  n: ssize_t;
+  saved: cint;
+  target, base: string;
+  i: Integer;
+begin
+  err := '';
+  FillChar(outDriver, SizeOf(outDriver), 0);
+  FillChar(buf, SizeOf(buf), 0);
+  n := libc_readlinkat(dirfd, PChar('driver'), PChar(@buf[0]), SizeOf(buf) - 1);
+  if n < 0 then
+  begin
+    saved := LibCErrno;
+    if saved = ESysEnoent then
+      Exit(STATUS_OK);
+    err := 'MMIO-FAIL step=driver-binding-read code=' +
+           IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(saved);
+    Exit(STATUS_BINDING);
+  end;
+  if (n = 0) or (n >= SizeOf(buf) - 1) then
+  begin
+    err := 'MMIO-FAIL step=driver-binding-read code=' +
+           IntToStr(STATUS_BINDING);
+    Exit(STATUS_BINDING);
+  end;
+  SetLength(target, n);
+  Move(buf[0], target[1], n);
+  i := LastDelimiter('/', target);
+  if i > 0 then
+    base := Copy(target, i + 1, MaxInt)
+  else
+    base := target;
+  if (Length(base) = 0) or (Length(base) >= Length(outDriver.name)) then
+  begin
+    err := 'MMIO-FAIL step=driver-name-invalid code=' +
+           IntToStr(STATUS_BINDING);
+    Exit(STATUS_BINDING);
+  end;
+  for i := 1 to Length(base) do
+    outDriver.name[i - 1] := base[i];
+  outDriver.bound := 1;
+  Result := STATUS_OK;
+end;
+
+function PinnedIdentityError(const step: string; code: Integer;
+                             const detail: string; out err: string): Integer;
+begin
+  err := 'MMIO-FAIL step=' + step + ' code=' + IntToStr(code);
+  if detail <> '' then
+    err := err + ' ' + detail;
+  Result := code;
+end;
+
+function VerifyPinnedIdentity(const root, expectBdf: string;
+                              const expected: Tgp107Inventory;
+                              out err: string): Integer;
+var
+  expectedBdf, devdir: string;
+  dirfd, saved: cint;
+  st: TStat;
+  uevent, slotName, pciId, pciSubsystemId: string;
+  vendorText, deviceText, revisionText: string;
+  subsystemVendorText, subsystemDeviceText: string;
+  vendor, device, revision: Word;
+  subsystemVendor, subsystemDevice: Word;
+  eventVendor, eventDevice, eventSubsystemVendor, eventSubsystemDevice: Word;
+  cfg: array[0..CONFIG_BYTES - 1] of Byte;
+  liveDriver: Tgp107Driver;
+begin
+  err := '';
+  expectedBdf := InventoryBdf(expected);
+  if (root = '') or (expectBdf = '') or (expectedBdf = '') then
+    Exit(PinnedIdentityError('bad-argument', STATUS_USAGE, '', err));
+  if (expectBdf <> LowerCase(expectBdf)) or (expectedBdf <> expectBdf) then
+    Exit(PinnedIdentityError('pinned-bdf-mismatch', STATUS_BDF,
+         'expected=' + expectBdf + ' inventory=' + expectedBdf, err));
+
+  devdir := IncludeTrailingPathDelimiter(root) +
+            'bus/pci/devices/' + expectBdf;
+  if Length(devdir) > 511 then
+    Exit(PinnedIdentityError('device-path-too-long', STATUS_PARSE, '', err));
+  dirfd := FpOpen(PChar(devdir),
+                  O_RDONLY or O_CLOEXEC or LINUX_O_DIRECTORY_FLAG, 0);
+  if dirfd < 0 then
+  begin
+    saved := fpgeterrno;
+    Exit(PinnedIdentityError('device-directory-open', STATUS_OPEN,
+         'errno=' + IntToStr(saved), err));
+  end;
+  try
+    if FpFStat(dirfd, st) <> 0 then
+    begin
+      saved := fpgeterrno;
+      Exit(PinnedIdentityError('device-directory-stat', STATUS_OPEN,
+           'errno=' + IntToStr(saved), err));
+    end;
+    if (st.st_mode and S_IFMT) <> S_IFDIR then
+      Exit(PinnedIdentityError('device-directory-stat', STATUS_OPEN,
+           'errno=' + IntToStr(ESysEnotdir), err));
+
+    if not ReadSmallAt(dirfd, 'uevent', uevent, saved) then
+      Exit(PinnedIdentityError('pinned-uevent-read', STATUS_CONFIG,
+           'errno=' + IntToStr(saved), err));
+    if not UeventValue(uevent, 'PCI_SLOT_NAME', slotName) then
+      Exit(PinnedIdentityError('pinned-uevent-read', STATUS_CONFIG,
+           'field=PCI_SLOT_NAME', err));
+    if slotName <> expectBdf then
+      Exit(PinnedIdentityError('pinned-bdf-mismatch', STATUS_BDF,
+           'expected=' + expectBdf + ' got=' + slotName, err));
+
+    if not UeventValue(uevent, 'PCI_ID', pciId) or
+       not UeventValue(uevent, 'PCI_SUBSYS_ID', pciSubsystemId) or
+       not ParseHexPair(pciId, eventVendor, eventDevice) or
+       not ParseHexPair(pciSubsystemId, eventSubsystemVendor,
+                        eventSubsystemDevice) then
+      Exit(PinnedIdentityError('pinned-pci-uevent', STATUS_CONFIG, '', err));
+
+    if not ReadSmallAt(dirfd, 'vendor', vendorText, saved) or
+       not ReadSmallAt(dirfd, 'device', deviceText, saved) or
+       not ReadSmallAt(dirfd, 'revision', revisionText, saved) or
+       not ReadSmallAt(dirfd, 'subsystem_vendor', subsystemVendorText, saved) or
+       not ReadSmallAt(dirfd, 'subsystem_device', subsystemDeviceText, saved) or
+       not ParseHex16(vendorText, vendor) or
+       not ParseHex16(deviceText, device) or
+       not ParseHex16(revisionText, revision) or
+       not ParseHex16(subsystemVendorText, subsystemVendor) or
+       not ParseHex16(subsystemDeviceText, subsystemDevice) then
+      Exit(PinnedIdentityError('pinned-pci-attributes', STATUS_CONFIG,
+           'errno=' + IntToStr(saved), err));
+
+    if not ReadConfigAt(dirfd, cfg, saved) then
+      Exit(PinnedIdentityError('pinned-config-read', STATUS_CONFIG,
+           'errno=' + IntToStr(saved), err));
+
+    if (vendor <> PCI_VENDOR_NVIDIA) or (device <> PCI_DEVICE_GP107) or
+       (vendor <> expected.pci.vendor) or (device <> expected.pci.device) or
+       (revision <> expected.pci.revision) or
+       (eventVendor <> vendor) or (eventDevice <> device) or
+       (eventSubsystemVendor <> subsystemVendor) or
+       (eventSubsystemDevice <> subsystemDevice) or
+       (cfg[0] <> Byte(vendor and $ff)) or
+       (cfg[1] <> Byte(vendor shr 8)) or
+       (cfg[2] <> Byte(device and $ff)) or
+       (cfg[3] <> Byte(device shr 8)) or
+       (cfg[$08] <> Byte(revision)) then
+      Exit(PinnedIdentityError('pinned-pci-identity', STATUS_CONFIG,
+           'bdf=' + expectBdf + ' vendor=0x' + LowerCase(IntToHex(vendor, 1)) +
+           ' device=0x' + LowerCase(IntToHex(device, 1)) +
+           ' revision=0x' + LowerCase(IntToHex(revision, 1)), err));
+
+    Result := ReadBindingAt(dirfd, liveDriver, err);
+    if Result <> STATUS_OK then
+      Exit;
+    if liveDriver.bound <> 0 then
+    begin
+      err := 'MMIO-FAIL step=driver-bound code=' +
+             IntToStr(STATUS_DRIVER_BOUND) + ' driver=' +
+             DriverName(liveDriver);
+      Exit(STATUS_DRIVER_BOUND);
+    end;
+    Result := STATUS_OK;
+  finally
+    FpClose(dirfd);
+  end;
 end;
 
 function ReadConfig(const path: string; out cfg: array of Byte): Boolean;
@@ -211,9 +577,9 @@ begin
   err := '';
   FillChar(outDriver, SizeOf(outDriver), 0);
 
-  { Anchor the lookup like the C readlinkat() path: open and stat the PCI
-    device directory first, so a disappearing parent cannot be mistaken for
-    an unbound GPU. }
+  { Preliminary inventory observation only. Read32() repeats driver binding
+    from the pinned directory fd in VerifyPinnedIdentity() before returning
+    its safe-offset refusal; this pathname lookup is not that authorization gate. }
   dirfd := FpOpen(PChar(devdir), O_RDONLY or O_CLOEXEC, 0);
   if dirfd < 0 then
   begin
