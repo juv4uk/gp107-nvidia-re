@@ -58,7 +58,10 @@ jobs:
       - name: ioctl decoder tests
         # The decoder is what turns a strace line into a named request; a wrong
         # mapping misleads the trace instead of failing.
-        run: python3 -m unittest tests.test_decode_ioctl tests.test_e1_trace_table
+        run: python3 scripts/check_ioctl_map_drift.py
+
+      - name: ioctl decoder and E1 table tests
+        run: python3 -m unittest tests.test_decode_ioctl tests.test_e1_trace_table tests.test_ioctl_map_drift
 
       - name: Evidence manifest integrity
         # ~2 minutes: 140 manifests verify, 2 are recorded debt in
