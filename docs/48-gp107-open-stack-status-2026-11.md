@@ -19,7 +19,7 @@
 | NVK+Zink як OpenGL для Pascal узагалі (увімкнення вручну) | **PASS** (механізм існує) | Phoronix, 2024-02-21 (`NOUVEAU_USE_ZINK=1`) [S5]; XDC 2025, 2025-09-29/10-01 [S6] |
 | KMS / modesetting / 2D-вивід (nouveau) | **PASS** | FeatureMatrix, NV130, без дати, перевірено 2026-11-28 [S7]; Phoronix, 2025-12-11 (GTX 1080 на Linux 6.18 + Mesa 26.0-devel) [S8] |
 | Atomic modesetting за замовчуванням на NV50+ | **PARTIAL** — регресія саме на GP107 у ядрах 7.3.x, виправлена в mainline | Звіт у списку nouveau, 2026-11-02 [S9a]; патч Dave Airlie, 2026-11-11 [S9b]; фікс `ed7fb901fce3` у mainline, підтверджено 2026-11-25 [S9c] |
-| Suspend / resume (S3) | **UNKNOWN** | Див. §3.4 і §7 |
+| Suspend / resume (S3) | **UNKNOWN** | Див. §3.5 і §7 |
 | Reclocking (перехід на штатні частоти) | **NOT_AVAILABLE** | Collabora, 2025-04-22 [S1]; Phoronix, 2025-12-11 [S8]; nouveau PowerManagement, без дати, перевірено 2026-11-28 [S10] |
 | Power management / керування живленням | **NOT_AVAILABLE** | nouveau PowerManagement [S10] (PM лише Turing+); Collabora, 2025-04-22 [S1] |
 | NVDEC-декодування через відкритий стек (VA-API / VDPAU / Vulkan Video) | **NOT_AVAILABLE** | FeatureMatrix, NV130, рядок «video decoding accel» = TODO [S7]; Phoronix, 2026-07-31 і 2026-08-22 (лише Turing+) [S11],[S12] |
@@ -106,6 +106,16 @@ FeatureMatrix проєкту nouveau для стовпця **NV130** (це і є
 `UNKNOWN`. Жодного джерела, яке б стосувалося S3 саме на Pascal у 2026 році, знайти не вдалося. Шукалося: «nouveau suspend resume Pascal GP107 works», «nouveau Pascal fbsr non-GSP suspend resume», списки nouveau@lists.freedesktop.org за 2026 рік. Усі знайдені матеріали 2026 року про suspend/resume nouveau стосуються **GSP-прошивки R570**, тобто Turing і новіших: баг із `bEnteringGCOff` / FBSR, описаний Dave Airlie 2026-02-04 і виправлений у drm-misc-fixes. [S27] Переносити ці висновки на Pascal не можна — там інший шлях збереження VRAM і немає GSP.
 
 ---
+
+### 3.6. Що доведено про сон на H170: нічого
+
+Окрема перевірка (2026-11-28) пошуком **по виконанню**, а не по згадках: `grep -rn "PM: suspend"` по обох репозиторіях дає **0 збігів**. Тобто записаного циклу S3 немає ні для H170, ні для дослідницького хоста.
+
+- **Харнеса теж немає**: жодного `rtcwake`, `pm_test`, `systemctl suspend` чи запису в `/sys/power/state`; `-no-reboot` у CI стосується boot-smoke з `poweroff -f`, не сну.
+- **Колектор не здатен**: `wsm_hwcheck/` не звертається до `/sys/power`, а слот `suspend-resume` у схемі звіту жорстко записується як `not_assessed`.
+- **Єдине свідчення — оголошення платформи**: `evidence/nouveau-20261127/04-kernel-log.txt` містить `ACPI: PM: (supports S0 S3 S4 S5)`. Це означає, що ACPI **вміє** S3, і не означає, що цикл проходив. Саме цю пастку описує `docs/44`: «це не доказ, що сон працює».
+
+Тому твердження споживача «suspend обслуговується пропрієтарним модулем, отже закритий» — це заява про **драйвер**, а не про **машину**. Різниця закривається лише прогоном на залізі з owner-approved планом (`docs/44`).
 
 ## 4. Відео: NVDEC і NVENC на Pascal у відкритому стеку
 
