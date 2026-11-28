@@ -116,20 +116,28 @@ def parse_exceptions(root: Path, exceptions_file: Path) -> dict[tuple[str, str],
     return result
 
 
-def resolve_artifact(root: Path, manifest_path: Path, recorded_path: str) -> Path | None:
-    """Resolve archived external paths by basename and repo paths conservatively."""
+def resolve_artifact(
+    root: Path,
+    manifest_path: Path,
+    recorded_path: str,
+    *,
+    external_bundle: bool = False,
+) -> Path | None:
+    """Resolve an artifact without allowing it to escape its verification root."""
     manifest_dir = manifest_path.parent
     recorded = Path(recorded_path)
     basename = recorded.name
+    if external_bundle and not recorded.is_absolute() and ".." in PurePosixPath(recorded_path).parts:
+        raise ManifestError(
+            f"external bundle artifact path traverses its directory: {recorded_path!r}"
+        )
     if recorded.is_absolute():
         candidates = [manifest_dir / basename]
     else:
         candidates = [manifest_dir / recorded, manifest_dir.parent / recorded, manifest_dir / basename]
 
-    # Preserve the manifest's established resolution precedence: a path
-    # relative to the manifest directory wins over the experiment-relative
-    # fallback. Do not reject a valid first match merely because a different
-    # file with the same basename exists in a parent directory.
+    # Preserve manifest-local snapshot precedence. For an external bundle, root
+    # is the bundle directory, so parent fallbacks are naturally rejected.
     for candidate in candidates:
         try:
             resolved = candidate.resolve(strict=True)
@@ -153,8 +161,22 @@ def verify_manifest(
     root: Path,
     manifest_path: Path,
     exceptions: dict[tuple[str, str], ExceptionEntry],
+    *,
+    external_bundle: bool = False,
 ) -> tuple[ManifestResult, set[tuple[str, str]]]:
-    manifest_rel = repo_relative(root, manifest_path)
+    manifest_path = manifest_path.resolve()
+    if external_bundle:
+        # An explicitly supplied external manifest is a self-contained bundle.
+        # Its directory is the only artifact root; repository exceptions never
+        # apply to it and cannot accidentally bless an absent external file.
+        manifest_rel = f"external:{manifest_path.as_posix()}"
+        artifact_root = manifest_path.parent.resolve()
+        applicable_exceptions: dict[tuple[str, str], ExceptionEntry] = {}
+    else:
+        manifest_rel = repo_relative(root, manifest_path)
+        artifact_root = root.resolve()
+        applicable_exceptions = exceptions
+
     entries = parse_manifest(manifest_path)
     verified = 0
     known_missing: list[str] = []
@@ -164,13 +186,15 @@ def verify_manifest(
         if Path(entry.path).name == SELF_MANIFEST_NAME:
             continue
         key = (manifest_rel, entry.path)
-        exception = exceptions.get(key)
+        exception = applicable_exceptions.get(key)
         if exception is not None and exception.sha256 != entry.sha256:
             raise ManifestError(
                 f"exception SHA does not match manifest for {manifest_rel}: {entry.path}"
             )
 
-        artifact = resolve_artifact(root, manifest_path, entry.path)
+        artifact = resolve_artifact(
+            artifact_root, manifest_path, entry.path, external_bundle=external_bundle
+        )
         if artifact is None:
             if exception is None:
                 raise ManifestError(f"missing artifact {entry.path!r} in {manifest_rel}")
@@ -191,7 +215,7 @@ def verify_manifest(
             )
         verified += 1
 
-    manifest_exceptions = {key for key in exceptions if key[0] == manifest_rel}
+    manifest_exceptions = {key for key in applicable_exceptions if key[0] == manifest_rel}
     unused_for_manifest = manifest_exceptions - used_exceptions
     if unused_for_manifest:
         raise ManifestError(
@@ -225,25 +249,45 @@ def check_repository(root: Path, paths: list[Path] | None = None) -> tuple[int, 
     root = root.resolve()
     exception_file = root / "scripts" / "manifest-exceptions.txt"
     exceptions = parse_exceptions(root, exception_file)
-    manifests = paths if paths is not None else tracked_manifests(root)
+    explicit_paths = paths is not None
+    manifests = paths if explicit_paths else tracked_manifests(root)
     used_exceptions: set[tuple[str, str]] = set()
     verified_count = 0
     known_bad_count = 0
     negative_count = 0
+    has_repository_manifest = False
 
     for manifest_arg in manifests:
         manifest = manifest_arg if manifest_arg.is_absolute() else root / manifest_arg
         manifest = manifest.resolve()
+        try:
+            repo_relative(root, manifest)
+            external_bundle = False
+            has_repository_manifest = True
+        except ManifestError:
+            if not explicit_paths or not manifest_arg.is_absolute():
+                raise
+            external_bundle = True
+
+        manifest_label = (
+            f"external:{manifest.as_posix()}"
+            if external_bundle
+            else repo_relative(root, manifest)
+        )
         if is_negative_control(manifest):
             try:
-                verify_manifest(root, manifest, exceptions)
+                verify_manifest(
+                    root, manifest, exceptions, external_bundle=external_bundle
+                )
             except ManifestError:
                 negative_count += 1
-                print(f"MANIFEST-NEGATIVE-OK manifest={repo_relative(root, manifest)} (expected failure)")
+                print(f"MANIFEST-NEGATIVE-OK manifest={manifest_label} (expected failure)")
                 continue
             raise ManifestError(f"negative control unexpectedly verifies: {manifest}")
 
-        result, used = verify_manifest(root, manifest, exceptions)
+        result, used = verify_manifest(
+            root, manifest, exceptions, external_bundle=external_bundle
+        )
         used_exceptions.update(used)
         verified_count += result.verified
         if result.known_missing:
@@ -255,7 +299,10 @@ def check_repository(root: Path, paths: list[Path] | None = None) -> tuple[int, 
         else:
             print(f"MANIFEST-OK manifest={result.manifest} files={result.verified}")
 
-    unused = set(exceptions) - used_exceptions
+    # A standalone external bundle is an explicit one-off verification request;
+    # repository exception rows are unrelated and must not be required to be
+    # consumed by that call.
+    unused = set(exceptions) - used_exceptions if has_repository_manifest else set()
     if unused:
         rendered = ", ".join(f"{manifest}:{artifact}" for manifest, artifact in sorted(unused))
         raise ManifestError(f"unused or stale exception entries: {rendered}")
@@ -269,7 +316,7 @@ def check_repository(root: Path, paths: list[Path] | None = None) -> tuple[int, 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("manifests", nargs="*", help="optional manifest paths relative to repository root")
+    parser.add_argument("manifests", nargs="*", help="repo-relative manifests, or an explicit absolute path to a self-contained external bundle")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
