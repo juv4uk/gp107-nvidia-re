@@ -1,0 +1,283 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T07:00:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subjects": [
+    {
+      "name": "nvcuda64.dll",
+      "file_version": "32.0.15.8278",
+      "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+      "size_bytes": 34562280,
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll"
+    },
+    {
+      "name": "nvdxgdmal64.dll",
+      "file_version": "",
+      "sha256": "9353f1b598f2c8649a33b59db011763474e8ef2a6749385a23d9f78af25feceb",
+      "size_bytes": 614632,
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvdxgdmal64.dll",
+      "note": "Companion binary discovered statically from the string nvdxgdmal64.dll; hash recorded by Get-FileHash read-only."
+    }
+  ],
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000",
+    "analysis_note": "aaa must run in the same command as axt/axt-like queries; Rizin analysis state is not persisted between separate REA calls."
+  },
+  "observations": [
+    {
+      "evidence_id": "ev_048e466cb89ea00d75824a1384384c117897b8dc0f8d1f76a0092f93f55d95ad",
+      "subject": "nvcuda64.dll",
+      "command": "pd 80 @ 0x180413960",
+      "facts": [
+        "0x180413932: string nvdxgdmal64.dll is referenced near this loader path",
+        "0x180413976: KERNEL32.LoadLibraryA",
+        "0x18041397f: rdx = dxgdmalEnumAdapters",
+        "0x180413986: rax = [0x182004658]",
+        "0x18041398d: [rax+0xb8] = module handle",
+        "0x180413994: KERNEL32.GetProcAddress"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_5672166a5fbc4cdff616d6c9c7d3f185b8dad20751ac42f51b672a75c0692097",
+      "subject": "nvcuda64.dll",
+      "command": "pd 45 @ 0x180413990",
+      "facts": [
+        "0x18041399a: rcx = [0x182004658]",
+        "0x1804139a1: rdx = dxgdmalGetAdapterCallbacks",
+        "0x1804139a8: [rcx+0xc0] = result of previous GetProcAddress (dxgdmalEnumAdapters)",
+        "0x1804139bd: GetProcAddress(dxgdmalGetAdapterCallbacks)",
+        "0x1804139ca: rdx = dxgdmalImportFromExternalDescriptor",
+        "0x1804139d1: [rcx+0xc8] = result of GetProcAddress(dxgdmalGetAdapterCallbacks)",
+        "0x1804139fa: [rcx+0xd0] = dxgdmalImportFromExternalDescriptor",
+        "0x180413a1c: [rcx+0xd8] = dxgdmalDestroyExternalDescriptorObjects"
+      ],
+      "note": "Slot attribution follows the aligned instruction stream in ev_048e466; this dump starts mid-instruction at 0x180413990, so only the named-string/global pairs are used.",
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_a0355e95315676a26fed3034fa354e21daf8f9aa19c77cb052be4ebb1b3ae19d",
+      "subject": "nvcuda64.dll",
+      "command": "pd 320 @ 0x1804135e0~0xc8",
+      "facts": [
+        "0x1804139d1: mov qword [rcx+0xc8], rax",
+        "0x180413a34: cmp qword [rcx+0xc8], 0x00 (presence check)"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_0cdef30192e321e958fa355f432931aec8fa1ac46265f16e5636fe20ebe83757",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x182004658",
+      "facts": [
+        "single direct writer of the iface global: 0x180413615: mov qword [0x182004658], rax",
+        "many readers of the global; 0x180413844 clears it on teardown"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_53bf8eec78dbbea29dfd079513b62d6ab4807efe15e884a433ba16c079290899",
+      "subject": "nvdxgdmal64.dll",
+      "command": "iE~dxgdmal",
+      "facts": [
+        "0x180001000 dxgdmalEnumAdapters",
+        "0x180001010 dxgdmalGetAdapterCallbacks",
+        "0x180001030 dxgdmalImportFromExternalDescriptor",
+        "0x180001050 dxgdmalDestroyExternalDescriptorObjects"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_489637bc0783e56105440f33aede6166f58b0fc85e9076abf9d4a089119e50b5",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180001010; pdf @ 0x180001010",
+      "facts": [
+        "dxgdmalGetAdapterCallbacks: test rcx,rcx and require [rcx] >= 0x38",
+        "0x18000101b: rax = [rcx+0x10]",
+        "0x18000101f: [rdx] = rax, returns 0; otherwise returns 1",
+        "i.e. the export publishes the callback table stored at descriptor offset +0x10"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_997f2fdcaf5a2738e3b557b3138830e428e64f149b7db693c9229b43b2a31590",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409f50; pdf @ 0x180409f50",
+      "facts": [
+        "0x180409f62: r14 = [rdx] (descriptor size from nvdxgdmal)",
+        "0x180409f75: ecx = 0x28f8; 0x180409f82: allocate 0x28f8-byte object",
+        "0x180409f99: call qword [iface+0xc8] with rdx pointing at the output callback-table slot",
+        "0x180409faa: [object] = 0x28f8",
+        "0x180409fce: call qword [table+0x18] to fill the object",
+        "0x18040a002: iterate [object+0x26a4+i*4] over PCI-like class values and call 0x180409010 (Writer A) at 0x18040a09b with r8 = object"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_bd00532a006b8d28d0b6a6ff9a098e747525c7d6e3d19a112c68a688c0eac7c9",
+      "subject": "nvdxgdmal64.dll",
+      "command": "pd 110 @ 0x180006480",
+      "facts": [
+        "0x180006493: table[0x00] = 0x60 (descriptor size)",
+        "0x18000649e: table[0x08] = 0x1800052c0",
+        "0x1800064ac: table[0x10] = 0x180006b40",
+        "0x1800064ba: table[0x18] = 0x180005540",
+        "0x1800065e3: D3DKMT QueryAdapterInfo via [0x18008d088], query type 0x0d",
+        "0x180006588: descriptor[+0x10] = &table"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_8f4185a3d72ef74bee712eecf65c4cf44b47a64b4cf21b74a128f1fd93e43d90",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180006440; pdf @ 0x180006440~180005540",
+      "facts": [
+        "0x1800064b3: lea rax, [0x180005540] — the method installed in the callback table"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_1528ae5f66bc81e31572a7918c2c5df48fee51b44897c434db7dbee0beea3072",
+      "subject": "nvdxgdmal64.dll",
+      "command": "pd 60 @ 0x1800045e0",
+      "facts": [
+        "0x1800045ef: GetProcAddress(D3DKMTQueryAdapterInfo)",
+        "0x180004622: result stored at [0x18008d088]",
+        "0x18000463d: D3DKMTCloseAdapter -> [0x18008d090]",
+        "0x180004658: D3DKMTEnumAdapters2 -> [0x18008d098]",
+        "0x180004673: D3DKMTEnumAdapters3 -> [0x18008d0a0]"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_28dc67dd44b5a49490578c7aea4dfe3a78e0e4ba2fabf3d76184f3f7868b53ea",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x180005540; pdf @ 0x180005540",
+      "facts": [
+        "method 0x180005540 calls the resolved QueryAdapterInfo pointer [0x18008d088] several times",
+        "query type constants observed: 0x31 at 0x180005637, 0x0f at 0x180005698, 0x30 with output size 0x428 at 0x1800057ab, 0x25 at 0x180005733",
+        "0x1800057d1–0x1800058f8: converts a UTF-16 string from the query result to ANSI, strips \\SystemRoot\\ and expands it via GetWindowsDirectoryA",
+        "0x18000590e: call 0x1800050c0 with r9d=0xc115; 0x180005927: call 0x180002080; 0x180005943: copy via 0x18002d2a0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_89d52c7954e4bbde32602095d6f83a0d844516d285fecb45e1e55b5a0dc4211f",
+      "subject": "nvdxgdmal64.dll",
+      "command": "pd 90 @ 0x1800069c0",
+      "facts": [
+        "0x1800069c8: QueryAdapterInfo before vendor filtering",
+        "0x1800069d5: cmp eax, 0x10de",
+        "0x1800069dc: cmp eax, 0x4144564e ('NVDA')",
+        "0x180006a0b: cmp dword [rbp-0x55], 0x7d0",
+        "0x180006a1b: call 0x180006440 to build the descriptor, then invoke the caller callback at 0x180006a2d"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_6099bfe678bcfec73a4af06a7997a238ef013d0502c3ed77fcfdd0782d153f49",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18018c0c0; pdf @ 0x18018c0c0",
+      "facts": [
+        "0x18018c0f7: call 0x18018b4a0 (one-time process init)",
+        "0x18018c116: cmp dword [0x182002830], 0xabc123",
+        "0x18018c122: cmp dword [0x182002a48], 0 (device count)",
+        "0x18018c3f5–0x18018c40d: iterate [0x180000000 + idx*8 + 0x2002848] and test byte [device+0x5e49],0x40",
+        "0x18018c351/0x18018c37a/0x18018c392: write init state to [0x182002830]"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_0b38e2452743a74b2d17ff61216b69c24803ce6dc0ee6a72823101b2e7b7b470",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18018b4a0; pdf @ 0x18018b4a0",
+      "facts": [
+        "0x18018b4e1: lea rcx, [0x182002520]",
+        "0x18018b4ee: edx = 0",
+        "0x18018b4f0: r8d = 0x12c8",
+        "0x18018b4f6: call 0x1817c9290 (zero-fill of the device-object table)"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_9d89f05488ea76cdf2ad748d09c96b4b940c39d9edaf27e8a105368ef931d362",
+      "subject": "nvcuda64.dll",
+      "command": "pd 35 @ 0x18018a500",
+      "facts": [
+        "0x18018a510: [0x182002830] = 0x321cba00",
+        "0x18018a530: [0x182002830] = 0x00"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_dc3bef88533c04630fa7e4a688750a61a7592da2b2102055ee17cc8c73986a88",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18021e340; pdf @ 0x18021e340",
+      "facts": [
+        "exported cuInit reaches the state machine through a thin wrapper chain"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_af2b6658ebd6f708cfb52ab5891d237be84d13c28ed3a6c3869abb631fa50036",
+      "subject": "nvcuda64.dll",
+      "command": "pd 120 @ 0x1800660e0",
+      "facts": [
+        "0x1800660e0 calls 0x18018b4a0 then jumps to 0x18018c0c0",
+        "no ioctl/cuInit execution occurred; this is disassembly only"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_b885ac2f98f9ce64de42333280f5eac1abc8d14651b966fe430c850b6c68cb1c",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x182002830; axt @ 0x182004658; axt @ 0x182002520",
+      "facts": [
+        "writers of [0x182002830] include 0x18018a510, 0x18018a530, 0x18018b452, 0x18018c351, 0x18018c37a, 0x18018c392",
+        "xrefs of [0x182002520] are predominantly lea-based reads; no direct mov to the global was observed in this analysis window"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr also reported a bin_file_strings search-interval warning and an ESIL peek error; neither invalidates the listed xrefs."
+    },
+    {
+      "evidence_id": "ev_39d5ba574c9bd2e8cd5436365de0117f08b3c1a12164129ef87c805f5cc9d492",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x18018c0c0",
+      "facts": [
+        "direct callers include 0x1800bbb0f, 0x18021e31c, 0x1802bd7c2, 0x1802bd9ce, 0x180390230, 0x180393788",
+        "two jmp references: 0x180066106 and 0x1800b77d5"
+      ],
+      "status": "statically_proven"
+    }
+  ],
+  "unproven": [
+    "which exact field inside the D3DKMT/vendor-private adapter data becomes the 16 bytes read by Writer A and Writer B",
+    "whether those 16 bytes are literally the GPU UUID rather than another 16-byte adapter field",
+    "ultimate producer of those bytes (RM, NVML, D3DKMT kernel data, PCI configuration or VBIOS)",
+    "identity of the routine that stores populated device objects into [0x182002520+idx*8]",
+    "BDF to RM gpu_id mapping",
+    "any equivalence with the Linux libcuda.so.580.196.11 fields from docs/41"
+  ],
+  "coverage_limitations": [
+    "Ghidra import/analysis of the 34 MB nvcuda64.dll did not finish within the configured 900000 ms startup deadline (provider_timeout); no Ghidra xrefs are claimed here.",
+    "Rizin analysis state is not persisted across REA calls; axt results require aaa in the same command.",
+    "Some pd windows started mid-instruction and produced misaligned text; conclusions use aligned entry points and are cross-checked with af/pdf.",
+    "Searching for absolute addresses with /a and raw byte patterns failed for RIP-relative references; only xrefs/disassembly are used.",
+    "No public D3DKMT header was consulted in this lane; numeric query types are reported as observed constants, not decoded names."
+  ],
+  "not_run": [
+    "process execution",
+    "cuInit",
+    "cuDeviceGetUuid",
+    "RM/UVM/D3DKMT ioctl",
+    "CUDA/Vulkan/OpenGL initialization or compute",
+    "GPU submit",
+    "MMIO/BAR/BOOT0/firmware",
+    "driver install or switch",
+    "reboot",
+    "tag or release"
+  ]
+}
