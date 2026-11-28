@@ -36,7 +36,7 @@ Pin-и ABI v8/v9, SENS, CML, `wsm-os-lisp`, ADR, target contract і asm-first
 | Інструмент | Версія | Застосування |
 |---|---|---|
 | Chocolatey Portable | `2.7.5` (`C:\Tools\chocoportable`) | менеджер портативних пакетів |
-| Python | `3.12.10` | запуск аудиту |
+| Python (launcher `py -3`) | `3.12.10` | запуск аудиту |
 | `pefile` | `2024.8.26` | PE-секції, image base, export table |
 | `capstone` | `5.0.7` | backtrack-розбір інструкцій |
 | Rizin (REA `execute_rizin_command`) | `0.9.1`, commit `c3a90e9226d977f58f4e9c75f78fa6b07afe13c7` | адреси, opcodes, `af`/`axt` |
@@ -45,7 +45,7 @@ Pin-и ABI v8/v9, SENS, CML, `wsm-os-lisp`, ADR, target contract і asm-first
 Відтворення (read-only):
 
 ```powershell
-python scripts/pe_ioctl_audit.py `
+py -3 scripts/pe_ioctl_audit.py `
   'C:\Windows\System32\DriverStore\FileRepository\nv_dispi.inf_amd64_58519edca6172ba9\nvcuda64.dll' `
   evidence\windows-20261128\pe_ioctl_audit.json
 ```
