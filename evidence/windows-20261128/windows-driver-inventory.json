@@ -1,0 +1,73 @@
+{
+  "schema": "gp107-windows-driver-inventory/v1",
+  "captured_at_utc": "2026-11-28T05:30:51Z",
+  "host_context": "Windows host with GP107; read-only PnP and file hashing only",
+  "runtime_class": "inventory-only",
+  "authorization": {
+    "type": "written-owner-instruction",
+    "language": "uk",
+    "quote": "в тебе є перевага і особливість, ти на віндовсі, моє залізо тут не змінилося, тому реверси що є на віндовсі",
+    "scope_doc": "docs/55-windows-reverse-scope-and-artifacts.md",
+    "note": "Prior English comment at 2026-11-28T03:59:46Z was disavowed by the owner and is not used."
+  },
+  "gpu": {
+    "instance_id": "PCI\\VEN_10DE&DEV_1C82&SUBSYS_33511462&REV_A1\\4&2DB3ECDA&0&0008",
+    "pnp_status": "OK",
+    "driver_version": "32.0.15.8278",
+    "driver_inf": "oem7.inf",
+    "driverstore_dir": "nv_dispi.inf_amd64_58519edca6172ba9",
+    "status": "INVENTORY_OBSERVED"
+  },
+  "active_artifacts": [
+    {
+      "name": "nvcuda64.dll",
+      "size_bytes": 34562280,
+      "file_version": "32.0.15.8278",
+      "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+      "local_path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll",
+      "matches_docs53_artifact": true
+    },
+    {
+      "name": "nvlddmkm.sys",
+      "size_bytes": 110691560,
+      "file_version": "32.0.15.8278",
+      "sha256": "ae93846067fbb17327d0fc970ce23c533922e811199830d5ac469523c9ca78a3",
+      "local_path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvlddmkm.sys"
+    },
+    {
+      "name": "nvwgf2umx.dll",
+      "size_bytes": 93249280,
+      "file_version": "32.0.15.8278",
+      "sha256": "54326941231f64fbafea9b04a975daf800b862fdb5fcd06fc5f468386549f742",
+      "local_path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvwgf2umx.dll"
+    },
+    {
+      "name": "nvapi64.dll",
+      "size_bytes": 5627096,
+      "file_version": "32.0.15.8278",
+      "sha256": "bf6114645e13f3d2e646b6dc42ec2ab44464e324f3c537b87cad8f677b9a400c",
+      "local_path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvapi64.dll"
+    }
+  ],
+  "secondary_store_set_not_active": [
+    {
+      "driverstore_dir": "nv_dispig.inf_amd64_0afec3f2050014a0",
+      "driver_version": "32.0.15.6094",
+      "nvcuda64_sha256": "59b88c90da154d79576599a4170e0ec05e244f8477d82dbfa22b80bb0bf508ac",
+      "nvlddmkm_sha256": "71c743af98cbb9f7924c7366062cbc65d938cdd5007d7ff22225498cf94e2e5c"
+    }
+  ],
+  "not_run": [
+    "cuInit",
+    "NVML/nvidia-smi",
+    "CUDA/Vulkan/OpenGL enumeration or compute",
+    "RM/UVM/D3DKMT ioctl",
+    "device open O_RDWR equivalents",
+    "GPU submit",
+    "BPF/kprobe/ftrace/perf",
+    "driver bind/unbind",
+    "BAR/MMIO/BOOT0",
+    "firmware/VBIOS changes",
+    "reboot"
+  ]
+}

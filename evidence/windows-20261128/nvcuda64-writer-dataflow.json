@@ -1,0 +1,109 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T05:40:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subject": {
+    "name": "nvcuda64.dll",
+    "file_version": "32.0.15.8278",
+    "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+    "size_bytes": 34562280,
+    "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll"
+  },
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000",
+    "commands": [
+      "pd 20 @ 0x1804091e9",
+      "pd 10 @ 0x1804096e3",
+      "pd 30 @ 0x180409f75",
+      "pd 8 @ 0x18040a072",
+      "pd 18 @ 0x18036d627",
+      "pd 4 @ 0x18036bb70"
+    ]
+  },
+  "observations": [
+    {
+      "id": "ev_63dd03a2c7e23220f6e5f3fa05f4ec42c40c199d11d25088d2e9277c98d350a9",
+      "command": "pd 20 @ 0x1804091e9",
+      "facts": [
+        "0x1804091e9: movsxd rax, r13d",
+        "0x1804091ec: imul rax, rax, 0x198",
+        "0x1804091f3: add rax, 0x2e8",
+        "0x1804091f9: add rax, rsi",
+        "0x1804091fc: mov [rsp+0x40], rax"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "id": "ev_f550af5d417a87eb4a86525f185470a838e03d6d91a3891da2d0b8bff43e096d",
+      "command": "pd 10 @ 0x1804096e3",
+      "facts": [
+        "0x1804096e3: rcx = [rsp+0x40]",
+        "0x1804096e8: movups xmm0, [rcx-0xf0]",
+        "0x1804096ef: movups [rax+0xc06], xmm0",
+        "0x1804096fb: [rbp+r15*8+0x730] = rax"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "id": "ev_a89cf652aa8bc65df18093cf92df504720cf8ea1f35cc0e169373d50fad6d3dc",
+      "command": "pd 30 @ 0x180409f75",
+      "facts": [
+        "0x180409f75: ecx = 0x28f8",
+        "0x180409f82: call 0x1817d6e18 (allocation, 0x28f8 bytes)",
+        "0x180409f8e: rdx = &[rsp+0x68]",
+        "0x180409f96: rbx = rax (allocated object)",
+        "0x180409f99: call qword [r8+0xc8] with rcx=rbp, rdx=&[rsp+0x68]",
+        "0x180409faa: [rbx] = 0x28f8"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "id": "ev_3008c946d0b2abeb54a29dc5be8f2b8c50e5075028e487eb2e2949ea5e7fab9b",
+      "command": "pd 8 @ 0x18040a072",
+      "facts": [
+        "0x18040a076: r8 = rbx",
+        "0x18040a09b: call 0x180409010 (Writer A) with r8 = allocated 0x28f8 object"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "id": "ev_a971dd6ce0da95e8a36cfb5d6b5232a6f956b02c0b60533abb30526670943ea9",
+      "command": "pd 18 @ 0x18036d627",
+      "facts": [
+        "0x18036d627: or byte [rbx+0x5e49], 0x01",
+        "0x18036d637: movups xmm0, [rdi+0x481]",
+        "0x18036d645: movups [rbx+0xc27], xmm0",
+        "0x18036d64c: movups xmm0, [rdi+0x471]",
+        "0x18036d653: movups [rbx+0xc16], xmm0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "id": "ev_89a7edbad67c2d03b58d142c1334daa0edfbd1e9d41334afe575bef46610142",
+      "command": "pd 4 @ 0x18036bb70",
+      "facts": [
+        "0x18036bb70: lea rax, [0x18036d300]",
+        "0x18036bb77: mov [rcx+0x6c98], rax"
+      ],
+      "status": "statically_proven"
+    }
+  ],
+  "unproven": [
+    "identity and implementation of the virtual method at [iface+0xc8] that populates the 0x28f8 object",
+    "whether the 16 bytes at source+0xf0 / arg1+0x481 are literally the GPU UUID rather than another 16-byte field",
+    "origin of those bytes from RM, NVML, D3DKMT or PCI configuration data",
+    "BDF to RM gpu_id mapping",
+    "runtime execution of any of these paths"
+  ],
+  "not_run": [
+    "process execution",
+    "cuInit",
+    "DeviceIoControl",
+    "GPU submit",
+    "driver install/uninstall",
+    "MMIO/BOOT0/firmware"
+  ]
+}
