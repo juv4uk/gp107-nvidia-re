@@ -51,11 +51,12 @@ GPU_BDF=""
 TARGET_STATE="UNKNOWN:lspci-absent"
 TARGET_CANDIDATE="NOT_AVAILABLE:unique-10de:1c82-BDF-not-established"
 if ! command -v lspci >/dev/null 2>&1; then
-  printf 'NOT_AVAILABLE: lspci\n' > "$OUT/01-pci-inventory.txt"
+  unavailable 01-pci-inventory.txt pci_inventory no-lspci
   record pci_driver "NOT_AVAILABLE:no-lspci"
   record pci_verbose "NOT_AVAILABLE:no-lspci"
 else
   if lspci -Dnn > "$OUT/01-pci-inventory.txt" 2>&1; then
+    record pci_inventory collected
     mapfile -t TARGET_BDFS < <(awk 'tolower($0) ~ /\[10de:1c82\]/ {print $1}' "$OUT/01-pci-inventory.txt")
     if [ "${#TARGET_BDFS[@]}" -eq 1 ]; then
       candidate="${TARGET_BDFS[0]}"
@@ -74,6 +75,7 @@ else
   else
     rc=$?
     TARGET_STATE="FAILED:lspci-rc=$rc"
+    record pci_inventory "FAILED:rc=$rc"
   fi
 fi
 record target_candidate "$TARGET_CANDIDATE"
