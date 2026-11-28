@@ -12,32 +12,26 @@
 перехід у `wsm_open_driver=1`, зміну boot parameters або інший GPU boot.
 Прапорець `--allow-mmio` — програмна умова API, а не owner approval.
 
-- MMIO-сеам є окремим експериментальним модулем.
-- Єдина публічна C-функція сама перевіряє opt-in, точну PCI identity,
-  driver binding, розмір BAR0 і межі offset; low-level mapper приватний.
-- Відкритий PCI-device directory закріплюється file descriptor, а `readlinkat()`
-  перевіряє саме його `driver` entry: лише `ENOENT` для цього entry означає
-  unbound. Зникнення батьківського шляху, інші помилки, некоректний або
-  обрізаний link завершуються fail-closed як unknown.
-- Перед mapping перевіряються розмір BAR0 з inventory та розмір відкритого
-  `resource0` через `fstat`.
-- Приватний mapper закріплює PCI device directory через `dirfd` і **через
-  цей самий fd** перевіряє `uevent PCI_SLOT_NAME`, `PCI_ID`,
-  `PCI_SUBSYS_ID`, sysfs `vendor/device/revision/subsystem_*` та PCI
-  `config` через `openat(O_NOFOLLOW)`. Це закриває підміну BDF symlink
-  між pathname-based inventory та відкриттям mapper directory.
-- Після pinned identity перевіряється `driver` через `readlinkat`, а
-  `resource0` відкривається через `openat(O_NOFOLLOW)` і перевіряється
-  тим самим fd через `fstat`.
-- Synthetic test підміняє BDF symlink між inventory та mapper open на інший
-  PCI BDF/device і вимагає відмови до відкриття `resource0`.
-- Binding перевіряється ще раз безпосередньо перед `mmap`. Це best-effort
-  snapshot, а не атомарний lock: kernel може змінити binding після останньої
-  перевірки. Це не надає дозволу на фізичне MMIO.
-- C та x86-64 assembly paths проходять через ту саму gated API. ASM load
-  primitive не експортується у public header.
-- Фізичні `resource0` mapping/read, driver unbind і Nouveau boot тут не
-  виконувалися й не авторизовані. Позитивний MMIO-тест — лише synthetic file.
+- Public C API перевіряє opt-in, exact PCI identity, driver binding,
+  BAR0 type/size, alignment і межі offset.
+- PCI device directory закріплюється file descriptor; саме цей fd перевіряє
+  `uevent` (`PCI_SLOT_NAME`, `PCI_ID`, `PCI_SUBSYS_ID`), sysfs
+  `vendor/device/revision/subsystem_*` та PCI `config` через
+  `openat(O_NOFOLLOW)`. Це відхиляє BDF symlink і same-BDF identity
+  substitution між inventory та повторною перевіркою.
+- Driver binding перевіряється на тому самому fd через `readlinkat()`;
+  лише `ENOENT` для його `driver` entry означає unbound. Інші помилки
+  завершуються fail-closed.
+- Inventory може виконати `stat(resource0)` лише для розміру BAR0; це
+  metadata, не читання вмісту. Public MMIO API не відкриває `resource0`,
+  не викликає `mmap` і не читає register.
+- Після всіх software checks C та Pascal повертають
+  `MMIO-FAIL step=read-safe-offset-unproven code=21`. Жоден safe GP107
+  BAR0 register offset не доведений; `--allow-mmio` не означає owner approval.
+- x86-64 ASM load leaf лишається isolated reference: public C/Pascal API його
+  не викликають. Він перевіряється лише статично через `objdump`.
+- Фізичний MMIO, driver unbind і Nouveau boot не виконувалися й лишаються
+  NOT AUTHORIZED / NOT RUN.
 
 Фізичне MMIO залишається **NOT AUTHORIZED / NOT RUN** до окремого явного
 рішення власника. Наявність `mmio-read`, `--allow-mmio` чи ASM primitive
@@ -48,11 +42,11 @@
 | Файл | Призначення |
 |---|---|
 | `lib/gp107_identity.h/.c` | FAIL-CLOSED sysfs inventory: vendor/device, BDF, публічний PCI-заголовок (revision/class/header/command/BAR0-flags), driver binding, розмір resource0 |
-| `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `granted`/`deferred`/`denied` (додано у docs/30) |
-| `lib/gp107_mmio.h/.c` | Єдина gated read-only API з внутрішніми opt-in, identity, binding і BAR-size checks; фізичний доступ не авторизований |
+| `lib/gp107_capabilities.h/.c` | Машиночитаний capability-ledger з явними `deferred`/`denied` (додано у docs/30) |
+| `lib/gp107_mmio.h/.c` | C API з pinned-dirfd identity verification та fail-closed safe-offset gate; без resource0 open/mmap |
 | `lib/gp107ctl.c` | CLI `inventory`, `mmio-read`, `layout`; названі маркери помилок |
 | `lib/Makefile` | C11 build з `-Wall -Wextra -Werror -pedantic` |
-| `scripts/test-capability-driver.sh` | synthetic identity/binding/API negatives, BAR0-space/size/fstat, explicit/aligned/bounded offsets, C/ASM equivalence та code firewall |
+| `scripts/test-capability-driver.sh` | synthetic identity/BDF-swap/API negatives, BAR0 metadata gates, C/Pascal parity, static ASM та no-mapper firewall |
 | `docs/29-userspace-capability-driver.md` | цей звіт |
 
 Публічний контракт:
@@ -80,7 +74,7 @@ int gp107_mmio_read32(const char *sysfs_root, const char *expect_bdf,
 | 5 | Чужий BDF відхиляється | **synthetic-fixture** | `IDENTITY-FAIL step=bdf-mismatch code=14` |
 | 6 | MMIO без прапорця відхиляється до будь-якого mapping | **synthetic-fixture** | `MMIO-FAIL step=opt-in-required code=15` |
 | 7 | MMIO з bound драйвером відхиляється | **synthetic-fixture** | `MMIO-FAIL step=driver-bound code=16 driver=nvidia` |
-| 8 | Read-only 32-бітне читання з `resource0` | **synthetic-fixture PASS; physical MMIO NOT AUTHORIZED / NOT RUN** | `MMIO-READ-OK`, `value=0x1c8210de` зі створеного тестом звичайного файлу |
+| 8 | Unbound + opt-in valid-looking offset завершується code 21 до BAR mapping | **synthetic-fixture** | `read-safe-offset-unproven`; no resource0 content open, no mmap, no register read |
 | 9 | BOOT0 та будь-яке значення регістру на реальній платі | **UNPROVEN** | фізичний MMIO не виконувався |
 | 10 | `0x137000A1` | **string-only** | константа відсутня у коді; не є адресою чи фактом |
 | 11 | `PCI BDF ↔ RM gpu_id`, RM class, runlist, notifier, fence, GPFIFO, firmware, dispatch | **UNPROVEN / не реалізовано** | цей зріз не містить RM чи черг |
@@ -105,17 +99,17 @@ make test-valid-cards-static   # старий базовий гейт не по�
 3. C11 compile з `-Werror` і перевірку трьох compile-time розкладок;
 4. синтетичний sysfs fixture: позитив і три identity-негативи;
 5. capability-ledger states та BAR I/O-flag mutation;
-6. driver-binding negative: PCI-device directory закріплюється file descriptor, а `readlinkat()` перевіряє саме його `driver` entry; лише `ENOENT` для цього entry означає unbound;
-7. direct C API tests: opt-in і bound-driver gates не обходяться CLI;
-8. CLI explicit-offset requirement;
-9. BAR0 I/O-space denial, short/mismatched `resource0`, 4 KiB bounds та 32-bit alignment;
-10. C/ASM equivalence на synthetic `resource0` та best-effort host inventory без H170 claims.
+6. pinned-dirfd identity negatives: BDF symlink та same-BDF device substitution відхиляються до resource0 access;
+7. direct C API та CLI/Pascal negative witness: valid-looking offset повертає `read-safe-offset-unproven`;
+8. BAR0 I/O-space denial, stat-only size metadata, 4 KiB bounds та 32-bit alignment;
+9. ledger unbound+opt-in лишається deferred; C/Pascal parity;
+10. isolated ASM leaf перевіряється static-only; host inventory пропускається, якщо GP107 відсутня.
 
 Підсумковий маркер:
-`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed synthetic-mmio=only asm=equiv-x86_64 pascal=equiv hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
+`CAPABILITY-DRIVER-GATE-OK c11=yes fpc=3.2.2 layout=32/68/140 fail-closed=passed mmio=deferred safe-offset=unproven pascal=C-parity hardware-mmio=NOT-AUTHORIZED/NOT-RUN`.
 
 Базовий `scripts/test-pascal-probe.sh` не змінено; він лишається
-непривілейованим/детермінованим з `EACCES` на `resource0`.
+непривілейованим/детермінованим; цей старий probe окремо тестує доступність sysfs/resource device.
 
 ## 4. Незавершене й найменший наступний крок
 

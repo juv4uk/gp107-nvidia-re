@@ -7,13 +7,14 @@
 #include "gp107_identity.h"
 
 /*
- * Optional read-only aperture seam. Software-gated research code only:
- * physical MMIO, driver unbind and alternate boot are not authorized.
- * The public operation verifies PCI identity, BDF and subsystem data through
- * the same pinned directory fd used for binding/resource0, then enforces opt-in,
- * BAR size and offset checks. The allow flag is not owner approval.
+ * Deliberately deferred MMIO API.
  *
- * No write mapping, RM requests, FIFO, doorbell, firmware or BOOT0 value.
+ * The API validates intent, exact PCI/BDF/subsystem identity through a pinned
+ * sysfs device-directory fd, driver binding, BAR0 type/size and offset bounds.
+ * It then returns GP107_ERR_SAFE_OFFSET_UNPROVEN. It does not open resource0,
+ * map a BAR aperture, dereference hardware, or call the isolated asm leaf.
+ *
+ * --allow-mmio is a software acknowledgement only, never owner approval.
  */
 
 #define GP107_MMIO_WINDOW 4096u
