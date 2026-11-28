@@ -57,6 +57,11 @@ jobs:
       - name: Check that docs cite evidence that exists
         run: bash scripts/test-doc-evidence-links.sh
 
+      # Посилання на чужий репозиторій без зрізу тихо старіє: саме так тут довго
+      # жив «suspend закритий», який сусідній репозиторій сам спростував.
+      - name: Check that cross-repository citations are pinned
+        run: bash scripts/check-cross-repo-pins.sh
+
       - name: Check shell syntax
         run: bash -n scripts/test-pascal-probe.sh
 
