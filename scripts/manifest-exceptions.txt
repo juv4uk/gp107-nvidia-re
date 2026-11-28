@@ -1,4 +1,4 @@
-# Маніфести, які сьогодні не верифікуються, з причиною. Це борг, а не дозвіл.
-# Формат: <шлях від кореня репозиторію> TAB <причина>
-# Двостороння перевірка: якщо маніфест почав верифікуватися, рядок треба прибрати.
-experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt	03-run.log знято на хості /home/agents/open-driver-identity і ніколи не закомічено; решта 7 артефактів збігаються
+# Artifact-scoped historical evidence debt; this is not a manifest-wide skip.
+# Format: <manifest path from repository root> TAB <exact recorded artifact path> TAB <expected SHA-256> TAB <reason>
+# The named file may be absent only while every other entry in that manifest hashes correctly.
+experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt	/home/agents/open-driver-identity/experiments/nvk-compute-smoke/artifacts-v4/03-run.log	e06bdf4335d7084ed373f65343678f578f4d140bf83875d10bda0522b0c6320d	Original 03-run.log capture was never committed; preserve historical manifest and verify the other seven artifacts.
