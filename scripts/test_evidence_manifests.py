@@ -13,7 +13,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from check_evidence_manifests import ManifestError, parse_exceptions, verify_manifest  # noqa: E402
+from check_evidence_manifests import (  # noqa: E402
+    ManifestError,
+    check_repository,
+    parse_exceptions,
+    verify_manifest,
+)
 
 
 class EvidenceManifestExceptionTests(unittest.TestCase):
@@ -78,6 +83,51 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
         self.assertEqual(result.verified, 1)
         self.assertEqual(result.known_missing, ())
         self.assertEqual(used, set())
+
+    def test_explicit_external_bundle_is_verified_inside_its_own_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary) / "bundle"
+            bundle.mkdir()
+            artifact = bundle / "artifact.txt"
+            artifact.write_bytes(b"external evidence")
+            digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            manifest = bundle / "99-manifest.txt"
+            manifest.write_text(f"{digest}  artifact.txt\\n", encoding="utf-8")
+
+            result = check_repository(ROOT, [manifest])
+
+        self.assertEqual(result, (1, 0, 0))
+
+    def test_external_bundle_rejects_symlink_to_file_outside_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            bundle = base / "bundle"
+            outside = base / "private" / "secret.txt"
+            bundle.mkdir()
+            outside.parent.mkdir()
+            outside.write_bytes(b"must not be read as bundle evidence")
+            link = bundle / "artifact.txt"
+            link.symlink_to(outside)
+            digest = hashlib.sha256(outside.read_bytes()).hexdigest()
+            manifest = bundle / "99-manifest.txt"
+            manifest.write_text(f"{digest}  artifact.txt\\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ManifestError, "missing artifact"):
+                check_repository(ROOT, [manifest])
+
+    def test_external_bundle_rejects_parent_traversal(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            bundle = base / "bundle"
+            bundle.mkdir()
+            outside = base / "outside.txt"
+            outside.write_bytes(b"must not be read")
+            digest = hashlib.sha256(outside.read_bytes()).hexdigest()
+            manifest = bundle / "99-manifest.txt"
+            manifest.write_text(f"{digest}  ../outside.txt\\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ManifestError, "traverses its directory"):
+                check_repository(ROOT, [manifest])
 
     def test_missing_artifact_without_exception_fails(self) -> None:
         with self.assertRaisesRegex(ManifestError, "missing artifact"):
