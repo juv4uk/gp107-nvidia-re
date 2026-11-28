@@ -1,0 +1,233 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T10:30:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subjects": [
+    {
+      "name": "nvcuda64.dll",
+      "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll"
+    }
+  ],
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000"
+  },
+  "observations": [
+    {
+      "evidence_id": "ev_18de354461cbd8a7cdd3bae82e11a26cfc3aac0af2a9091262b0ff439b6451bf",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x182002a48~180208bf",
+      "facts": [
+        "fcn.180208bf0 0x180208f31: mov dword [data.182002a48], eax — the device-count store is inside the publisher, not only a reader",
+        "the same function also reads the counter at 0x180208f59, 0x18020909e, 0x1802091fe and 0x1802092b4-0x180209381"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_1b129883f7a5f0a1132b06d8e216883b6d68a185fdee2302bfbda0d1601fe181",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x328",
+      "facts": [
+        "0x180208f51: mov qword [rcx+rdi*1+0x328], rax — the only store to the +0x328 table slot in this function",
+        "0x1802092dc, 0x180209302, 0x180209332, 0x180209362 read the same +0x328 entries later in the function"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_c1b3588143b3e44f4d38e785068109f67d05e40ad15135faadd93dd847b5e1f0",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0",
+      "facts": [
+        "0x180208de8: lea rdi, [0x182002520] sets the base that 0x180048780 later uses; 0x180208e90: mov rdi, [r14+0x2c8] takes the device-list head from the state object in rcx",
+        "0x180208f10-0x180208f22: for each node, [rcx]=index, [r14+index*8+8]=node, then index++",
+        "0x180208f25: mov rcx, [rcx+0x73a8] advances to the next device node",
+        "0x180208f31: mov [0x182002a48], eax stores the resulting count",
+        "0x180208f40-0x180208f61: rax=index*8, rax=[r14+rax+8], [rcx+rdi+0x328]=rax, loop while index < [0x182002a48]",
+        "this is the exact slot and counter that the cuDeviceGetUuid helper reads in docs/57"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_8019d9e98354ccf125dd62f5ca302a4449e9c03f1e74b1b0f097aebe2f18ec7a",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x182002",
+      "facts": [
+        "the function takes the global base 0x182002520 at 0x180208de8, 0x180208eea, 0x18020820b and 0x1802092ad, and writes the counter 0x182002a48 at 0x180208f31"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_8dc36d4615063f1e9279460c6c0dcf2ff6b75d43ed704304990f9a6169d877ab",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x180208bf0",
+      "facts": [
+        "two direct callers only: fcn.18018ae50 at 0x18018b034 and (nofunc) at 0x18018ce5b"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included bin_file_strings warnings and an ESIL Cannot-peek error; both CALL xrefs are unaffected."
+    },
+    {
+      "evidence_id": "ev_041e1f076c9b1f4ef6d7340148c360894c025c00196d9a0553e0a8b9a6c96e8a",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18018ae50; pdf @ 0x18018ae50",
+      "facts": [
+        "0x18018b02d: lea rcx, [0x182004420]; 0x18018b034: call 0x180208bf0",
+        "0x18018b041: cmp dword [0x182002a48], edi and the 'Unable to enumerate any CUDA-capable devices' message immediately after the call"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_889266612442afb2fd9ccf3d768ee454346b75357c56e35becf2c632bef04a64",
+      "subject": "nvcuda64.dll",
+      "command": "pd 40 @ 0x18018ce30",
+      "facts": [
+        "0x18018ce54: lea rcx, [0x182004420]; 0x18018ce5b: call 0x180208bf0; 0x18018ce66 checks the same device counter"
+      ],
+      "status": "statically_proven",
+      "coverage": "pd window aligned on an instruction boundary for the cited addresses."
+    },
+    {
+      "evidence_id": "ev_70bbe1012c2b41f72e1c1b00f08112493f562eedd071a298537b51c94928a59e",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x2c8",
+      "facts": [
+        "the state object's list head [r14+0x2c8] is read at 0x180208e5e, 0x180208e90, 0x180208ef1 and later in the function"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_473a616760d8bda55229022bbc3b6eb8ca1a1e48709256b6ffda4d90f4444523",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x73a8",
+      "facts": [
+        "[rdi+0x73a8] is the forward link used to walk the device list at 0x180208ed6, 0x180208f25, 0x180209310, 0x1802093d0 and 0x180209677"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_b7be25d8b689e57fe8a8a72cb98a5c0b68f90a6f474a79329668f1abcb9ffe31",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x5e49",
+      "facts": [
+        "the published nodes are probed at byte [node+0x5e49] (0x180208eae, 0x1802093af, 0x180209463) — the same field offset that cuDeviceGetUuid tests in docs/57"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_6f3f91a26ed01f36d8f258d8044a88c435a09ad93711d08675d74c2a24cbd415",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x6dc8",
+      "facts": [
+        "0x180208ebc and 0x1802093c0 call the method slot [node+0x6dc8] while walking the list"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_e80b62797fc23e7652222cdd7991cd344813d5a1ba8e78738faec6483da54239",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208970; pdf @ 0x180208970",
+      "facts": [
+        "0x180208983: rdx=[rcx+0x2c8] and 0x180208a12: rdx=[rdx+0x73a8] show the same state-list layout in the helper called from the publisher at 0x180208e74"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_be007e012a9c7fcccd7ac3bea112fd5586ad1402418e4226e4e1d868a3cfd85c",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x1802087d0",
+      "facts": [
+        "the only direct caller of 0x1802087d0 is 0x1802093e7 inside the publisher 0x180208bf0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_8ddc2ba001bfb4d295f6b5be73b53d5452c4a113fb48deca20c7e64c4514a823",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x1802087d0; pdf @ 0x1802087d0",
+      "facts": [
+        "0x1802087fe: lea rsi, [0x182002a50] selects the secondary array",
+        "0x1802088c6, 0x1802088f0, 0x18020890a, 0x180208918 link nodes through [+0x2c8]/[+0x73a8]/[+0x73b0]",
+        "0x180208923, 0x180208930, 0x180208962: mov [rsi], rbx writes the secondary-array entry"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_55d20d15ab08fc59daac4ec91753719be916a90b3d205791576ede07dd73ad56",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x182002c50",
+      "facts": [
+        "the only store among the listed xrefs is fcn.180207960 0x1802080b8: mov dword [data.182002c50], r14d",
+        "no store to the secondary counter was found inside 0x180208bf0 (ev_6fb6dff9…)"
+      ],
+      "status": "statically_proven",
+      "coverage": "xrefs are from the Rizin DATA pass; indirect writers would not appear."
+    },
+    {
+      "evidence_id": "ev_6fb6dff91900cca19ea72c17f1eb138703d4c7b4916f243d5c9b96dd0ff2cec9",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180208bf0; pdf @ 0x180208bf0~0x2c50",
+      "facts": [
+        "no occurrence of 0x182002c50 in the publisher function"
+      ],
+      "status": "coverage_limitation"
+    },
+    {
+      "evidence_id": "ev_0b0fdd912466b233714042b95d715beab31c764cb83fa3a0c14e1b005bf9d1ed",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010",
+      "facts": [
+        "Writer A stores the 16 bytes with 0x1804096e8: movups xmm0,[rcx-0xf0]; 0x1804096ef: movups [rax+0xc06],xmm0",
+        "the receiver rax comes from [var_9b0h], set at 0x18040921b; direct register identity with a node of the published list is not established here"
+      ],
+      "status": "statically_proven",
+      "coverage": "identity of the Writer A receiver with a published list node remains UNPROVEN."
+    }
+  ],
+  "conclusions": [
+    {
+      "claim": "0x180208bf0 publishes device pointers into [0x182002848+index*8] and writes the count at [0x182002a48]",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "the table and counter are exactly the pair read by the cuDeviceGetUuid helper 0x180048780 (docs/57)",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "the publisher has exactly two direct callers, both passing the address of the global state object 0x182004420",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "published nodes share the +0x5e49 flag offset used by cuDeviceGetUuid, and are walked via +0x73a8",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "the published nodes are literally the same objects written by Writer A/Writer B",
+      "status": "UNPROVEN"
+    },
+    {
+      "claim": "0x1802087d0 (called from the publisher) links nodes and writes the secondary array at 0x182002a50",
+      "status": "statically_proven"
+    },
+    {
+      "claim": "the secondary counter 0x182002c50 is written by the same publishing path",
+      "status": "UNPROVEN"
+    },
+    {
+      "claim": "the 16 bytes are a GPU UUID, their ultimate producer, and BDF↔RM gpu_id",
+      "status": "UNPROVEN"
+    },
+    {
+      "claim": "any of these paths executed on this host",
+      "status": "NOT_RUN"
+    }
+  ],
+  "limits": [
+    "Ghidra did not finish import/analysis of the 34 MB DLL (provider_timeout); no Ghidra xrefs are claimed.",
+    "Rizin does not persist analysis between calls; axt was issued with aaa in the same command.",
+    "stderr contained bin_file_strings warnings and ESIL Cannot-peek errors; listed xrefs are not disproved by them.",
+    "no cuInit, cuDeviceGetUuid, CUDA/Vulkan/OpenGL init, D3DKMT/RM/UVM ioctl, GPU submit, MMIO, firmware, reboot, tag or release was performed."
+  ]
+}
