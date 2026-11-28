@@ -1,0 +1,160 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T09:00:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subjects": [
+    {
+      "name": "nvcuda64.dll",
+      "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvcuda64.dll"
+    },
+    {
+      "name": "nvdxgdmal64.dll",
+      "sha256": "9353f1b598f2c8649a33b59db011763474e8ef2a6749385a23d9f78af25feceb",
+      "path": "C:\\Windows\\System32\\DriverStore\\FileRepository\\nv_dispi.inf_amd64_58519edca6172ba9\\nvdxgdmal64.dll"
+    }
+  ],
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000"
+  },
+  "observations": [
+    {
+      "evidence_id": "ev_a85e80f7a11dfc2ffe925c2a15fb19e50d1ccd2f399796036e6d5cc9fe18ac66",
+      "subject": "nvdxgdmal64.dll",
+      "command": "af @ 0x1800050c0; pdf @ 0x1800050c0",
+      "facts": [
+        "0x1800050c4: [var_28h]=ecx; 0x1800050d5: [var_24h]=edx; 0x1800050d9: [var_20h]=r8; 0x1800050de: [var_18h]=r9d; 0x1800050cd: [var_14h]=0",
+        "rcx points at the 0x14-byte stack block; 0x1800050e3: call [0x18008d088] (D3DKMTQueryAdapterInfo from docs/58)",
+        "the output buffer pointer supplied in r8 is stored at block offset +0x18; query type occupies +0x0c"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_77236019d0a84d5f456b9addea2c2306f85efd7fa42baaf60a030d32b7392888",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036bb70; pdf @ 0x18036bb70",
+      "facts": [
+        "0x18036bb70 installs a long method table into rcx",
+        "0x18036bb70: lea rax,[0x18036d300]; 0x18036bb77: [rcx+0x6c98]=rax — Writer B is slot +0x6c98",
+        "the installer writes a contiguous run of slots from +0x6c98 up to +0x7190, where 0x18036c422 writes byte 1 and returns"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_6194d447f2113a7fa7e5c1fdf876750cf04c702f5ca631b20d229e4839b9c6fb",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036d300; pdf @ 0x18036d300",
+      "facts": [
+        "Writer B entry: rbx=arg2 (receiver/device), rdi=arg1 (source)",
+        "0x18036d354 zeroes a 0x800-byte local block; 0x18036d361 sets rcx=rbx; 0x18036d37d calls the method-table installer 0x18036bb70",
+        "0x18036d38e and following read [rdi+0x428]/[rdi+0x438] and write into [rbx+...], confirming the source/receiver split"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_c1db24ba57f72642074c54072d1d1a2d06c6a00328efa78f82fcbe9f28be3e9c",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036d300; pdf @ 0x18036d300~0x470",
+      "facts": [
+        "the only occurrence of +0x470 in Writer B is 0x18036d65a: movzx eax, byte [rdi+0x470]",
+        "together with the previously proven [rdi+0x471] and [rdi+0x481] copies this is a 17-byte source sequence at rdi+0x470"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_d24d62a21198edd0426a31dcd5cef4782cb55b9c7a66125289da97f6e001845b",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x18036f270",
+      "facts": [
+        "the only direct caller of the table builder 0x18036f270 is 0x18036c734"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included bin_file_strings warnings and ESIL Cannot-peek errors; the call xref is unaffected."
+    },
+    {
+      "evidence_id": "ev_5f46cac28ab36c1cad50d20b0ef3a2c421911af7e833e82736b6e3858856b965",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x18036c430; pdf @ 0x18036c430",
+      "facts": [
+        "0x18036c720: rcx=[var_7f8h], rdx=&var_7d8h, r8d=count-1, r9d=r14b; 0x18036c734: call 0x18036f270",
+        "the call is inside a loop over dword [rdx+0x18] entries, with rdx=[var_3d0h]"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_8e9199b0c70cfd299f179f6299ad7ea1eaf903a1e436ac633e413814a93bb22e",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x18036c430",
+      "facts": [
+        "direct calls to 0x18036c430 are at 0x18036ca62 and 0x18036cbe1",
+        "both are in un-named code regions; no direct link to the normalized adapter buffer was established"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included bin_file_strings warnings and ESIL Cannot-peek errors."
+    },
+    {
+      "evidence_id": "ev_9b7f2490c58df572bacb4eccda72af47bc4b1730247f9d718d659e48eaa37888",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409f50; pdf @ 0x180409f50",
+      "facts": [
+        "arg2 is kept in rsi; after a successful Writer A call 0x18040a0a6 increments dword [arg2+0x08]",
+        "0x18040a000-0x18040a067 filter PCI-like class constants including 0xc6c0, 0xc1c0, 0xb0c0, 0xb1c0, 0xc0c0, 0xc3c0, 0xc5c0, 0xc7c0, 0xc9c0, 0xcbc0, 0xcdc0, 0xcec0 before calling Writer A"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_eaa0b508d355cd949f965d14cb25ccdf66df97555a24c297b0f1929690fb2cb4",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x180409010",
+      "facts": [
+        "the only direct call of Writer A is 0x18040a09b inside 0x180409f50"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included ESIL Cannot-peek errors; the call xref is unaffected."
+    },
+    {
+      "evidence_id": "ev_9cf87d21995b4570d02d5dee74777f34967284d9429acd3811ae4251936c75f6",
+      "subject": "nvcuda64.dll",
+      "command": "af @ 0x180409010; pdf @ 0x180409010~0x182002520",
+      "facts": [
+        "no reference to the global [0x182002520] appears in Writer A; the global-table writer is still not identified"
+      ],
+      "status": "coverage_limitation"
+    },
+    {
+      "evidence_id": "ev_3ac986925ae485f9a8a91c1b73de05a30534eb5268525c97897b30df9f0adb1c",
+      "subject": "nvcuda64.dll",
+      "command": "aaa; axt @ 0x180048780",
+      "facts": [
+        "direct callers of the UUID field helper are the cuDeviceGetUuid paths 0x18028039a, 0x1802804d7, 0x18021ee9a, 0x18021efd7 and the two thin thunks 0x1800488d3/0x1800488e3"
+      ],
+      "status": "statically_proven",
+      "coverage": "stderr included ESIL Cannot-peek errors; no additional producers are implied."
+    }
+  ],
+  "unproven": [
+    "origin of the Writer B source object whose +0x470/+0x481 bytes are copied",
+    "which code stores populated device objects into the table rooted at [0x182002520]",
+    "whether the 16 bytes are literally a GPU UUID rather than another adapter field",
+    "ultimate producer of those bytes (RM, NVML, D3DKMT kernel data, PCI configuration or VBIOS)",
+    "BDF to RM gpu_id mapping"
+  ],
+  "coverage_limitations": [
+    "Rizin analysis state is not persisted across REA calls; axt queries include aaa in the same command.",
+    "axt runs reported bin_file_strings interval warnings and ESIL Cannot-peek errors; these do not invalidate the listed xrefs.",
+    "Indirect calls through installed method-table slots are not visible as direct call xrefs; Writer B's runtime caller remains unidentified.",
+    "No public D3DKMT header was consulted; query type 0xc115 and slot offsets are reported as observed constants."
+  ],
+  "not_run": [
+    "cuInit",
+    "cuDeviceGetUuid",
+    "RM/UVM/D3DKMT ioctl execution",
+    "GPU submit",
+    "MMIO/firmware",
+    "reboot",
+    "tag or release"
+  ]
+}
