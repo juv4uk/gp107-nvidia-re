@@ -58,10 +58,25 @@ CTRL2080 = {
     0x00000101: "NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES",
 }
 
+# Дві форми, які реально трапляються в джерелах і логах:
+#   _IOC(dir, type, nr, size)          - повна форма, напрямок явним аргументом
+#   _IOWR(type, nr, size)              - форма з linux/ioctl.h, напрямок у суфіксі
+# Друга довго не розпізнавалась зовсім, тому `_IOWR(0x46, 0xc8, 0x900)` з лога
+# давав "no ioctl request found" замість декодування.
 IOC_RE = re.compile(
     r"_IOC\(\s*(?P<dir>[^,]+),\s*(?P<type>0x[0-9a-fA-F]+),\s*"
     r"(?P<nr>0x[0-9a-fA-F]+),\s*(?P<size>0x[0-9a-fA-F]+)\s*\)"
 )
+IOC_SUFFIX_RE = re.compile(
+    r"_IO(?P<dirs>[RW]*)\s*\(\s*(?P<type>0x[0-9a-fA-F]+)\s*,\s*"
+    r"(?P<nr>0x[0-9a-fA-F]+)\s*,\s*(?P<size>0x[0-9a-fA-F]+)\s*\)"
+)
+
+
+def dir_bits_from_suffix(dirs: str) -> int:
+    """`_IOWR` -> 3, `_IOW` -> 1, `_IOR` -> 2, `_IO` -> 0."""
+    flags = set(dirs.upper())
+    return (1 if "W" in flags else 0) | (2 if "R" in flags else 0)
 HEX_RE = re.compile(r"0x[0-9a-fA-F]+")
 
 
@@ -105,6 +120,11 @@ def main() -> int:
         m = IOC_RE.search(line)
         if m:
             req = ((dir_bits(m.group("dir")) << 30)
+                   | (int(m.group("size"), 16) << 16)
+                   | (int(m.group("type"), 16) << 8)
+                   | int(m.group("nr"), 16))
+        elif (m := IOC_SUFFIX_RE.search(line)) is not None:
+            req = ((dir_bits_from_suffix(m.group("dirs")) << 30)
                    | (int(m.group("size"), 16) << 16)
                    | (int(m.group("type"), 16) << 8)
                    | int(m.group("nr"), 16))
