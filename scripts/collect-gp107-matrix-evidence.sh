@@ -48,6 +48,7 @@ record privacy "PRIVATE_REVIEW_REQUIRED:dmesg-and-local-paths"
 # Resolve the exact unique domain-qualified BDF for 10de:1c82.
 GPU_BDF=""
 TARGET_STATE="UNKNOWN:lspci-absent"
+TARGET_CANDIDATE="NOT_AVAILABLE:unique-10de:1c82-BDF-not-established"
 if ! command -v lspci >/dev/null 2>&1; then
   printf 'NOT_AVAILABLE: lspci\n' > "$OUT/01-pci-inventory.txt"
 else
@@ -57,7 +58,8 @@ else
       candidate="${TARGET_BDFS[0]}"
       if [[ "$candidate" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$ ]]; then
         GPU_BDF="$candidate"
-        TARGET_STATE="REFERENCE_CARD:10de:1c82:BDF=$GPU_BDF"
+        TARGET_CANDIDATE="PCI_CANDIDATE:10de:1c82:BDF=$GPU_BDF"
+        TARGET_STATE="UNKNOWN:sysfs-identity-pending"
       else
         TARGET_STATE="FAILED:noncanonical-bdf"
       fi
@@ -71,8 +73,8 @@ else
     TARGET_STATE="FAILED:lspci-rc=$rc"
   fi
 fi
-record target "$TARGET_STATE"
-note target "$TARGET_STATE"
+record target_candidate "$TARGET_CANDIDATE"
+note target_candidate "$TARGET_CANDIDATE"
 
 # Minimal host context: never report collected after a failed uname.
 if command -v uname >/dev/null 2>&1 && uname -srm > "$OUT/02-system.txt" 2>&1; then
@@ -117,19 +119,23 @@ if [ -n "$GPU_BDF" ]; then
       && [ "$(cat "$DEVICE_SYS/vendor" 2>/dev/null || true)" = "$REFERENCE_VENDOR" ] \
       && [ "$(cat "$DEVICE_SYS/device" 2>/dev/null || true)" = "$REFERENCE_DEVICE" ]; then
     SYSFS_MATCH=1
+    TARGET_STATE="REFERENCE_CARD:10de:1c82:BDF=$GPU_BDF"
     record sysfs_identity "MATCH:$GPU_BDF"
   else
+    TARGET_STATE="SYSFS_IDENTITY_MISMATCH: BDF=$GPU_BDF"
     record sysfs_identity "MISMATCH_OR_UNAVAILABLE:$GPU_BDF"
   fi
 else
   printf 'NOT_AVAILABLE: unique 10de:1c82 BDF not established\n' > "$OUT/04-gpu-sysfs-identity.txt"
   record sysfs_identity "NOT_AVAILABLE:no-unique-target"
 fi
+record target "$TARGET_STATE"
+note target "$TARGET_STATE"
 
 # Query the exact BDF only after both PCI and sysfs identity agree.
 if [ "$SYSFS_MATCH" -eq 1 ]; then
-  capture 05-pci-driver.txt lspci lspci -Dnnk -s "$GPU_BDF"
-  capture 06-pci-verbose.txt lspci lspci -Dnnvv -s "$GPU_BDF"
+  capture 05-pci-driver.txt lspci -Dnnk -s "$GPU_BDF"
+  capture 06-pci-verbose.txt lspci -Dnnvv -s "$GPU_BDF"
 else
   printf 'NOT_AVAILABLE: exact sysfs identity not established\n' > "$OUT/05-pci-driver.txt"
   printf 'NOT_AVAILABLE: exact sysfs identity not established\n' > "$OUT/06-pci-verbose.txt"

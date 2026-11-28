@@ -93,11 +93,23 @@ OUT="$WORK/passive"
 bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT" > "$WORK/passive.log"
 grep -Fxq 'target=REFERENCE_CARD:10de:1c82:BDF=0000:03:00.0' "$OUT/00-status.txt"
 grep -Fxq 'sysfs_identity=MATCH:0000:03:00.0' "$OUT/00-status.txt"
+grep -q 'VERBOSE-BDF=0000:03:00.0' "$OUT/05-pci-driver.txt"
 grep -q 'VERBOSE-BDF=0000:03:00.0' "$OUT/06-pci-verbose.txt"
 grep -q 'temp1_input=42000' "$OUT/09-gp107-thermal-and-clocks.txt"
 ! grep -q '99999' "$OUT/09-gp107-thermal-and-clocks.txt"
 grep -Fxq 'gpu_runtime=NOT_RUN:owner-approval-required' "$OUT/00-status.txt"
 [ ! -e "$MARKER" ]
+
+# A PCI candidate is not authoritative until the same BDF agrees in sysfs.
+printf '0x8086\n' > "$GPU/vendor"
+OUT_MISMATCH="$WORK/sysfs-mismatch"
+bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_MISMATCH" > "$WORK/sysfs-mismatch.log"
+grep -Fxq 'target=SYSFS_IDENTITY_MISMATCH: BDF=0000:03:00.0' "$OUT_MISMATCH/00-status.txt"
+grep -Fxq 'target_candidate=PCI_CANDIDATE:10de:1c82:BDF=0000:03:00.0' "$OUT_MISMATCH/00-status.txt"
+grep -Fxq 'pci_verbose=NOT_AVAILABLE:no-sysfs-match' "$OUT_MISMATCH/00-status.txt"
+grep -q 'NOT_AVAILABLE: exact GP107 sysfs identity not established' "$OUT_MISMATCH/09-gp107-thermal-and-clocks.txt"
+printf '0x10de\n' > "$GPU/vendor"
+
 bash "$ROOT/scripts/test-evidence-manifest.sh" "$OUT/99-manifest.txt" > "$WORK/passive-manifest.log"
 grep -q 'MANIFEST-OK' "$WORK/passive-manifest.log"
 
