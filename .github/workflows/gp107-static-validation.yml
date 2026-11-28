@@ -68,7 +68,7 @@ jobs:
         run: python3 -m unittest tests.test_decode_ioctl tests.test_e1_trace_table tests.test_ioctl_map_drift
 
       - name: Evidence manifest integrity
-        # ~2 minutes: 140 manifests verify, 2 are recorded debt in
+        # ~6 seconds: 1557 artifacts verify, 1 is recorded debt in
         # scripts/manifest-exceptions.txt, 1 is a deliberate negative control.
         run: |
           bash scripts/test-evidence-manifest.sh

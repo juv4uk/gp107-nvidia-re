@@ -129,7 +129,10 @@ grep -q 'NOT_AVAILABLE: exact GP107 sysfs identity not established' "$OUT_MISMAT
 printf '0x10de\n' > "$GPU/vendor"
 
 bash "$ROOT/scripts/test-evidence-manifest.sh" "$OUT/99-manifest.txt" > "$WORK/passive-manifest.log"
-grep -q 'MANIFEST-OK' "$WORK/passive-manifest.log"
+# Specific to the manifest under test: a bare `MANIFEST-OK` could match any
+# line, and the wrapper used to emit the self-test's fixture lines here.
+# Absolute paths are labelled `external:` by the gate, so match the label too.
+grep -q "MANIFEST-OK manifest=external:$OUT/99-manifest.txt" "$WORK/passive-manifest.log"
 
 note "existing output and symlink output must be refused without mutation"
 EXISTING="$WORK/existing"
