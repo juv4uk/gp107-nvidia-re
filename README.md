@@ -58,7 +58,7 @@
 | [`35-rea-p1-btf-type-proof.md`](docs/35-rea-p1-btf-type-proof.md) | BTF shipped-артефакта доводить `parent_gpus → uvm_parent_gpu_t → gpus → uvm_gpu_t → channel_manager`; роль `rdi` у гілці `r8==0` — UUID-джерело; caller-и див. docs/37 |
 | [`36-r580-artifact-pairing.md`](docs/36-r580-artifact-pairing.md) | `runtime-proven` pairing REA-тарґета `81b21527…` зі встановленим і завантаженим `nvidia_uvm` через version/srcversion/Build ID; без MMIO й vendor source |
 | [`37-rea-p1-add-gpu-call-sites.md`](docs/37-rea-p1-add-gpu-call-sites.md) | `statically proven`: рівно два прямі `call add_gpu` — `0x0801eb42` і `0x0801ebf7` в `uvm_gpu_retain_by_uuid`; `rdi` = UUID-джерело, `r8` = база `parent->gpus[]`; хибні адреси явно retracted |
-| [`38-gp107-nouveau-firmware-dependency-map.md`](docs/38-gp107-nouveau-firmware-dependency-map.md) | Pinned Nouveau source/WHENCE map for GP107 FECS/GPCCS, ACR, SEC2, NVDEC firmware, shared symlink closure and Free/Compatibility licensing boundary; source-only, not H170 runtime evidence |
+| [`39-gp107-nouveau-firmware-dependency-map.md`](docs/39-gp107-nouveau-firmware-dependency-map.md) | Pinned Nouveau source/WHENCE map for GP107 FECS/GPCCS, ACR, SEC2, NVDEC firmware, shared symlink closure and Free/Compatibility licensing boundary; source-only, not H170 runtime evidence |
 | [`38-rea-p1-register-gpu-uuid-chain.md`](docs/38-rea-p1-register-gpu-uuid-chain.md) | `statically proven`: ланцюг ioctl → `uvm_va_space_register_gpu` → `uvm_gpu_retain_by_uuid` → `add_gpu`; UUID = перше поле ioctl-параметра; походження в userspace / `BDF ↔ RM gpu_id` — `UNPROVEN` |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
