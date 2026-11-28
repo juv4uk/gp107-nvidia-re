@@ -85,12 +85,13 @@ review. Для будь-якого runtime-кроку потрібні точн�
 ## 5. Локальні інструменти: що тримати під рукою
 
 **Один збирач замість ручного набору:** `bash scripts/collect-gp107-matrix-evidence.sh`
-збирає інвентаризацію нижче в один каталог і пише `99-manifest.txt` із SHA-256,
-який одразу перевіряє наявний гейт `scripts/test-evidence-manifest.sh`. Скрипт
-read-only: жодного запису в пристрій, mmap чи `resource0`; відсутній інструмент
-записується як `NOT_AVAILABLE` з назвою, а не як привід впасти чи вигадати значення;
-якщо карта не `10de:1c82`, результат фіксується як `TARGET=NOT_THE_REFERENCE_CARD`,
-щоб жодна клітинка матриці не стала `PASS` випадково.
+збирає read-only інвентаризацію в один каталог і пише `99-manifest.txt` із SHA-256,
+який перевіряє наявний гейт `scripts/test-evidence-manifest.sh`. Скрипт не пише
+в пристрій, не робить mmap і не чіпає `resource0`; відсутній інструмент фіксується
+як `NOT_AVAILABLE`. Він також не ініціалізує Vulkan/OpenGL runtime:
+`05-gpu-runtime.txt` і `07-renderer.txt` позначають `NOT_RUN`, доки немає
+окремої owner-approved runtime-сесії. Якщо карта не `10de:1c82`, результат
+фіксується як `TARGET=NOT_THE_REFERENCE_CARD`, і жодна клітинка не стає `PASS`.
 
 **Безпечна базова інвентаризація / source audit (без нового runtime):**
 
@@ -103,8 +104,9 @@ read-only: жодного запису в пристрій, mmap чи `resource0
 **Для смуги A (відкритий стек):**
 
 - `vulkaninfo --summary` і `glxinfo -B` можуть ініціалізувати Vulkan/OpenGL
-  driver stack та GPU; запускати їх лише в окремо схваленій runtime-сесії.
-  Вони фіксують renderer (NVK чи llvmpipe), але самі не доводять correctness;
+  driver stack та GPU; read-only collector їх навмисно не запускає. Виконувати
+  лише в окремій owner-approved runtime-сесії. Вони фіксують renderer (NVK чи
+  llvmpipe), але самі не доводять correctness;
 - `dmesg -w` — лише спостереження за новими kernel log events; обмежити час
   та sanitize output;
 - `/sys/class/drm/card*/device/hwmon/*/` — read-only temperature/frequency
