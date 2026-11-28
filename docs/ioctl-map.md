@@ -84,7 +84,7 @@ nr   =  req        & 0xff
 |---|---|---|
 | `0x20803801` | `NV2080_CTRL_CMD_GRMGR_GET_GR_FS_INFO` | `ctrl2080grmgr.h` |
 | `0x20801346` | `NV2080_CTRL_CMD_FB_GET_FS_INFO` | `ctrl2080fb.h` |
-| `0x00000101` | `NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES` | `ctrl0000client.h` |
+| `0x00000101` | `NV0000_CTRL_CMD_SYSTEM_GET_BUILD_VERSION` | `ctrl0000system.h` |
 
 Старші 16 бітів визначають клас RM (`0x2080` = `NV20_SUBDEVICE_0`); молодший байт — ідентифікатор команди в межах відповідного інтерфейсу.
 

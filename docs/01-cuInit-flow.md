@@ -83,7 +83,7 @@ Magic — `'F'` (`0x46`), із `nv-ioctl-numbers.h`.
 |---|---|---|
 | `0x20803801` | `NV2080_CTRL_CMD_GRMGR_GET_GR_FS_INFO` | Інформація про framebuffer/engine graphics-manager |
 | `0x20801346` | `NV2080_CTRL_CMD_FB_GET_FS_INFO` | Інформація про framebuffer для subdevice 0 |
-| `0x00000101` | `NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES` | Можливості клієнта |
+| `0x00000101` | `NV0000_CTRL_CMD_SYSTEM_GET_BUILD_VERSION` | Версія збірки драйвера (`ctrl0000system.h`) |
 
 Префікс `0x2080` позначає клас `NV20_SUBDEVICE_0`; молодший байт — команду в інтерфейсі цього класу.
 

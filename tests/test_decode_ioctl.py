@@ -38,6 +38,33 @@ def ioc(direction: int, type_: int, nr: int, size: int) -> int:
     return ((direction & 0x3) << 30) | ((type_ & 0xFF) << 8) | (nr & 0xFF) | ((size & 0x3FFF) << 16)
 
 
+class UpstreamPinTest(unittest.TestCase):
+    """Names must match NVIDIA's published headers, not what a filename suggests.
+
+    0x00000101 was labelled NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES because the
+    map cited ctrl0000client.h. Upstream, 0x101 is
+    NV0000_CTRL_CMD_SYSTEM_GET_BUILD_VERSION (ctrl0000system.h:106), and
+    ctrl0000client.h defines CLIENT_GET_ADDR_SPACE_TYPE = 0xd01 instead. The
+    symbol CLIENT_GET_CAPABILITIES does not exist anywhere in
+    NVIDIA/open-gpu-kernel-modules.
+    """
+
+    def test_build_version_command_is_named_correctly(self) -> None:
+        # Control commands are resolved from CTRL2080 by the CLI, not by
+        # decode(), which only handles the RM and UVM paths.
+        self.assertEqual(di.CTRL2080[0x00000101], "NV0000_CTRL_CMD_SYSTEM_GET_BUILD_VERSION")
+
+    def test_cli_prints_the_corrected_name(self) -> None:
+        result = subprocess.run([sys.executable, str(ROOT / "scripts" / "decode_ioctl.py"), "0x00000101"],
+                                capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NV0000_CTRL_CMD_SYSTEM_GET_BUILD_VERSION", result.stdout)
+
+    def test_the_invented_name_is_not_in_the_tables(self) -> None:
+        names = set(di.CTRL2080.values()) | set(di.NV_LEGACY.values()) | set(di.UVM.values())
+        self.assertNotIn("NV0000_CTRL_CMD_CLIENT_GET_CAPABILITIES", names)
+
+
 class FieldDecodingTest(unittest.TestCase):
     def test_card_info_fields_come_from_the_kernel_layout(self) -> None:
         req = ioc(IOC_READ | IOC_WRITE, NV_IOCTL_TYPE, 200, 2304)
