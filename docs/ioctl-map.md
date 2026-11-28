@@ -15,6 +15,23 @@ type = (req >>  8) & 0xff    NVIDIA control magic = 'F' = 0x46; UVM = 0x00
 nr   =  req        & 0xff
 ```
 
+## Межа версій: таблиця чинна для 580, не для 620
+
+Таблиця звірена з двома тегами `NVIDIA/open-gpu-kernel-modules` (перевірено
+2026-11-28):
+
+- **`580.196.11`** — те, під що писався цей довідник, і те, що зараз стоїть на
+  залізі власника. Усі наведені нижче номери тут є.
+- **`620.73.04`** — чотири з них **зникли**: `NV_ESC_RM_CONFIG_GET` (`0x32`),
+  `NV_ESC_RM_CONFIG_SET` (`0x33`), `UVM_CREATE_RANGE_GROUP` (23) і
+  `UVM_DISABLE_SYSTEM_WIDE_ATOMICS` (55). У 620 на їхніх місцях просто пропуски
+  в нумерації, а `nv_escape.h` не містить `RM_CONFIG_*` узагалі
+  (`grep -c` → 0).
+
+Практично це означає: якщо траса знята з 620, відсутність цих запитів — не
+доказ, що їх немає в драйвері, а доказ, що версія інша. І навпаки: декодування
+`0x32`/`0x33` у 620-трасі дасть назву, якої там уже немає.
+
 ## Escape-ioctl Resource Manager (тип `0x46`)
 
 ### Публічний діапазон (`nv-ioctl-numbers.h`, `NV_IOCTL_BASE = 200`)
@@ -43,8 +60,8 @@ nr   =  req        & 0xff
 | `0x29` | `NV_ESC_RM_FREE` | `NVOS00_PARAMETERS` |
 | `0x2a` | `NV_ESC_RM_CONTROL` | `NVOS54_PARAMETERS` (32 байти) |
 | `0x2b` | `NV_ESC_RM_ALLOC` | `NVOS64_PARAMETERS` (48 байтів) |
-| `0x32` | `NV_ESC_RM_CONFIG_GET` | внутрішня |
-| `0x33` | `NV_ESC_RM_CONFIG_SET` | внутрішня |
+| `0x32` | `NV_ESC_RM_CONFIG_GET` | внутрішня — **лише 580**, у 620 відсутній |
+| `0x33` | `NV_ESC_RM_CONFIG_SET` | внутрішня — **лише 580**, у 620 відсутній |
 | `0x34` | `NV_ESC_RM_DUP_OBJECT` | внутрішня |
 | `0x35` | `NV_ESC_RM_SHARE` | внутрішня |
 | `0x4a` | `NV_ESC_RM_VID_HEAP_CONTROL` | `NVOS32_PARAMETERS` |
