@@ -62,6 +62,7 @@
 | [`39-gp107-nouveau-firmware-dependency-map.md`](docs/39-gp107-nouveau-firmware-dependency-map.md) | Pinned Nouveau source/WHENCE map for GP107 FECS/GPCCS, ACR, SEC2, NVDEC firmware, shared symlink closure and Free/Compatibility licensing boundary; source-only, not H170 runtime evidence |
 | [`40-rea-p1-gpu-info-uuid-direction.md`](docs/40-rea-p1-gpu-info-uuid-direction.md) | `statically proven`: UUID — вхідний аргумент `nvUvmInterfaceGetGpuInfo`, далі forwarded у `rm_gpu_ops_get_gpu_info` → `_nv046828rm`; гіпотеза про генерацію UUID цим інтерфейсом `retracted`; `BDF ↔ RM gpu_id` — `UNPROVEN` |
 | [`41-rea-p1-libcuda-userspace-uuid-source.md`](docs/41-rea-p1-libcuda-userspace-uuid-source.md) | `statically proven`: UUID для `UVM_REGISTER_GPU` і `cuDeviceGetUuid` читається з `device+0xc06` у shipped `libcuda`; кінцевий виробник поля й `BDF ↔ RM gpu_id` — `UNPROVEN`; хибна чернеткова мапа — `retracted observation` |
+| [`45-windows-uvm-uuid-comparison.md`](docs/45-windows-uvm-uuid-comparison.md) | Windows-внесок у звірку: `nvcuda64.dll` (`af853a5b…`), `\\.\UVMLiteController` → `DeviceIoControl`, ті ж зсуви `+0xc06`/`+0xc27`, writer-и `0x1804096ef`/`0x18036d645`; Windows nr, payload і початкове джерело UUID — `UNPROVEN`; без release/tag |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
@@ -76,6 +77,7 @@
 - `docs/` — дослідницькі документи та зведені довідники.
 - `evidence/nouveau-20261127/` — сирі логи boot-свідка та SHA-256 маніфести.
 - `evidence/rea-20261127/` — JSON-пакети доказів REA.
+- `evidence/windows-20261128/` — власні нотатки та команди Rizin для Windows-звірки (docs/42); бінарники виробника не зберігаються.
 - `experiments/nvk-compute-smoke/` — функціональний NVK compute harness і його артефакти.
 - `experiments/vk-compute-bench/` — порівняльний Vulkan compute harness і його артефакти.
 - `probes/` — незалежний C-пробник без `libcuda`.

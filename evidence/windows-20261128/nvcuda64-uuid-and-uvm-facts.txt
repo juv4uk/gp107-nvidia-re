@@ -1,0 +1,70 @@
+# Own notes from shipped nvcuda64.dll (Rizin 0.9.1, Windows pass 2026-11-28)
+# No vendor source, no decompiler pseudocode. PE virtual addresses.
+# Artifact SHA-256: af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407
+
+[imports / exports]
+IAT KERNEL32.dll!DeviceIoControl       0x18184a3b8
+IAT KERNEL32.dll!CreateFileW           0x18184a080
+IAT KERNEL32.dll!CreateFileA           0x18184a160
+export cuDeviceGetUuid                 0x180280540
+export cuDeviceGetUuid_v2              0x18021f040
+
+[UVM device path]
+utf16 \\.\UVMLiteController            0x181e803c0
+DATA xrefs                             0x1801f00d6 (fcn.1801f0040)
+                                       0x1803399b4, 0x18033a834,
+                                       0x1803c58b7, 0x1803e49f6
+CreateFileW call                       0x18033960d  (helper 0x1803395b0)
+DeviceIoControl call                   0x1803396f3  (helper 0x1803396c0)
+dwIoControlCode                        0x22f000 @ 0x1803399e4  (in-size 0x104)
+dwIoControlCode                        0x22e028 @ 0x18033a880  (in/out 8)
+
+[NvAdminDevice path]
+utf16-ish \\.\NvAdminDevice            0x181e6f1f8
+CreateFileA call                       0x18020b8ed  (caller fcn.18020b620)
+handle global                          0x182025550
+dwIoControlCode                        0x8de0004 @ 0x18020b438 (in/out 0x88)
+dwIoControlCode                        0x8de0008 @ 0x18020c3f9 (in 0x5c)
+
+[cuDeviceGetUuid dispatch]
+cuDeviceGetUuid        0x180280540 -> [0x181ffa340] -> 0x180280320
+cuDeviceGetUuid_v2     0x18021f040 -> [0x181ffa868] -> 0x18021ee20
+both call fcn.180048780 @ 0x18028039a, 0x1802804d7,
+                           0x18021ee9a, 0x18021efd7
+
+[fcn.180048780: 16-byte UUID fields]
+table base              data.182002520 + idx*8 + 0x328
+flag test               test byte [rax+0x5e49],0x01  @ 0x18004884d
+default read            movups xmm0,[rax+0xc06]      @ 0x18004887d
+                        movups [rdi],xmm0            @ 0x180048886
+alternate read          movups xmm0,[rax+0xc27]      @ 0x180048856
+                        movups [rdi],xmm0            @ 0x18004885f
+encodings               0f1080060c0000, 0f1080270c0000
+XREFS (CALL)            0x18021ee9a, 0x18021efd7, 0x18028039a, 0x1802804d7
+
+[writers]
+fcn.180409010           source pointer @ 0x1804091fc:
+                          arg3 + 0x2e8 + i*0x198  -> source [arg3+0x1f8+i*0x198]
+                        copy @ 0x1804096e8..0x1804096ef:
+                          movups xmm0,[rcx-0xf0]; movups [rax+0xc06],xmm0
+                        single direct caller: 0x18040a09b
+function @ 0x18036d300   or byte [rbx+0x5e49],1  @ 0x18036d627
+                        movups xmm0,[rdi+0x481]  @ 0x18036d637
+                        movups [rbx+0xc27],xmm0  @ 0x18036d645
+                        movups xmm0,[rdi+0x471]; movups [rbx+0xc16],xmm0
+                        address used as data by fcn.18036bb70 (lea @ 0x18036bb70)
+                        calls 0x18036bb70 @ 0x18036d37d
+
+[D3DKMT enumeration]
+fcn.18020b620           vendor compare 0x10de @ 0x18020bc73
+                        adapter table 0x182025594
+
+[coverage limitations observed]
+bin_file_strings: search interval size (0x1848c00) exceeds max region size (0xa00000), skipping it
+ESIL: Cannot peek memory without specifying an address (many addresses)
+invalid disassembly around 0x18040979e-0x1804097a4 and 0x18036d6f3-0x18036d6f4
+pdf @ 0x18036d300 -> Cannot find function at 0x18036d300 (pd shows a prologue)
+REA Ghidra provider unavailable: Set GHIDRA_INSTALL_DIR to an extracted Ghidra 12.x (>=12.2) release directory.
+
+[not run]
+RM ioctl, MMIO writes, GPU compute, boot/reboot, firmware changes, PR #21

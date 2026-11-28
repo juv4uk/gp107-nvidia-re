@@ -1,0 +1,33 @@
+# Commands used for docs/45 (Windows pass, 2026-11-28)
+# Tool: REA execute_rizin_command -> rizin 0.9.1 @ windows-x86-64
+# commit c3a90e9226d977f58f4e9c75f78fa6b07afe13c7
+# Target: C:\Windows\System32\DriverStore\FileRepository\nv_dispi.inf_amd64_58519edca6172ba9\nvcuda64.dll
+# SHA-256: af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407
+# Addresses are PE virtual addresses (image base 0x180000000), not file offsets.
+
+aaa
+ii~DeviceIoControl
+ii~CreateFile
+is~UVMLiteController
+ic~cuDeviceGetUuid
+
+axt @ 0x181e803c0
+axt @ 0x180048780
+axt @ 0x180409010
+axt @ 0x18036d300
+axt @ 0x1804096ef
+axt @ 0x18036d645
+
+pdf @ 0x180048780
+pdf @ 0x180280320
+pdf @ 0x18021ee20
+pdf @ 0x18020b3c0
+pdf @ 0x18020c350
+pdf @ 0x18040a060
+pd 48 @ 0x18036d300
+pd 70 @ 0x1803395b0
+pd 90 @ 0x1803396c0
+pd 40 @ 0x180339980
+pd 40 @ 0x18033a810
+px 16 @ 0x18004887d
+px 16 @ 0x180048856
