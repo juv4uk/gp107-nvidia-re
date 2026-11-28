@@ -48,7 +48,35 @@ Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda
 
 Це прямо релевантно GP107: `nv137_chipset` обирає `gp100_fifo_new()`, а GP100 FIFO має глобальний non-stall event без `nonstall_ctor`. Patch 2/2 — generic FIFO fix; patch 1 тієї серії про GK107 legacy video context mapping є Kepler-specific і не переноситься на Pascal.
 
-Статус patch 2/2 — **proposed / review pending, не merged** станом на останню перевірку: pinned upstream `v7.2.15`, `v7.3.6` і mainline snapshot `9437ee8b6cf607e883b36e44bd755968daaebd48` усе ще містять безумовний `runl->id`. Сторонні runtime-перевірки цієї серії були GK107/GK208B, не GP107. Не додавати LLM-derived `Tested-by`; не називати patch інтегрованим у Kali.
+Статус patch 2/2 — **proposed / review pending, не merged** за останньою перевіркою 2026-11-28: pinned upstream `v7.2.15`, `v7.3.6` і current mainline `f4585067150b85e33f60876149a6e742928da75e` усе ще містять безумовний `runl->id`. Сторонні runtime-перевірки цієї серії були GK107/GK208B, не GP107. Не додавати LLM-derived `Tested-by`; не називати patch інтегрованим у Kali.
+
+### Повторна перевірка current mainline
+
+Current upstream `torvalds/linux:master` на момент перевірки мав HEAD
+`f4585067150b85e33f60876149a6e742928da75e` (2026-11-27 20:41:24 UTC).
+Шість релевантних файлів перевірені на **цьому точному commit**, а не за moving
+`master` URL:
+
+| Шлях | Blob SHA | Перевірений факт |
+|---|---|---|
+| `nvkm/engine/fifo/uchan.c` | `d6a87cec215030032fda493ad42042f945017198` | non-stall callback досі передає `runl->id` без умовного legacy fallback |
+| `nvkm/engine/fifo/gp100.c` | `65bdb6a7d517277bd0a064a1736ae4c166b97c2b` | `gp100_fifo` має `.nonstall = &gf100_fifo_nonstall`, без `.nonstall_ctor` |
+| `nvkm/engine/fifo/base.c` | `9dd924694306de6d0d76433643c491fc36926a11` | відсутній ctor дає один event index |
+| `nvkm/subdev/top/gk104.c` | `da55dac8c286a4faf914068216a5b72db5c135bb` | TOP parser розбирає runlist field; `top=trace` вмикає сирі TOP entries, `top=debug` — decoded rows |
+| `include/nvkm/core/layout.h` | `d92ffd17b72982b606aae9bcc2598f70d0f45263` | TOP debug selector має source name `top` |
+| `nvkm/core/option.c` | `3e62cf8cde0808943e8b9a0218ee04fa83375f15` | debug selectors порівнюються без урахування регістру |
+
+Commit-pinned links:
+- https://github.com/torvalds/linux/blob/f4585067150b85e33f60876149a6e742928da75e/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c
+- https://github.com/torvalds/linux/blob/f4585067150b85e33f60876149a6e742928da75e/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c
+- https://github.com/torvalds/linux/blob/f4585067150b85e33f60876149a6e742928da75e/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c
+- https://github.com/torvalds/linux/blob/f4585067150b85e33f60876149a6e742928da75e/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c
+- https://github.com/torvalds/linux/blob/f4585067150b85e33f60876149a6e742928da75e/drivers/gpu/drm/nouveau/include/nvkm/core/layout.h
+- https://github.com/torvalds/linux/blob/f4585067150b85e33f60876149a6e742928da75e/drivers/gpu/drm/nouveau/nvkm/core/option.c
+
+Отже, цей upstream refresh **не змінює класифікацію**: source lead лишається
+умовним; немає GP107 runtime witness для GR/compute `runl->id` і немає
+підстав переносити patch 2 на Pascal без цього свідка.
 
 ## 2. Чому logging може дати ID без direct MMIO
 
