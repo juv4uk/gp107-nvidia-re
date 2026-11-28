@@ -1,0 +1,38 @@
+# Line endings are not cosmetic here: the owner works on Windows and runs the
+# scripts in WSL, where a CRLF checkout makes every `#!/usr/bin/env bash` script
+# fail on `set -o pipefail` before it does anything. docs/47 records exactly that
+# symptom.
+#
+# Everything textual is therefore checked out with LF on every platform, and the
+# binary artefacts keep their bytes untouched.
+
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.py    text eol=lf
+*.pas   text eol=lf
+*.pp    text eol=lf
+*.c     text eol=lf
+*.h     text eol=lf
+*.s     text eol=lf
+*.S     text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.txt   text eol=lf
+*.lisp  text eol=lf
+Makefile text eol=lf
+
+# Artefacts: never normalise, never diff as text.
+*.o     binary
+*.efi   binary
+*.img   binary
+*.iso   binary
+*.bin   binary
+*.deb   binary
+*.gz    binary
+*.tar   binary
+*.xz    binary
+*.png   binary
+*.jpg   binary

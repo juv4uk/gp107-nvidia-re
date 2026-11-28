@@ -77,7 +77,11 @@ WSL Ubuntu 24.04, FPC 3.2.2, GCC 13.3.0.
 - `bash scripts/check-no-driver-overreach.sh` — `DRIVER-FIREWALL-OK`, заборонені операції відсутні.
 
 Примітка: у Windows-клоні скрипти мають CRLF, тому bash у WSL падає на
-`set -o pipefail`. Це не дефект репозиторію, а наслідок `core.autocrlf`; для
+`set -o pipefail`. Це не дефект репозиторію, а наслідок `core.autocrlf`.
+**Виправлено 2026-11-28:** додано `.gitattributes` з `eol=lf` для всього
+текстового (`*.sh`, `*.py`, `*.pas`, `*.c`, `*.s`, `*.md`, `Makefile`) і
+`binary` для артефактів, тому новий клон на Windows одразу дає LF у WSL.
+Для вже наявного клону: `git rm --cached -r . && git reset --hard`; для
 локальних перевірок використовуйте LF-копію або `git -c core.autocrlf=input clone`.
 
 ## 5. Склоновані авторські репозиторії
