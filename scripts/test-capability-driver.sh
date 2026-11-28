@@ -412,10 +412,10 @@ step 'production MMIO API has no resource0 open or mapping path'
 if grep -nF 'resource0' lib/gp107_mmio.c pascal/gp107_mmio.pas; then
   fail 'public MMIO implementation references resource0'
 fi
-if grep -nHE '\\b(mmap|munmap)\\s*\\(' lib/gp107_mmio.c; then
+if grep -nHE '\b(mmap|munmap)\s*\(' lib/gp107_mmio.c; then
   fail 'public C MMIO implementation maps an aperture'
 fi
-if grep -nHE '\\b(FpOpen|FpMMap|FpMunmap)\\s*\\(' pascal/gp107_mmio.pas; then
+if grep -nHE '\b(FpOpen|FpMMap|FpMunmap)\s*\(' pascal/gp107_mmio.pas; then
   fail 'public Pascal MMIO implementation maps an aperture'
 fi
 echo 'MMIO-MAPPER-ABSENT-OK C=no-map Pascal=no-map'
