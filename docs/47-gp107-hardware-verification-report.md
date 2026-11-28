@@ -72,8 +72,8 @@ SHA-256 `60a0f34f4e28bd305a1fe009635ccd62e7f4b6ed1500692adaf4a0eeb2cd0a91`,
 WSL Ubuntu 24.04, FPC 3.2.2, GCC 13.3.0.
 
 - `make test-valid-cards-static` — OK.
-- `bash scripts/test-evidence-manifest.sh` — `MANIFEST-SUMMARY verified=142 known_bad=1 negative_controls=1`.
-- `bash scripts/test-gp107-matrix-collector.sh` — `MATRIX-COLLECTOR-OK gpu-runtime=NOT_RUN manifest=verified`.
+- `bash scripts/test-evidence-manifest.sh` — `MANIFEST-SUMMARY verified=1557 known_missing=1 negative_controls=1`.
+- `bash scripts/test-gp107-matrix-collector.sh` — `MATRIX-COLLECTOR-OK unique-bdf=1 output-immutable=1 telemetry-scoped=1 command-status=honest runtime=NOT_RUN`.
 - `bash scripts/check-no-driver-overreach.sh` — `DRIVER-FIREWALL-OK`, заборонені операції відсутні.
 
 Примітка: у Windows-клоні скрипти мають CRLF, тому bash у WSL падає на

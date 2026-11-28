@@ -201,7 +201,7 @@ NVK vector-add dispatch ([`14`](14-nvk-vector-add-compute-result.md)). [`18`](18
 повністю завершений до dispatch. Це реальний runtime-факт конкретного
 workload, але не clean acceptance, stability baseline або дозвіл на повтор.
 H170 не перевірявся. Незакритим лишається `UNPROVEN` із
-[`13`](13-nouveau-nvk-boot-witness.md): кореляція channel ↔ event і GR TOP runlist 0.
+[`13`](13-nouveau-nvk-boot-witness-result.md): кореляція channel ↔ event і GR TOP runlist 0.
 
 ### Що з цього випливає для порядку роботи
 
