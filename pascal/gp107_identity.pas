@@ -243,7 +243,7 @@ begin
                     LINUX_O_NONBLOCK_FLAG, 0);
   if fd < 0 then
   begin
-    savedErr := fpgeterrno;
+    savedErr := LibCErrno;
     Exit;
   end;
   try
