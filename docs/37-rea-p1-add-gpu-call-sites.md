@@ -154,9 +154,10 @@ call-site → аргумент → використання: **`statically prove
 усі записи в `[rbp-0x118]` лежать на гілці `r8!=0`, яку `jz @0x0801c170`
 оминає, тому на шляху `r8==0` слот містить початковий `rdi`.
 
-Найменший наступний крок — у shipped `nvidia.ko` (`95c5fa5a…`) перевірити
-`nvUvmInterfaceGetGpuInfo` як можливе джерело UUID; без MMIO, без RM-запитів
-і без синтетичного `af`.
+Наступний крок виконано в [`docs/40`](40-rea-p1-gpu-info-uuid-direction.md):
+`nvUvmInterfaceGetGpuInfo` споживає UUID, а не генерує його; гіпотеза
+`retracted hypothesis`. Подальше джерело UUID у userspace і `BDF ↔ RM gpu_id`
+лишаються `UNPROVEN`.
 
 ## Ukrainian one-liner
 

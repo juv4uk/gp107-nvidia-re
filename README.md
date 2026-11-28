@@ -60,6 +60,7 @@
 | [`37-rea-p1-add-gpu-call-sites.md`](docs/37-rea-p1-add-gpu-call-sites.md) | `statically proven`: рівно два прямі `call add_gpu` — `0x0801eb42` і `0x0801ebf7` в `uvm_gpu_retain_by_uuid`; `rdi` = UUID-джерело, `r8` = база `parent->gpus[]`; хибні адреси явно retracted |
 | [`38-rea-p1-register-gpu-uuid-chain.md`](docs/38-rea-p1-register-gpu-uuid-chain.md) | `statically proven`: ланцюг ioctl → `uvm_va_space_register_gpu` → `uvm_gpu_retain_by_uuid` → `add_gpu`; UUID = перше поле ioctl-параметра; походження в userspace / `BDF ↔ RM gpu_id` — `UNPROVEN` |
 | [`39-gp107-nouveau-firmware-dependency-map.md`](docs/39-gp107-nouveau-firmware-dependency-map.md) | Pinned Nouveau source/WHENCE map for GP107 FECS/GPCCS, ACR, SEC2, NVDEC firmware, shared symlink closure and Free/Compatibility licensing boundary; source-only, not H170 runtime evidence |
+| [`40-rea-p1-gpu-info-uuid-direction.md`](docs/40-rea-p1-gpu-info-uuid-direction.md) | `statically proven`: UUID — вхідний аргумент `nvUvmInterfaceGetGpuInfo`, далі forwarded у `rm_gpu_ops_get_gpu_info` → `_nv046828rm`; гіпотеза про генерацію UUID цим інтерфейсом `retracted`; `BDF ↔ RM gpu_id` — `UNPROVEN` |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:

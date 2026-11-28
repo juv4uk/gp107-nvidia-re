@@ -99,10 +99,11 @@ symbol-range. Непрямі виклики через таблиці лишаю
 
 ## 6. Найменший наступний крок
 
-Найменший крок — у shipped `nvidia.ko` (SHA `95c5fa5a…`) знайти
-`nvUvmInterfaceGetGpuInfo` за relocation-ім'ям і перевірити, чи формує він
-поле UUID, яке згодом потрапляє в ioctl-параметр. Без MMIO, без RM-запитів,
-без vendor source.
+Цей крок виконано в [`docs/40`](40-rea-p1-gpu-info-uuid-direction.md):
+`nvUvmInterfaceGetGpuInfo` **споживає** UUID як перший аргумент і forwarded
+його в RM-helper; гіпотеза про генерацію UUID цим інтерфейсом є
+`retracted hypothesis`. Наступний найменший крок — shipped userspace-бібліотека
+NVIDIA, і `BDF ↔ RM gpu_id` лишається `UNPROVEN`.
 
 ## Ukrainian one-liner
 

@@ -1,0 +1,160 @@
+REA P1 — direction of UUID through nvUvmInterfaceGetGpuInfo
+==========================================================
+
+Targets (shipped artifacts, read-only):
+  /tmp/opencode/rea-nvidia-uvm/nvidia-uvm.ko
+    SHA-256 81b21527017a096f8276e7b93d04e82a414d03ac3b6a0831f9acba3a4ac488b6
+  /tmp/opencode/rea-nvidia-uvm/nvidia.ko
+    SHA-256 95c5fa5ab0546ee40842cda2ec20ea3ec1e196a5afee1580944ecae2ffc75bbe
+
+Tools:
+  REA execute_rizin_command, rizin 0.9.1 @ linux-x86-64, provider version null
+  GNU readelf/objdump, Binutils 2.47.50.20261021
+
+Address mapping (derived from symbol tables, statically proven):
+  nvidia-uvm.ko: Rizin = 0x08004660 + ELF vaddr = 0x08000000 + file offset
+    add_gpu ELF 0x17ac0 -> Rizin 0x0801c120
+    uvm_gpu_retain_by_uuid ELF 0x1a2f0 -> Rizin 0x0801e950
+  nvidia.ko: Rizin = 0x080028e0 + ELF vaddr = 0x08000000 + file offset
+    nvUvmInterfaceGetGpuInfo ELF 0x1d6a0 -> file offset 0x1ff80 -> Rizin 0x0801ff80
+    rm_gpu_ops_get_gpu_info ELF 0xda0510 -> file offset 0xda2df0 -> Rizin 0x08da2df0
+    _nv046828rm ELF 0xde350 -> file offset 0xe0c30 -> Rizin 0x080e0c30
+
+-------------------------------------------------------------------------------
+1. uvm_gpu_retain_by_uuid — two calls, UUID is the first argument
+-------------------------------------------------------------------------------
+REA: pd 85 @ 0x0801e950
+Evidence: ev_0161857e53539df98e6e0f72f2fc1649fec8ff0c83a72ca40c1053579a031a02
+  0x0801e96a      mov   r12, rdi                 ; UUID from caller
+  0x0801e9ed      mov   rdi, r12
+  0x0801e9f8      call  sym.uvm_parent_gpu_get_by_uuid_locked
+  0x0801ea05      lea   rsi, qword [rsp+0x08]
+  0x0801ea0a      mov   rdx, rbx                 ; 0xf0-byte output allocation
+  0x0801ea0d      mov   rdi, r12                 ; UUID is arg1, NOT output
+  0x0801ea10      call  reloc.target.nvUvmInterfaceGetGpuInfo
+
+REA: pd 45 @ 0x0801ea10
+Evidence: ev_85119b225af43207b2aca4d5f07578172f188110bf386311c6341f389bfd76e3
+  0x0801ea15      mov   r13d, eax
+  0x0801ea1c      cmp   dword [rbx+0x84], 0x01
+  0x0801ea2f      cmp   byte [rbx+0x88], 0x00
+  0x0801ea3c      mov   rsi, qword [rbp+0x08]
+  0x0801ea5c      mov   qword [r14], rax
+  0x0801ea6b ...  lea rsi,[rsp+0x10]; mov rdi,r12; call nvUvmInterfaceRegisterGpu
+
+readelf -rW relocation enumeration for ELF 0x1a2f0..0x1a5d0:
+  0x1a399 ... R_X86_64_PLT32 ... uvm_parent_gpu_get_by_uuid_locked - 4
+  0x1a3b1 ... R_X86_64_PLT32 ... nvUvmInterfaceGetGpuInfo - 4
+  0x1a414 ... R_X86_64_PLT32 ... nvUvmInterfaceRegisterGpu - 4
+  0x1a47c ... R_X86_64_PLT32 ... nvUvmInterfaceGetGpuInfo - 4
+  0x1a4be ... R_X86_64_32S ... g_uvm_global + 0x28
+  0x1a4e2 -> direct call add_gpu (Rizin 0x0801eb42)
+  0x1a597 -> direct call add_gpu (Rizin 0x0801ebf7)
+
+Conclusion (statically proven):
+  The UUID is consumed by nvUvmInterfaceGetGpuInfo; it is not produced by it.
+  The output is a separate 0xf0-byte zeroed allocation (rbx), distinct from the
+  UUID source that add_gpu later reads via [rbp-0x118]; fields +0x84 and +0x88
+  of that output are inspected after the call. Hypothesis "GetGpuInfo is the
+  source of the UUID" is RETRACTED as a misreading of argument direction.
+
+-------------------------------------------------------------------------------
+2. add_gpu — the same r14 data path, for cross-check
+-------------------------------------------------------------------------------
+REA: pd 35 @ 0x0801c260
+Evidence: ev_3b79cad9ac956f210d14366ddac4730e2ce3bb68e0da32c232a973f3a6f98ae5
+  0x0801c26a      call  reloc.target.nvUvmInterfaceDeviceCreate
+  0x0801c284      lea   rsi, qword [r14+0x40]
+  0x0801c288      lea   rdi, qword [rbx+0x08]
+  0x0801c293      call  sym.uvm_uuid_copy_0x8016830
+
+REA: pd 30 @ 0x0801c880
+Evidence: ev_8755c055adb13a3057003c2e12f9f9bc3309952e4b5adb3c9521451cfb5e9c3b
+  0x0801c899      mov   rsi, qword [rbp-0x118]   ; original rdi on r8==0 path
+  0x0801c8ba      lea   rax, qword [r10+0x50]
+  0x0801c8be      mov   rdi, rax
+  0x0801c8c8      call  sym.uvm_uuid_copy_0x8016830
+
+REA: pd 35 @ 0x08025a10
+Evidence: ev_86a2e7daac2324903abd17d39ea389b943929a60dafe4c1ab19029768555b6e5
+  0x08025a2a      call  sym.uvm_gpu_retain_by_uuid
+
+-------------------------------------------------------------------------------
+3. nvidia.ko — interface wrapper forwards UUID into RM helper
+-------------------------------------------------------------------------------
+REA: is~nvUvmInterfaceGetGpuInfo
+Evidence: ev_d35da1bb0bd10a9c0ee1b4382419fd0df66fc58fec1f12a90c968da921f7f1d4
+  63909 0x0001ff80 0x0801ff80 GLOBAL FUNC 183 nvUvmInterfaceGetGpuInfo
+
+REA: pd 45 @ 0x0801ff80
+Evidence: ev_2efe1290932abb6d22fa2f79ba21bb2046ae08b414ed144b8c9c62e53010d0b7
+  0x0801ff8b      mov   r12, rdx
+  0x0801ff8f      mov   rbp, rsi
+  0x0801ff93      mov   rbx, rdi
+  0x0801ff9a      call  sym.rm_is_altstack_in_use
+  0x0801ffa7      mov   rcx, r12
+  0x0801ffaa      mov   rdx, rbp
+  0x0801ffad      mov   rsi, rbx              ; original arg1 forwarded
+  0x0801ffb0      xor   edi, edi
+  0x0801ffb6      jmp   sym.rm_gpu_ops_get_gpu_info
+  0x0801ffbb ...  kmem_cache_alloc_noprof(nvidia_stack_t_cache, 0xcc0)
+  0x0801ffda      mov   rsi, rbx
+  0x0801ffdd      mov   rcx, r12
+  0x0801ffe0      mov   rdx, rbp
+  0x0801fff2      call  sym.rm_gpu_ops_get_gpu_info
+
+REA: is~rm_gpu_ops_get_gpu_info
+Evidence: ev_414424712e3d63ccac32d6539a2a3aa58a19b940a3762d2a268db20dda7fdd56
+  63471 0x00da2df0 0x08da2df0 GLOBAL FUNC 100 rm_gpu_ops_get_gpu_info
+
+REA: pd 24 @ 0x08da2df0
+Evidence: ev_658020eb58656e4e531cd4c35fb46c067c391f22d1750a0a6de234d6ef6aa286
+  0x08da2df9      mov   rbx, rdi
+  0x08da2dfc      mov   rdi, rsi
+  0x08da2dff      mov   rsi, rdx
+  0x08da2e02      mov   rdx, rcx
+  0x08da2e08      mov   rax, qword [rbx+0x08]
+  0x08da2e0f      call  sym._nv046828rm
+
+Conclusion (statically proven):
+  Both paths of nvUvmInterfaceGetGpuInfo reach rm_gpu_ops_get_gpu_info, which
+  calls _nv046828rm. The original first argument (the UUID from UVM) is
+  forwarded as the first RM argument. This is evidence of a query BY UUID,
+  not of UUID creation from BDF.
+
+-------------------------------------------------------------------------------
+4. Retracted observation — wrong Rizin base for nvidia.ko
+-------------------------------------------------------------------------------
+REA: pd 22 @ 0x08da4b70
+Evidence: ev_b6fbe1d6e59341989b3be1993b6ad4a5d4271ca09f5c1b41f738cb78d4a599ed
+This window landed in an os_alloc_mem path, NOT in rm_gpu_ops_get_gpu_info.
+
+An earlier disassembly window used 0x08da4b70 for rm_gpu_ops_get_gpu_info by
+applying the nvidia-uvm.ko base (0x08004660) to nvidia.ko. That is WRONG:
+nvidia.ko uses base 0x080028e0. The correct Rizin address is 0x08da2df0,
+taken directly from `is~rm_gpu_ops_get_gpu_info`. The misaddressed window is
+`retracted observation`; no conclusion was drawn from it. The correct window
+is `pd 24 @ 0x08da2df0` in section 3.
+
+-------------------------------------------------------------------------------
+5. Status and boundaries
+-------------------------------------------------------------------------------
+statically proven:
+  - UUID flows INTO nvUvmInterfaceGetGpuInfo as arg1 in both call sites.
+  - Output is a separate allocation; GetGpuInfo does not write the UUID field
+    that add_gpu reads from [rbp-0x118].
+  - nvidia.ko wrapper forwards that arg1 to rm_gpu_ops_get_gpu_info, then
+    _nv046828rm.
+UNPROVEN:
+  - Who populates the ioctl parameter UUID in userspace.
+  - PCI BDF <-> RM gpu_id / RM object identity.
+  - RM class, runlist, notifier, fence.
+NOT RUN:
+  - MMIO (read or write), RM ioctl, GPU compute, boot/reboot, PR #21.
+
+All commands were read-only REA/symbol/relocation inspection of shipped
+artifacts. No vendor source, no Ghidra pseudocode, no synthetic af, no broad
+izz~//r//c, no hardware access.
+
+Evidence bundle SHA-256 (159 records):
+  912ec870d3615761dc12af59b2b4163ccfa0f147ee8350e73c5b00a6c32fc67c  evidence-p1-gpu-info-uuid.json
