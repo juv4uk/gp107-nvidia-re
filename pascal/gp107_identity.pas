@@ -98,7 +98,251 @@ function ParseHex16(const s: string; out value: Word): Boolean;
 function ScanInventory(const root, expectBdf: string;
                        out inv: Tgp107Inventory; out err: string): Integer;
 
+function OpenPinnedDirectory(const root, expectBdf: string;
+                             out deviceFd: cint; out err: string): Integer;
+function VerifyPinnedIdentityAt(deviceFd: cint; const expectBdf: string;
+                                const expected: Tgp107Inventory;
+                                out err: string): Integer;
+function ReadBindingAt(deviceFd: cint; var outDriver: Tgp107Driver;
+                       out err: string): Integer;
+
 implementation
+
+const
+  AT_FDCWD = -100;
+
+function COpenAt(dirfd: cint; pathname: PChar; flags: cint;
+                 mode: TMode): cint; cdecl; external 'c' name 'openat';
+function CReadLinkAt(dirfd: cint; pathname: PChar; buffer: PChar;
+                     bufferSize: SizeUInt): ssize_t; cdecl; external 'c' name 'readlinkat';
+
+function InventoryBdf(const inv: Tgp107Inventory): string;
+var i: Integer;
+begin
+  Result := '';
+  for i := Low(inv.bdf) to High(inv.bdf) do
+  begin
+    if inv.bdf[i] = #0 then Break;
+    Result := Result + inv.bdf[i];
+  end;
+end;
+
+function ReadSmallAt(deviceFd: cint; const name: string; out text: string): Boolean;
+var fd: cint; n: ssize_t; buf: array[0..2047] of Byte;
+begin
+  Result := False;
+  text := '';
+  fd := COpenAt(deviceFd, PChar(name), O_RDONLY or O_CLOEXEC or O_NOFOLLOW or O_NONBLOCK, 0);
+  if fd < 0 then Exit;
+  FillChar(buf, SizeOf(buf), 0);
+  n := FpRead(fd, buf[0], SizeOf(buf) - 1);
+  FpClose(fd);
+  if (n < 0) or (n >= SizeOf(buf) - 1) then Exit;
+  SetLength(text, Integer(n));
+  if n > 0 then Move(buf[0], text[1], Integer(n));
+  Result := True;
+end;
+
+function ReadConfigAt(deviceFd: cint; out cfg: array of Byte): Boolean;
+var fd: cint; n: ssize_t;
+begin
+  Result := False;
+  fd := COpenAt(deviceFd, 'config', O_RDONLY or O_CLOEXEC or O_NOFOLLOW or O_NONBLOCK, 0);
+  if fd < 0 then Exit;
+  FillChar(cfg[0], Length(cfg), 0);
+  n := FpPRead(fd, cfg[0], Length(cfg), 0);
+  FpClose(fd);
+  Result := n = Length(cfg);
+end;
+
+function ParseHexPair(const s: string; out first, second: Word): Boolean;
+var t, leftPart, rightPart: string; p, a, b: LongInt;
+begin
+  Result := False;
+  first := 0;
+  second := 0;
+  t := Trim(s);
+  p := Pos(':', t);
+  if (p <= 1) or (p >= Length(t)) then Exit;
+  leftPart := Copy(t, 1, p - 1);
+  rightPart := Copy(t, p + 1, MaxInt);
+  try
+    a := StrToInt('$' + leftPart);
+    b := StrToInt('$' + rightPart);
+  except
+    on EConvertError do Exit;
+  end;
+  if (a < 0) or (a > $ffff) or (b < 0) or (b > $ffff) then Exit;
+  first := Word(a);
+  second := Word(b);
+  Result := True;
+end;
+
+function UeventValue(const uevent, key: string; out value: string): Boolean;
+var p, e, newlineAt: Integer; line: string;
+begin
+  Result := False;
+  value := '';
+  p := 1;
+  while p <= Length(uevent) do
+  begin
+    newlineAt := Pos(#10, Copy(uevent, p, MaxInt));
+    if newlineAt = 0 then e := Length(uevent) + 1 else e := p + newlineAt - 1;
+    line := Copy(uevent, p, e - p);
+    if Copy(line, 1, Length(key) + 1) = key + '=' then
+    begin
+      value := Trim(Copy(line, Length(key) + 2, MaxInt));
+      Result := value <> '';
+      Exit;
+    end;
+    p := e + 1;
+  end;
+end;
+
+function OpenPinnedDirectory(const root, expectBdf: string;
+                             out deviceFd: cint; out err: string): Integer;
+var path: string; st: TStat;
+begin
+  err := '';
+  deviceFd := -1;
+  if (root = '') or (expectBdf = '') then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-bdf-mismatch code=' + IntToStr(STATUS_BDF);
+    Exit(STATUS_BDF);
+  end;
+  path := IncludeTrailingPathDelimiter(root) + 'bus/pci/devices/' + expectBdf;
+  deviceFd := COpenAt(AT_FDCWD, PChar(path), O_RDONLY or O_CLOEXEC or O_NONBLOCK, 0);
+  if deviceFd < 0 then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-directory-open code=' +
+      IntToStr(STATUS_OPEN) + ' errno=' + IntToStr(fpgeterrno);
+    Exit(STATUS_OPEN);
+  end;
+  if FpFStat(deviceFd, st) <> 0 then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-directory-stat code=' +
+      IntToStr(STATUS_OPEN) + ' errno=' + IntToStr(fpgeterrno);
+    FpClose(deviceFd);
+    deviceFd := -1;
+    Exit(STATUS_OPEN);
+  end;
+  if (st.st_mode and S_IFMT) <> S_IFDIR then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-directory-stat code=' +
+      IntToStr(STATUS_OPEN) + ' errno=' + IntToStr(ESysEnotdir);
+    FpClose(deviceFd);
+    deviceFd := -1;
+    Exit(STATUS_OPEN);
+  end;
+  Result := STATUS_OK;
+end;
+
+function VerifyPinnedIdentityAt(deviceFd: cint; const expectBdf: string;
+                                const expected: Tgp107Inventory;
+                                out err: string): Integer;
+var
+  uevent, slotName, pciId, pciSubsysId: string;
+  vendorText, deviceText, revisionText, subsystemVendorText, subsystemDeviceText: string;
+  vendor, device, revision, subsystemVendor, subsystemDevice: Word;
+  eventVendor, eventDevice, eventSubVendor, eventSubDevice: Word;
+  cfg: array[0..CONFIG_BYTES - 1] of Byte;
+  cv, cd: Word;
+begin
+  err := '';
+  if LowerCase(expectBdf) <> LowerCase(InventoryBdf(expected)) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-bdf-mismatch code=' + IntToStr(STATUS_BDF);
+    Exit(STATUS_BDF);
+  end;
+  if not ReadSmallAt(deviceFd, 'uevent', uevent) or
+     not UeventValue(uevent, 'PCI_SLOT_NAME', slotName) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-uevent-read code=' + IntToStr(STATUS_CONFIG);
+    Exit(STATUS_CONFIG);
+  end;
+  if LowerCase(slotName) <> LowerCase(expectBdf) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-bdf-mismatch code=' +
+      IntToStr(STATUS_BDF) + ' expected=' + expectBdf + ' got=' + slotName;
+    Exit(STATUS_BDF);
+  end;
+  if not ReadSmallAt(deviceFd, 'vendor', vendorText) or
+     not ReadSmallAt(deviceFd, 'device', deviceText) or
+     not ReadSmallAt(deviceFd, 'revision', revisionText) or
+     not ReadSmallAt(deviceFd, 'subsystem_vendor', subsystemVendorText) or
+     not ReadSmallAt(deviceFd, 'subsystem_device', subsystemDeviceText) or
+     not ParseHex16(vendorText, vendor) or not ParseHex16(deviceText, device) or
+     not ParseHex16(revisionText, revision) or
+     not ParseHex16(subsystemVendorText, subsystemVendor) or
+     not ParseHex16(subsystemDeviceText, subsystemDevice) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-pci-attributes code=' + IntToStr(STATUS_CONFIG);
+    Exit(STATUS_CONFIG);
+  end;
+  if not UeventValue(uevent, 'PCI_ID', pciId) or
+     not UeventValue(uevent, 'PCI_SUBSYS_ID', pciSubsysId) or
+     not ParseHexPair(pciId, eventVendor, eventDevice) or
+     not ParseHexPair(pciSubsysId, eventSubVendor, eventSubDevice) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-pci-uevent code=' + IntToStr(STATUS_CONFIG);
+    Exit(STATUS_CONFIG);
+  end;
+  if not ReadConfigAt(deviceFd, cfg) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-config-read code=' + IntToStr(STATUS_CONFIG);
+    Exit(STATUS_CONFIG);
+  end;
+  cv := Word(cfg[0] or (Word(cfg[1]) shl 8));
+  cd := Word(cfg[2] or (Word(cfg[3]) shl 8));
+  if (vendor <> PCI_VENDOR_NVIDIA) or (device <> PCI_DEVICE_GP107) or
+     (vendor <> expected.pci.vendor) or (device <> expected.pci.device) or
+     (revision <> expected.pci.revision) or (eventVendor <> vendor) or
+     (eventDevice <> device) or (eventSubVendor <> subsystemVendor) or
+     (eventSubDevice <> subsystemDevice) or
+     (cv <> vendor) or (cd <> device) or (cfg[$08] <> revision) then
+  begin
+    err := 'IDENTITY-FAIL step=pinned-pci-identity code=' +
+      IntToStr(STATUS_CONFIG) + ' bdf=' + expectBdf;
+    Exit(STATUS_CONFIG);
+  end;
+  Result := STATUS_OK;
+end;
+
+function ReadBindingAt(deviceFd: cint; var outDriver: Tgp107Driver;
+                       out err: string): Integer;
+var n: ssize_t; target, base: string; buf: array[0..511] of Char;
+    i: Integer; saved: cint;
+begin
+  err := '';
+  FillChar(outDriver, SizeOf(outDriver), 0);
+  FillChar(buf, SizeOf(buf), 0);
+  n := CReadLinkAt(deviceFd, 'driver', @buf[0], SizeOf(buf) - 1);
+  if n < 0 then
+  begin
+    saved := fpgeterrno;
+    if saved = ESysEnoent then Exit(STATUS_OK);
+    err := 'IDENTITY-FAIL step=driver-binding-read code=' +
+      IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(saved);
+    Exit(STATUS_BINDING);
+  end;
+  if (n = 0) or (n >= SizeOf(buf) - 1) then
+  begin
+    err := 'IDENTITY-FAIL step=driver-binding-read code=' + IntToStr(STATUS_BINDING);
+    Exit(STATUS_BINDING);
+  end;
+  SetLength(target, Integer(n));
+  Move(buf[0], target[1], Integer(n));
+  i := LastDelimiter('/', target);
+  if i > 0 then base := Copy(target, i + 1, MaxInt) else base := target;
+  if (Length(base) = 0) or (Length(base) >= Length(outDriver.name)) then
+  begin
+    err := 'IDENTITY-FAIL step=driver-name-invalid code=' + IntToStr(STATUS_BINDING);
+    Exit(STATUS_BINDING);
+  end;
+  for i := 1 to Length(base) do outDriver.name[i - 1] := base[i];
+  outDriver.bound := 1;
+  Result := STATUS_OK;
+end;
 
 procedure FailNamed(const step: string; code: Integer);
 begin
