@@ -64,6 +64,21 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
         self.assertEqual(result.known_missing, (self.missing_path,))
         self.assertEqual(len(used), 1)
 
+    def test_manifest_directory_path_wins_over_parent_basename(self) -> None:
+        local = self.directory / "vk_min.h"
+        parent = self.directory.parent / "vk_min.h"
+        local.write_bytes(b"local historical snapshot")
+        parent.write_bytes(b"different parent file")
+        local_sha = hashlib.sha256(local.read_bytes()).hexdigest()
+        self.manifest.write_text(
+            "# static snapshot\\n" + f"{local_sha}  vk_min.h\\n",
+            encoding="utf-8",
+        )
+        result, used = verify_manifest(self.root, self.manifest, {})
+        self.assertEqual(result.verified, 1)
+        self.assertEqual(result.known_missing, ())
+        self.assertEqual(used, set())
+
     def test_missing_artifact_without_exception_fails(self) -> None:
         with self.assertRaisesRegex(ManifestError, "missing artifact"):
             verify_manifest(self.root, self.manifest, {})
