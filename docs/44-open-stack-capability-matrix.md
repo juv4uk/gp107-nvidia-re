@@ -36,6 +36,14 @@
 > `NOT_AVAILABLE` походить з upstream-джерел, а не з прогону, тож трійка до нього
 > не застосовується.
 
+> **Дві шкали, які не можна плутати.** Ця матриця відповідає на питання «що
+> **прийнято** в цьому проєкті»: `UNPROVEN` означає, що власного прийнятого
+> свідка немає, навіть якщо upstream каже «працює». [`48`](48-gp107-open-stack-status-2026-11.md)
+> відповідає на інше питання — «що кажуть датовані зовнішні джерела про стан
+> відкритого стеку». Тому `DRM/KMS = UNPROVEN` тут і `KMS = PASS` там не
+> суперечність: перше про наш доказ, друге про upstream. Так само
+> `OpenGL = NOT_MEASURED` тут і `Zink за замовчуванням = UNKNOWN` там.
+
 | Область | Поточний стан | Що вже доведено | Чого це не доводить / наступна межа |
 |---|---|---|---|
 | PCI identity / фізичне визначення GPU | **PASS — зовнішній GP107 witness** | **Версії:** ядро `7.2.15+kali-amd64`, Mesa `26.1.6`, linux-firmware — `NOT_RECORDED` ([13](13-nouveau-nvk-boot-witness-result.md) фіксує ядро й Mesa, снапшот прошивки не збирався). PCI vendor/device 10de:1c82, BDF 0000:01:00.0 та назва GTX 1050 Ti узгоджуються в sysfs і Vulkan device record. [13](13-nouveau-nvk-boot-witness-result.md), [14](14-nvk-vector-add-compute-result.md). | Точна retail-модель плати й її VBIOS identity — окремі питання; H170 native inventory — NOT_RUN. |
@@ -47,7 +55,7 @@
 | Vulkan graphics rendering | **NOT_MEASURED** | NVK пристрій enumerates, але це тільки device properties. [13](13-nouveau-nvk-boot-witness-result.md). | Немає прийнятого graphics pipeline/render target/readback correctness test. |
 | Single-dispatch queue submit / fence | **PASS — bounded historical witness; PROCEDURAL DEVIATION** | **Версії:** ядро `7.2.15+kali-amd64`, Mesa `26.1.6`, linux-firmware — `NOT_RECORDED` ([13](13-nouveau-nvk-boot-witness-result.md) фіксує ядро й Mesa, снапшот прошивки не збирався). Vector-add пройшов queue submit, fence wait/status і CPU readback в одному harness run. [14](14-nvk-vector-add-compute-result.md); процедурне обмеження зафіксовано у [18](18-procedural-deviation-and-benchmark-reliability.md). | Повторні запуски, кілька контекстів/черг, довготривала синхронізація та failure-recovery не вимірювалися; це не clean acceptance і не дозвіл на повтор. |
 | OpenCL / Mesa Rusticl | **NOT_MEASURED** | Rusticl визначено як окремий потенційний шлях у [06](06-open-driver-landscape.md). | Немає GP107 device enumeration і kernel-correctness evidence; наявність OpenCL loader не зараховується. |
-| NVDEC / NVENC | **NOT_MEASURED** | У наявних документах немає прийнятого runtime acceptance для відкритого GP107 stack. | Перевіряти кожен backend окремо; не оголошувати NOT_AVAILABLE без перевіреного scope/джерела. |
+| NVDEC / NVENC | **NOT_AVAILABLE — у відкритому стеку** | Джерело тепер є: Vulkan Video в NVK залежить від GSP, тобто Turing і новіші; FeatureMatrix для NV130 має рядок декодування як TODO, а рядка про encode немає взагалі. [48](48-gp107-open-stack-status-2026-11.md) §4. | Це твердження про **відкритий** стек, а не про залізо: пропрієтарний `nvidia` (смуга B) має власний NVDEC/NVENC, і його стан цим рядком не вимірюється. Runtime acceptance на H170 однаково немає — тому `NOT_AVAILABLE` тут означає «шляху немає», а не «перевірили й не працює». |
 | Pascal reclocking | **NOT_AVAILABLE — практичний Nouveau шлях** | **Версії:** твердження походить з upstream-джерел, не з прогону на цій конфігурації, тому трійка версій до нього не застосовується; це властивість відкритого стеку, а не вимірювання. Upstream Nouveau/Mesa research вказує на firmware/signing обмеження reclocking для GP10x/Pascal. [06](06-open-driver-landscape.md). | Це не означає, що базові KMS, OpenGL або compute функції відсутні. Будь-яка частота/продуктивність має бути позначена як boot-clock чи інший фактично доведений стан. |
 | Температура, clocks, power telemetry | **NOT_MEASURED** | Для збору доступних показників визначено read-only hwmon шлях у [42](42-local-toolchain-and-remaining-targets.md). | Відсутність hwmon node означає unavailable/not exposed, а не нуль. Дані ще не прийняті як виміряний baseline. |
 | Suspend/resume, runtime PM, GPU reset/recovery | **NOT_MEASURED** | Немає окремого прийнятого runtime свідка; пошук по виконанню (`grep "PM: suspend"`) по репозиторію дає нуль, а `ACPI: PM: (supports S0 S3 S4 S5)` — це оголошення платформи, не цикл. | Потрібен окремий owner-approved тест-план із recovery/stop criteria; не запускати під час інвентаризації. Чернетка плану — [`48`](48-gp107-open-stack-status-2026-11.md) §3.7 (`rtcwake`, три повтори, stop criteria). |
