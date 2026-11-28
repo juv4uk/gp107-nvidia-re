@@ -70,6 +70,8 @@
 | [`45-windows-uvm-uuid-comparison.md`](docs/45-windows-uvm-uuid-comparison.md) | Windows-внесок у звірку: `nvcuda64.dll` (`af853a5b…`), `\\.\UVMLiteController` → `DeviceIoControl`, ті ж зсуви `+0xc06`/`+0xc27`, writer-и `0x1804096ef`/`0x18036d645`; Windows nr, payload і початкове джерело UUID — `UNPROVEN`; без release/tag |
 | [`46-e1-trace-recipe.md`](docs/46-e1-trace-recipe.md) | E1: готові команди read-only трасування та формат таблиці, яку вони мають дати |
 | [`47-gp107-hardware-verification-report.md`](docs/47-gp107-hardware-verification-report.md) | `runtime-proven` read-only звірка GP107 (`10de:1c82`, драйвер `32.0.15.8278`, UUID `GPU-9fe…`), інструментобуд Rizin 0.9.1 + REA Ghidra 12.2 доступні, статичні гейти green; зв'язок UUID з `device+0xc06` і `BDF ↔ RM gpu_id` — `UNPROVEN`; без tag/release |
+| [`49-rea-p1-channel-context-notifier-direction.md`](docs/49-rea-p1-channel-context-notifier-direction.md) | source audit channel/context/notifier у shipped `nvidia.ko`/`nvidia-uvm.ko`: `+0x19f8` = `gpu->channel_manager` (BTF), ланцюг `nvUvmInterfaceChannelAllocate → rm_gpu_ops_channel_allocate → _nv046796rm` з гейтом `[rdi+0x10] ∈ {2,3}`; context і notifier — набір RM-імен без прив'язки; RM class id, notifier-індекс, runtime — `UNPROVEN` |
+| [`50-rea-p1-docs49-source-audit.md`](docs/50-rea-p1-docs49-source-audit.md) | аудит `docs/49` за артефактами: 38 тверджень — 28 `supported`, 7 `overstated`, 3 хибні, 0 неперевірюваних; жодного статусу `docs/05` не підвищено |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
 Документація експериментів:
