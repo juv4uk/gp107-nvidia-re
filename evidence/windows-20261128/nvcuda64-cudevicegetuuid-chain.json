@@ -1,0 +1,93 @@
+{
+  "schema": "gp107-rea-static-observations/v1",
+  "captured_at_utc": "2026-11-28T06:05:00Z",
+  "authorization": "docs/55-windows-reverse-scope-and-artifacts.md",
+  "subject": {
+    "name": "nvcuda64.dll",
+    "file_version": "32.0.15.8278",
+    "sha256": "af853a5b0f3ce3eedc297c66cf5e03307112aa31c714b82479a2ae841c92d407",
+    "size_bytes": 34562280
+  },
+  "runtime_class": "static-only",
+  "tool": {
+    "provider": "Rizin",
+    "access": "REA execute_rizin_command",
+    "image_base": "0x180000000"
+  },
+  "export_table": [
+    {
+      "name": "cuDeviceGetUuid",
+      "vaddr": "0x180280540",
+      "evidence_id": "ev_e82287772a923dcd58cd29b6128fb4d745cf6504b7752af30d72641fc0dd9bdf"
+    },
+    {
+      "name": "cuDeviceGetUuid_v2",
+      "vaddr": "0x18021f040",
+      "evidence_id": "ev_04f1f1e117caffe94e7e24ba593e15efbd29218a03c635635b387ad1b129a9ad"
+    }
+  ],
+  "observations": [
+    {
+      "evidence_id": "ev_1490330ffa66cf38c7c5bfbd713ea32bc81eb189a3940018b19e2691b5c9c4f2",
+      "command": "pd 200 @ 0x180280320",
+      "facts": [
+        "0x180280320 is the thunk target stored at [0x181ffa340] and called by exported cuDeviceGetUuid",
+        "0x18028039a: call 0x180048780 with rcx=device handle, edx=device ordinal, r8d=0",
+        "0x1802804d7: second call 0x180048780 with r8d=0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_514f9d03256d9b92ba46ac90f4f7f041b532e8c7073623e5927b49f1048c0aff",
+      "command": "pd 150 @ 0x180048780",
+      "facts": [
+        "0x18004878f: rdi = rcx (output buffer)",
+        "0x180048792: rbx = sign-extended device ordinal",
+        "0x1800487a3: esi = r8b (alternate-field selector)",
+        "0x180048826: r9d = [0x182002a48] (device count)",
+        "0x180048836: rdx = [0x182002520] (device object table)",
+        "0x180048845: rax = [rdx+rbx*8+0x328] (device object)",
+        "0x18004884d: test byte [rax+0x5e49],0x01",
+        "0x180048856: if flag and selector: movups xmm0,[rax+0xc27]; [rdi]=xmm0",
+        "0x1800488d0: alternate entry sets r8d=0 then jumps to 0x180048780",
+        "0x1800488e0: alternate entry sets r8b=1 then jumps to 0x180048780"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_e1f51cffce66746ba26a60e5e89fd231c0a130fe3e3fd94f349af2b402b95689",
+      "command": "pd 45 @ 0x180048840",
+      "facts": [
+        "0x180048875: mov rax, [rdx+rbx*8+0x328]",
+        "0x18004887d: movups xmm0, [rax+0xc06]",
+        "0x180048886: movups [rdi], xmm0"
+      ],
+      "status": "statically_proven"
+    },
+    {
+      "evidence_id": "ev_42f5ada7608fb6b0242ea24d5fe803d5cf04e44f3f96c10c90877a3c54b6a4e3",
+      "command": "pd 120 @ 0x18021ee20",
+      "facts": [
+        "0x18021ee20 is the thunk target stored at [0x181ffa868] and called by exported cuDeviceGetUuid_v2",
+        "0x18021ee91: r8b=1",
+        "0x18021ee9a: call 0x180048780",
+        "0x18021efd0: r8b=1 in the traced variant, then call 0x180048780"
+      ],
+      "status": "statically_proven"
+    }
+  ],
+  "unproven": [
+    "whether the returned 16 bytes are the same UUID value observed by the owner at runtime",
+    "who populates the device object table at [0x182002520+dev*8+0x328]",
+    "origin of device+0xc06 and device+0xc27 bytes from RM, NVML, D3DKMT or PCI data",
+    "BDF to RM gpu_id mapping"
+  ],
+  "not_run": [
+    "process execution",
+    "cuInit",
+    "cuDeviceGetUuid",
+    "DeviceIoControl / RM / UVM ioctl",
+    "GPU submit",
+    "driver install or switch"
+  ]
+}
