@@ -112,7 +112,7 @@ research-ledgeр, який не змінює базовий gate і не зап�
 5. має три мутаційні негативи: пропрієтарний ICD, `nvidia` binding і
    `NOT_RUN` замість `PASS` — кожен відхиляється з названим маркером;
 6. друкує S-вираз `(kind . wsm-open-driver-capability-research)` і
-   `OPEN-DRIVER-GATE-OK ... boot0=unproven mmio=none pr21=NOT-RUN negative=3`.
+   `OPEN-DRIVER-GATE-OK ... boot0=unproven mmio=none pr21=NOT-RUN manifest=sha256-verified negative=4`.
 
 Межа: це **проєкція вже здобутих свідків**, а не новий логічний висновок і не
 ABI. Стан.compute не підвищується до «драйвер працює»; PR #21 executable,
