@@ -40,6 +40,11 @@ jobs:
       - name: Check shell syntax
         run: bash -n scripts/test-pascal-probe.sh
 
+      - name: Driver-overreach firewall
+        # Static and host-runnable: no GPU, no root. It was in the tree but
+        # no workflow ran it, so a regression would have been invisible.
+        run: bash scripts/check-no-driver-overreach.sh
+
       - name: Run host-independent fail-closed source guard
         run: make test-valid-cards-static
 
