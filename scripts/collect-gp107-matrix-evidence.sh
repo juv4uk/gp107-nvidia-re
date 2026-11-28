@@ -29,12 +29,12 @@ unavailable() {
 failed() { record "$1" "FAILED:rc=$2"; note "$1" "FAILED rc=$2"; }
 capture() {
   local name="$1"; shift
-  local executable="$1"
+  local executable="$1"; shift
   if ! command -v "$executable" >/dev/null 2>&1; then
     unavailable "$name" "no-$executable"
     return 0
   fi
-  if "$@" > "$OUT/$name" 2>&1; then
+  if "$executable" "$@" > "$OUT/$name" 2>&1; then
     record "${name//[.-]/_}" collected
   else
     local rc=$?
