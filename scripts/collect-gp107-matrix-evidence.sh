@@ -22,6 +22,15 @@ REFERENCE_PCI="10de:1c82"
 
 mkdir -p "$OUT" || { echo "COLLECT-FAIL: не створюється $OUT" >&2; exit 2; }
 
+# Другий прогін у той самий каталог давав самосуперечливий маніфест: застарілий
+# 10-manifest-check.txt потрапляв у хеші, а потім перезаписувався перевіркою.
+# Тому в непорожній каталог не пишемо без явного дозволу — так само, як
+# release-bundler відмовляється перезаписувати наявні артефакти.
+if [ -n "$(ls -A "$OUT" 2>/dev/null)" ] && [ "${WSM_COLLECT_ALLOW_EXISTING:-0}" != "1" ]; then
+  echo "COLLECT-FAIL: $OUT вже непорожній; оберіть новий каталог або WSM_COLLECT_ALLOW_EXISTING=1" >&2
+  exit 2
+fi
+
 STATUS="$OUT/00-status.txt"
 : > "$STATUS"
 
@@ -122,7 +131,9 @@ MANIFEST="$OUT/99-manifest.txt"
 } > "$MANIFEST"
 for f in "$OUT"/*.txt; do
   base="$(basename "$f")"
-  [ "$base" = "99-manifest.txt" ] && continue
+  # 99-manifest.txt не може хешувати себе; 10-manifest-check.txt створюється
+  # перевіркою вже після маніфесту і не є артефактом знімання.
+  case "$base" in 99-manifest.txt|10-manifest-check.txt) continue ;; esac
   printf '%s  %s\n' "$(sha256sum "$f" | awk '{print $1}')" "$base" >> "$MANIFEST"
 done
 
