@@ -104,6 +104,15 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("every observed request decoded", result.stdout)
 
+    def test_strict_fails_when_only_the_second_run_has_an_unnamed_request(self) -> None:
+        first = self.write("a.log", CARD_INFO + "\n")
+        second = self.write("b.log", CARD_INFO + "\n" + UNNAMED + "\n")
+        result = self.run_script(first, second, "--strict")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("E1-STRICT-FAIL", result.stderr)
+        self.assertIn("0xc0007a05", result.stdout)
+        self.assertIn("across 2 run(s)", result.stderr)
+
     def test_two_runs_report_the_difference(self) -> None:
         first = self.write("a.log", LOG)
         second = self.write("b.log", LOG.replace("0xc0007a05", "0xc0007a06"))

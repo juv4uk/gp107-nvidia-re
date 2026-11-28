@@ -90,7 +90,10 @@ def main() -> int:
         text = Path(path).read_text(encoding="utf-8", errors="replace")
         parsed.append(parse_log(text))
 
-    decoded, unknown, others = parsed[0]
+    decoded, _, others = parsed[0]
+    all_unknown: Counter = Counter()
+    for _, run_unknown, _ in parsed:
+        all_unknown.update(run_unknown)
 
     print("## E1 — observed calls\n")
     if others:
@@ -110,13 +113,13 @@ def main() -> int:
     print()
 
     print("## Unnamed requests — UNPROVEN\n")
-    if unknown:
+    if all_unknown:
         print("These requests were observed but the decoder has no name for them.")
         print("They are listed separately on purpose: an unnamed request is not an")
-        print("absent one.\n")
+        print("absent one. Counts are combined across all supplied runs.\n")
         print("| request | dir | magic | nr | size | count |")
         print("| --- | --- | --- | --- | --- | --- |")
-        for (req, typ, nr, size), n in unknown.most_common():
+        for (req, typ, nr, size), n in all_unknown.most_common():
             dname = {0: "NONE", 1: "WRITE", 2: "READ", 3: "RD/WR"}[(req >> 30) & 3]
             print(f"| `{req:#010x}` | {dname} | {typ:#04x} | {nr:#04x} | {size} | {n} |")
     else:
@@ -124,7 +127,7 @@ def main() -> int:
     print()
 
     if len(parsed) == 2:
-        first = {row[:-1] for row in decoded} | set(unknown)
+        first = {row[:-1] for row in parsed[0][0]} | set(parsed[0][1])
         second = {row[:-1] for row in parsed[1][0]} | set(parsed[1][1])
         only_first = first - second
         only_second = second - first
@@ -139,8 +142,13 @@ def main() -> int:
                     print(f"- `{req:#010x}` {label}")
         print()
 
-    if args.strict and unknown:
-        print(f"E1-STRICT-FAIL: {len(unknown)} unnamed request(s) — see UNPROVEN table", file=sys.stderr)
+    if args.strict and all_unknown:
+        observations = sum(all_unknown.values())
+        print(
+            f"E1-STRICT-FAIL: {observations} unnamed request observation(s) "
+            f"across {len(parsed)} run(s) — see UNPROVEN table",
+            file=sys.stderr,
+        )
         return 1
     if args.require_stable:
         if len(parsed) != 2:
