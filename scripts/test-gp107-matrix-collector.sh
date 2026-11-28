@@ -88,6 +88,24 @@ export PATH="$FAKEBIN:$PATH"
 export WSM_SYS_ROOT="$SYS_ROOT"
 export GPU_RUNTIME_MARKER="$MARKER"
 
+# Build a hermetic PATH: only the requested fake tools plus real core utilities.
+# Never inherit the host PATH, or a real lspci/lsmod/dmesg can defeat a
+# "tool is missing" regression test on GitHub's Ubuntu runner.
+make_minimal_path() {
+  local destination="$1"
+  shift
+  mkdir "$destination"
+  for tool in dirname date mkdir mktemp awk cat basename readlink sha256sum grep tail rm bash python3 cp; do
+    local resolved
+    resolved="$(command -v "$tool")"
+    ln -s "$resolved" "$destination/$tool"
+  done
+  for tool in "$@"; do
+    [ -x "$FAKEBIN/$tool" ] || { echo "missing fake tool: $tool" >&2; return 1; }
+    ln -s "$FAKEBIN/$tool" "$destination/$tool"
+  done
+}
+
 note "unique BDF, exact sysfs identity and telemetry"
 OUT="$WORK/passive"
 bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT" > "$WORK/passive.log"
@@ -151,39 +169,33 @@ OUT_LSPCI_FAIL="$WORK/lspci-failure"
 LSPCI_FAIL=1 bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_LSPCI_FAIL" > "$WORK/lspci-failure.log"
 grep -Fxq 'target=FAILED:lspci-rc=11' "$OUT_LSPCI_FAIL/00-status.txt"
 
-note "missing tool status keys stay canonical across all branches"
-mv "$FAKEBIN/lsmod" "$FAKEBIN/lsmod.hidden"
+note "missing tools are tested without falling back to host executables"
+MINBIN_NO_LSMOD="$WORK/path-no-lsmod"
+make_minimal_path "$MINBIN_NO_LSMOD" lspci dmesg
 OUT_NO_LSMOD="$WORK/no-lsmod"
-bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_LSMOD" > "$WORK/no-lsmod.log"
+PATH="$MINBIN_NO_LSMOD" /bin/bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_LSMOD" > "$WORK/no-lsmod.log"
 grep -Fxq 'kernel_modules=NOT_AVAILABLE:no-lsmod' "$OUT_NO_LSMOD/00-status.txt"
-mv "$FAKEBIN/lsmod.hidden" "$FAKEBIN/lsmod"
 
-mv "$FAKEBIN/dmesg" "$FAKEBIN/dmesg.hidden"
+MINBIN_NO_DMESG="$WORK/path-no-dmesg"
+make_minimal_path "$MINBIN_NO_DMESG" lspci lsmod
 OUT_NO_DMESG="$WORK/no-dmesg"
-bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_DMESG" > "$WORK/no-dmesg.log"
+PATH="$MINBIN_NO_DMESG" /bin/bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_DMESG" > "$WORK/no-dmesg.log"
 grep -Fxq 'dmesg=NOT_AVAILABLE:no-dmesg' "$OUT_NO_DMESG/00-status.txt"
-mv "$FAKEBIN/dmesg.hidden" "$FAKEBIN/dmesg"
 
-mv "$FAKEBIN/lspci" "$FAKEBIN/lspci.hidden"
+MINBIN_NO_LSPCI="$WORK/path-no-lspci"
+make_minimal_path "$MINBIN_NO_LSPCI" lsmod dmesg
 OUT_NO_LSPCI="$WORK/no-lspci"
-bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_LSPCI" > "$WORK/no-lspci.log"
+PATH="$MINBIN_NO_LSPCI" /bin/bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_LSPCI" > "$WORK/no-lspci.log"
 grep -Fxq 'target=UNKNOWN:lspci-absent' "$OUT_NO_LSPCI/00-status.txt"
 grep -Fxq 'pci_driver=NOT_AVAILABLE:no-lspci' "$OUT_NO_LSPCI/00-status.txt"
 grep -Fxq 'pci_verbose=NOT_AVAILABLE:no-lspci' "$OUT_NO_LSPCI/00-status.txt"
-mv "$FAKEBIN/lspci.hidden" "$FAKEBIN/lspci"
 
-# Hide uname entirely while retaining only the commands needed by the collector.
-MINBIN="$WORK/minimal-path"
-mkdir "$MINBIN"
-for tool in dirname date mkdir mktemp awk cat basename readlink sha256sum grep tail rm bash python3 cp; do
-  resolved="$(command -v "$tool")"
-  ln -s "$resolved" "$MINBIN/$tool"
-done
-for tool in lspci lsmod dmesg; do
-  ln -s "$FAKEBIN/$tool" "$MINBIN/$tool"
-done
+# The no-uname case also runs with a hermetic PATH (the fake PCI/module tools
+# remain present, but the host's real uname is not reachable).
+MINBIN_NO_UNAME="$WORK/path-no-uname"
+make_minimal_path "$MINBIN_NO_UNAME" lspci lsmod dmesg
 OUT_NO_UNAME="$WORK/no-uname"
-PATH="$MINBIN" /bin/bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_UNAME" > "$WORK/no-uname.log"
+PATH="$MINBIN_NO_UNAME" /bin/bash "$ROOT/scripts/collect-gp107-matrix-evidence.sh" "$OUT_NO_UNAME" > "$WORK/no-uname.log"
 grep -Fxq 'system=NOT_AVAILABLE:no-uname' "$OUT_NO_UNAME/00-status.txt"
 
 echo "MATRIX-COLLECTOR-OK unique-bdf=1 output-immutable=1 telemetry-scoped=1 command-status=honest runtime=NOT_RUN"
