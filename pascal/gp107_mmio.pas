@@ -26,6 +26,9 @@ function Read32(const sysfsRoot, expectBdf: string; allow: LongInt;
 
 implementation
 
+uses
+  BaseUnix;
+
 function HexNoPad(v: QWord): string;
 begin
   Result := LowerCase(IntToHex(v, 1));
@@ -79,7 +82,9 @@ function Read32(const sysfsRoot, expectBdf: string; allow: LongInt;
                 out err: string): LongInt;
 var
   inv: Tgp107Inventory;
+  pinnedDriver: Tgp107Driver;
   rc: LongInt;
+  deviceFd: cint;
 begin
   err := '';
   value := 0;
@@ -97,42 +102,60 @@ begin
   if rc <> STATUS_OK then
     Exit(rc);
 
-  rc := CheckDriver(inv, err);
+  rc := OpenPinnedDirectory(sysfsRoot, expectBdf, deviceFd, err);
   if rc <> STATUS_OK then
     Exit(rc);
+  try
+    rc := VerifyPinnedIdentityAt(deviceFd, expectBdf, inv, err);
+    if rc <> STATUS_OK then
+      Exit(rc);
 
-  if inv.pci.bar0_space <> 0 then
-  begin
-    err := 'MMIO-FAIL step=bar0-not-memory code=' + IntToStr(STATUS_CONFIG);
-    Exit(STATUS_CONFIG);
-  end;
-  if inv.pci.bar0_size < LongWord(MMIO_WINDOW) then
-  begin
-    err := 'MMIO-FAIL step=bar0-size-too-small code=' +
-           IntToStr(STATUS_SIZE) + ' size=0x' +
-           HexNoPad(QWord(inv.pci.bar0_size)) + ' required=' +
-           IntToStr(MMIO_WINDOW);
-    Exit(STATUS_SIZE);
-  end;
-  if (offset and 3) <> 0 then
-  begin
-    err := 'MMIO-FAIL step=offset-unaligned code=' +
-           IntToStr(STATUS_OFFSET) + ' offset=0x' + HexNoPad(QWord(offset));
-    Exit(STATUS_OFFSET);
-  end;
-  if (offset > LongWord(MMIO_WINDOW - 4)) or
-     (QWord(offset) + 4 > QWord(inv.pci.bar0_size)) then
-  begin
-    err := 'MMIO-FAIL step=offset-out-of-window code=' +
-           IntToStr(STATUS_OFFSET) + ' offset=0x' + HexNoPad(QWord(offset)) +
-           ' size=0x' + HexNoPad(QWord(inv.pci.bar0_size));
-    Exit(STATUS_OFFSET);
-  end;
+    rc := ReadBindingAt(deviceFd, pinnedDriver, err);
+    if rc <> STATUS_OK then
+      Exit(rc);
+    if pinnedDriver.bound <> 0 then
+    begin
+      err := 'MMIO-FAIL step=driver-bound code=' +
+             IntToStr(STATUS_DRIVER_BOUND) + ' driver=' +
+             DriverName(pinnedDriver.name);
+      Exit(STATUS_DRIVER_BOUND);
+    end;
 
-  err := 'MMIO-FAIL step=read-safe-offset-unproven code=' +
-         IntToStr(STATUS_SAFE_OFFSET_UNPROVEN) + ' offset=0x' +
-         HexNoPad(QWord(offset));
-  Result := STATUS_SAFE_OFFSET_UNPROVEN;
+    if inv.pci.bar0_space <> 0 then
+    begin
+      err := 'MMIO-FAIL step=bar0-not-memory code=' + IntToStr(STATUS_CONFIG);
+      Exit(STATUS_CONFIG);
+    end;
+    if inv.pci.bar0_size < LongWord(MMIO_WINDOW) then
+    begin
+      err := 'MMIO-FAIL step=bar0-size-too-small code=' +
+             IntToStr(STATUS_SIZE) + ' size=0x' +
+             HexNoPad(QWord(inv.pci.bar0_size)) + ' required=' +
+             IntToStr(MMIO_WINDOW);
+      Exit(STATUS_SIZE);
+    end;
+    if (offset and 3) <> 0 then
+    begin
+      err := 'MMIO-FAIL step=offset-unaligned code=' +
+             IntToStr(STATUS_OFFSET) + ' offset=0x' + HexNoPad(QWord(offset));
+      Exit(STATUS_OFFSET);
+    end;
+    if (offset > LongWord(MMIO_WINDOW - 4)) or
+       (QWord(offset) + 4 > QWord(inv.pci.bar0_size)) then
+    begin
+      err := 'MMIO-FAIL step=offset-out-of-window code=' +
+             IntToStr(STATUS_OFFSET) + ' offset=0x' + HexNoPad(QWord(offset)) +
+             ' size=0x' + HexNoPad(QWord(inv.pci.bar0_size));
+      Exit(STATUS_OFFSET);
+    end;
+
+    err := 'MMIO-FAIL step=read-safe-offset-unproven code=' +
+           IntToStr(STATUS_SAFE_OFFSET_UNPROVEN) + ' offset=0x' +
+           HexNoPad(QWord(offset));
+    Result := STATUS_SAFE_OFFSET_UNPROVEN;
+  finally
+    FpClose(deviceFd);
+  end;
 end;
 
 end.
