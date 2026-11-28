@@ -40,6 +40,12 @@ make run-negative  # no-op shader -> artifacts-negative/, очікується r
 `artifacts-static/`. Інтерпретація міток доведення — у
 `docs/14-nvk-vector-add-compute-result.md`.
 
+## Незмінний знімок джерел для історичного manifest
+
+`artifacts-static/99-manifest.txt` описує вхідні файли фізичного NVK run, зафіксованого `2026-11-27T05:25:09Z` і описаного в `docs/14`. Manifest створено в commit `fcdb4e65315340097de6e45a02422b038df4d2d9` о `05:26:52Z`. Після цього робочі `vk_min.h` та `gen_spirv.py` змінювалися окремими commits. Тому `artifacts-static/vk_min.h` і `artifacts-static/gen_spirv.py` зберігають точні байти з commit `fcdb4e6`, на які вказують початкові SHA-256.
+
+Ці дві копії — **історичні provenance-артефакти**, а не актуальні build inputs. Перевірка manifest спершу шукає їх у каталозі `artifacts-static/`, не підміняючи їх поточними файлами з кореня експерименту. Робочі файли в корені й надалі використовуються для нових збірок. Новий фізичний прогін для змінених джерел має отримати окремий versioned evidence-каталог і новий manifest; історичний manifest не перезаписувати. Статична перевірка хешів не є новим запуском GPU.
+
 ## Межі
 
 - Жодного MMIO-read/write, `nva`, custom reset або `/dev/nvidia*`.

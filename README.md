@@ -62,6 +62,9 @@
 | [`39-gp107-nouveau-firmware-dependency-map.md`](docs/39-gp107-nouveau-firmware-dependency-map.md) | Pinned Nouveau source/WHENCE map for GP107 FECS/GPCCS, ACR, SEC2, NVDEC firmware, shared symlink closure and Free/Compatibility licensing boundary; source-only, not H170 runtime evidence |
 | [`40-rea-p1-gpu-info-uuid-direction.md`](docs/40-rea-p1-gpu-info-uuid-direction.md) | `statically proven`: UUID — вхідний аргумент `nvUvmInterfaceGetGpuInfo`, далі forwarded у `rm_gpu_ops_get_gpu_info` → `_nv046828rm`; гіпотеза про генерацію UUID цим інтерфейсом `retracted`; `BDF ↔ RM gpu_id` — `UNPROVEN` |
 | [`41-rea-p1-libcuda-userspace-uuid-source.md`](docs/41-rea-p1-libcuda-userspace-uuid-source.md) | `statically proven`: UUID для `UVM_REGISTER_GPU` і `cuDeviceGetUuid` читається з `device+0xc06` у shipped `libcuda`; кінцевий виробник поля й `BDF ↔ RM gpu_id` — `UNPROVEN`; хибна чернеткова мапа — `retracted observation` |
+| [`42-local-toolchain-and-remaining-targets.md`](docs/42-local-toolchain-and-remaining-targets.md) | три смуги робіт (відкритий стек / runtime-спостереження / статичний RE), ліцензійний gate, таблиця «ціль → питання → інструмент» і порядок дій для #61, #62, E1–E6, #28, #5, #18 |
+| [`43-gp107-nonstall-mainline-indexing.md`](docs/43-gp107-nonstall-mainline-indexing.md) | Pinned Linux master source chain: GP107 global non-stall event index versus per-runlist user-channel ID; nonzero runlist risk remains conditional, H170 user-channel correlation UNPROVEN |
+| [`44-open-stack-capability-matrix.md`](docs/44-open-stack-capability-matrix.md) | evidence-backed попередньо заповнена матриця Nouveau/NVK: зовнішній GP107 witness, bounded compute PASS, межі H170 та WSM acceptance |
 | [`45-windows-uvm-uuid-comparison.md`](docs/45-windows-uvm-uuid-comparison.md) | Windows-внесок у звірку: `nvcuda64.dll` (`af853a5b…`), `\\.\UVMLiteController` → `DeviceIoControl`, ті ж зсуви `+0xc06`/`+0xc27`, writer-и `0x1804096ef`/`0x18036d645`; Windows nr, payload і початкове джерело UUID — `UNPROVEN`; без release/tag |
 | [`ioctl-map.md`](docs/ioctl-map.md) | Зведений довідник `ioctl` та команд RM |
 
@@ -77,7 +80,7 @@
 - `docs/` — дослідницькі документи та зведені довідники.
 - `evidence/nouveau-20261127/` — сирі логи boot-свідка та SHA-256 маніфести.
 - `evidence/rea-20261127/` — JSON-пакети доказів REA.
-- `evidence/windows-20261128/` — власні нотатки та команди Rizin для Windows-звірки (docs/42); бінарники виробника не зберігаються.
+- `evidence/windows-20261128/` — власні нотатки та команди Rizin для Windows-звірки (docs/45); бінарники виробника не зберігаються.
 - `experiments/nvk-compute-smoke/` — функціональний NVK compute harness і його артефакти.
 - `experiments/vk-compute-bench/` — порівняльний Vulkan compute harness і його артефакти.
 - `probes/` — незалежний C-пробник без `libcuda`.
