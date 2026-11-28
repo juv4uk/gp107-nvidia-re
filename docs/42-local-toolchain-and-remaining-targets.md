@@ -247,7 +247,8 @@ H170 не перевірявся. Незакритим лишається `UNPRO
 потребує дозволів.
 
 Споживач — WSM Desktop — має інший порядок, і він записаний у
-[`wsm-desktop/docs/drivers/GP107-REVERSE-NEEDS.md`](https://github.com/juv4uk/wsm-desktop/blob/main/docs/drivers/GP107-REVERSE-NEEDS.md):
+[`wsm-desktop/docs/drivers/GP107-REVERSE-NEEDS.md`](https://github.com/juv4uk/wsm-desktop/blob/03e6787/docs/drivers/GP107-REVERSE-NEEDS.md)
+(зріз `03e6787`, 28.11.2026):
 1) FECS/GPCCS firmware, 2) display power і suspend/resume, 3) канали й подання
 команд — **не для десктопа**, 4) BAR0 — **не для десктопа**.
 
