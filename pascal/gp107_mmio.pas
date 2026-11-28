@@ -18,7 +18,6 @@ interface
 uses
   SysUtils, gp107_identity;
 
-function Load32Asm(addr: Pointer): LongWord; assembler;
 function RequireOptin(allow: LongInt; out err: string): LongInt;
 function CheckDriver(const inv: Tgp107Inventory; out err: string): LongInt;
 function Read32(const sysfsRoot, expectBdf: string; allow: LongInt;
