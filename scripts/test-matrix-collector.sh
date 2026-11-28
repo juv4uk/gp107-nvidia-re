@@ -22,9 +22,8 @@ printf '42000\n' > "$NVIDIA/hwmon/hwmon1/temp1_input"
 printf '99999\n' > "$INTEL/hwmon/hwmon0/temp1_input"
 printf '1000\n' > "$NVIDIA/gt_cur_freq_mhz"
 printf '9999\n' > "$INTEL/gt_cur_freq_mhz"
-ln -s "$NVIDIA" "$SYS_ROOT/class/drm/card1-device-link"
-ln -s "$NVIDIA" "$SYS_ROOT/class/drm/card1"
-ln -s "$NVIDIA" "$SYS_ROOT/class/drm/card1/device" 2>/dev/null || true
+mkdir -p "$SYS_ROOT/class/drm/card1" "$SYS_ROOT/class/drm/card0"
+ln -s "$NVIDIA" "$SYS_ROOT/class/drm/card1/device"
 ln -s "$INTEL" "$SYS_ROOT/class/drm/card0/device"
 
 cat > "$FAKEBIN/lspci" <<'LSPCI'
