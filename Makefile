@@ -9,6 +9,7 @@ test:
 	bash scripts/test-pascal-probe.sh
 	bash scripts/check-no-driver-overreach.sh
 	bash scripts/test-evidence-manifest.sh
+	python3 scripts/test_evidence_manifests.py
 	python3 scripts/check_ioctl_map_drift.py
 	python3 -m unittest tests.test_decode_ioctl tests.test_e1_trace_table tests.test_ioctl_map_drift
 	bash scripts/test-gp107-matrix-collector.sh
