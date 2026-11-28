@@ -30,6 +30,31 @@ Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda
 
 Для порівняння upstream stable `v7.2.15` (той самий numerically named baseline, що й користувацький kernel string) — окремий immutable tag; це **не** доводить, що `7.2.15+kali-amd64` містить ідентичний source/backport set. Kali package source і його patches залишаються окремою перевіркою.
 
+## Current mainline refresh — 2026-11-28
+
+Після попереднього snapshot `f4585067...` виконано нове read-only звірення current upstream `torvalds/linux:master` на точному HEAD [`7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046`](https://github.com/torvalds/linux/commit/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046), committer date `2026-11-28T02:56:58Z`.
+
+| Шлях | Рядки | Підтверджено на HEAD `7cd8495c...` |
+|---|---:|---|
+| `nvkm/engine/device/base.c` | 2211+ | `nv137_chipset` і далі вибирає GP107 FIFO/TOP implementations, включно з `gp100_fifo_new` та `gk104_top_new` |
+| `nvkm/engine/fifo/gp100.c` | 114–135 | `gp100_fifo` має `.nonstall = &gf100_fifo_nonstall`; поля `.nonstall_ctor` у record немає |
+| `nvkm/engine/fifo/base.c` | 241+ | `nvkm_fifo_oneinit()` при відсутньому ctor виставляє `ret = 1` і ініціалізує event з одним index |
+| `nvkm/engine/fifo/uchan.c` | 54–56 | `NVIF_CHAN_EVENT_V0_NON_STALL_INTR` і далі викликає `nvkm_uevent_add(..., runl->id, ...)` без legacy fallback |
+| `nvkm/engine/fifo/gk104.c` | 769+ | `gk104_fifo_runl_ctor()` і далі створює runlists із `tdev->runlist` |
+| `nvkm/subdev/top/gk104.c` | 29+ | `gk104_top_parse()` і далі читає TOP table, з якої походить runtime runlist ID |
+| `nvkm/core/event.c` | 43+ | `nvkm_event_get()` і далі індексує `refs[index * types_nr + type]` без локальної межової перевірки |
+
+Commit-pinned source links:
+- [device/base.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c#L2211)
+- [fifo/gp100.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gp100.c#L114)
+- [fifo/base.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/engine/fifo/base.c#L241)
+- [fifo/uchan.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/engine/fifo/uchan.c#L54)
+- [fifo/gk104.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/engine/fifo/gk104.c#L769)
+- [subdev/top/gk104.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/subdev/top/gk104.c#L29)
+- [core/event.c](https://github.com/torvalds/linux/blob/7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046/drivers/gpu/drm/nouveau/nvkm/core/event.c#L43)
+
+**Висновок не змінюється:** source-level умова залишається актуальною в mainline. Це не доводить, що конкретний H170/GTX 1050 Ti user/compute channel використовує non-zero `runl->id`, що event object був зареєстрований/allowed або що fence progress зупиняється. Класифікація лишається `SOURCE_CONFIRMED_CONDITIONAL / USER_CHANNEL_RUNLIST_UNCORRELATED / NONSTALL_SUBSCRIPTION_UNPROVEN / H170_RUNTIME_NOT_RUN`. Patch 2/2 не вважати merged без конкретного upstream merge witness; не переносити Kepler-only patch 1 на GP107.
+
 ## 1. Що вже доведено з source (`statically proven, source`)
 
 | Факт | Файл | Що саме |
