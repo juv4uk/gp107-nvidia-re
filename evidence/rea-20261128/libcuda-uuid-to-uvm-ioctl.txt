@@ -1,0 +1,222 @@
+REA P1 — userspace UUID source for UVM_REGISTER_GPU in shipped libcuda
+=====================================================================
+
+Target: /usr/lib/x86_64-linux-gnu/libcuda.so.580.196.11
+SHA-256: 20ad440390dad2c5fd06c14e518990512a8e7b31f8b6add7bb1581832fd4d331
+
+Tools:
+  REA execute_rizin_command, rizin 0.9.1 @ linux-x86-64, provider version null
+  GNU objdump/readelf/strings, Binutils 2.47.50.20261021
+
+Rizin addresses match ELF virtual addresses (objdump symbols/PLT), not file
+offsets. The `grep -abo` result for `/dev/nvidia-uvm` is a file offset and is
+not mixed with virtual addresses below.
+
+-------------------------------------------------------------------------------
+1. Target identification and coverage limitations
+-------------------------------------------------------------------------------
+REA: is~ioctl
+Evidence: ev_348cc965d1c9d908d8ec9d5b7862b0562ef02791c549156db1240e463e6f3c42
+  21 0x00166160 0x00166160 GLOBAL FUNC 16 imp.ioctl
+
+REA: is~cuDeviceGetUuid
+Evidence: ev_1e2955aed4899a571e78950c04cd25b6c26cb75e064df8d6a906636c7f37e3b3
+  679 0x00327d50 GLOBAL FUNC 191 cuDeviceGetUuid_v2
+  791 0x0037aa70 GLOBAL FUNC 191 cuDeviceGetUuid
+
+REA: is~open
+Evidence: ev_5b199797aa7ee19ce92c40fc8118efdba780063d57dcb5b6460b588030c81d12
+  imp.open at 0x00166550, imp.open64 at 0x00166e80
+
+REA: izz~nvidia-uvm
+Evidence: ev_a1b87880dabe8979e3392f57217fc67eed50aaa85b304ad982500becc803211b
+  stdout empty; REA warned about skipped string-search intervals
+  -> coverage limitation, NOT absence.
+
+Shell cross-check (strings -a):
+  /dev/nvidia-uvm at file offset 0x00592509e (and 0x0059250ae)
+  /dev/nvidia-uvm-tools also present
+
+REA: axt @ 0x00166160 (imp.ioctl)
+Evidence: ev_e30c7680f3b8616ecfc6c30fe019617e74796d56f527e30bf0812d834e5fc680
+  empty with the same skipped-interval warnings -> coverage limitation.
+
+-------------------------------------------------------------------------------
+2. The ONLY ioctl call with request 0x25 (UVM_REGISTER_GPU)
+-------------------------------------------------------------------------------
+Targeted enumeration (objdump -d | grep ioctl@plt, then 14 preceding lines
+checked for `$0x25,%esi`) yielded exactly one match: `0x449faf`.
+
+REA: pd 50 @ 0x00449f40
+Evidence: ev_0ce4868787639733d616dbdc49649a5167d63c121996e0197a3f1e92e73de827
+  0x00449f40      push rbp
+  0x00449f4a      mov  r13, rdi                  ; 16-byte UUID source
+  0x00449f4f      mov  r12, rsi                  ; optional auxiliary data
+  0x00449f57      mov  rbx, qword [0x05c31848]   ; fd holder
+  0x00449f67      movdqu xmm1, xmmword [r13]     ; load UUID
+  0x00449f76      mov  qword [rbp-0x40], 0x00
+  0x00449f7e      movaps xmmword [rbp-0x50], xmm0 ; zero
+  0x00449f82      movaps xmmword [rbp-0x60], xmm1 ; UUID into ioctl buffer
+  0x00449f8b      mov  rdx, qword [r12+0x04]
+  0x00449f90      mov  eax, dword [r12]
+  0x00449f94      mov  qword [rbp-0x44], rdx
+  0x00449f98      mov  dword [rbp-0x48], eax
+  0x00449f9b      mov  r13d, dword [rbx]         ; fd
+  0x00449f9e      lea  r12, qword [rbp-0x60]
+  0x00449fa4      mov  rdx, r12
+  0x00449fa7      mov  esi, 0x25                 ; UVM_REGISTER_GPU
+  0x00449fac      mov  edi, r13d
+  0x00449faf      call sym.imp.ioctl
+
+docs/ioctl-map.md: UVM nr 37 = 0x25 = UVM_REGISTER_GPU.
+
+Conclusion (statically proven):
+  The ioctl buffer's first 16 bytes are a verbatim copy of the function's
+  first argument. The helper at 0x449f40 is the userspace producer of the
+  UVM_REGISTER_GPU payload.
+
+-------------------------------------------------------------------------------
+3. Direct callers of 0x449f40 — the first argument is device+0xc06
+-------------------------------------------------------------------------------
+Objdump enumeration of direct calls to 0x449f40 (Rizin `axt` was empty ->
+coverage limitation):
+  0x320b56, 0x320c8d, 0x46f03e
+
+REA: pd 22 @ 0x00320b20
+Evidence: ev_b17b2c42f684c0d7d8ea64675c79063a0a95da7235c05c074567bafc9ff55dfa
+  0x00320b27      lea  r14, qword [rdi+0xc06]
+  0x00320b3b      lea  r13, qword [rbp-0x40]
+  0x00320b3f      mov  rsi, r13
+  0x00320b42      call qword [rdi+0x7130]        ; device method fills local
+  0x00320b50      mov  rsi, r13
+  0x00320b53      mov  rdi, r14                  ; &device->uuid
+  0x00320b56      call 0x449f40
+
+REA: pd 30 @ 0x00320b30
+Evidence: ev_2de32b4dac6996585cb20b857ef25069193a67dc42de688302e65ef72285757e
+  same call sequence, plus r14 retained for the 0x320c88 fallback path.
+
+REA: pd 24 @ 0x00320c60
+Evidence: ev_85bc487b36b26a807e0d4effb0a0cf1ad1fb18f3fd35381ae7a5144351f3f77f
+  0x00320c88      xor   esi, esi
+  0x00320c8a      mov   rdi, r14
+  0x00320c8d      call  0x449f40
+
+REA: pd 45 @ 0x00449e80 (adjacent function, cross-check only)
+Evidence: ev_f99f868133681b532b05b963bb1342e855e911002a9e1752221f1b5fb0da7a6c
+
+Conclusion (statically proven):
+  Both traced direct call sites (0x320b56 and its 0x320c8d fallback) pass
+  &device+0xc06 as the helper's first argument, so the UUID written into
+  UVM_REGISTER_GPU is the 16-byte field at device object offset 0xc06.
+  The device method at +0x7130 fills a separate local buffer used as the
+  helper's second argument; it is not the source of offset 0xc06.
+  The third direct call site at 0x46f03e was not traced to its UUID source:
+  coverage limitation, not absence proof.
+
+-------------------------------------------------------------------------------
+4. cuDeviceGetUuid reads the same device+0xc06 field
+-------------------------------------------------------------------------------
+REA: pd 45 @ 0x0037aa70
+Evidence: ev_2d03587abac97a5835a9410c725a7600e8e588d2c15b491850df8090ec9946f9
+  0x0037aa70      ;-- cuDeviceGetUuid
+  0x0037aa8a      call qword [0x05bd48f0]        ; dispatch table
+
+REA: pd 55 @ 0x0038c1d0
+Evidence: ev_fc19a9d6aaae575c31a14c59317a9ae87df5f60d268c014eb3f6ecec438f0e4d
+  0x0038c1d8      mov  r12, rdi                  ; output CUuuid
+
+REA: pd 24 @ 0x0038c240
+Evidence: ev_bf085e8e1ed1dc0b47d91d2acabfff0d17b822dd078c8fa058ce39185c0352e1
+  0x0038c248      lea   rdx, qword [0x05bd9a40]
+  0x0038c24f      mov   rdx, qword [rdx+rbx*8+0x328] ; device by index
+  0x0038c257      movdqu xmm1, xmmword [rdx+0xc06]
+  0x0038c25f      movups xmmword [r12], xmm1
+
+Conclusion (statically proven):
+  Public cuDeviceGetUuid and UVM_REGISTER_GPU consume the same 16-byte field
+  at device+0xc06.
+
+-------------------------------------------------------------------------------
+5. Who fills device+0xc06: faf660, but the final producer is UNPROVEN
+-------------------------------------------------------------------------------
+REA: pd 45 @ 0x00faf660
+Evidence: ev_9da6da5f6ed18471c08329fe99bd8bd500be2dadd8efa3137f8630a91d8070fa
+  0x00faf666      mov  r13, rdi                  ; buffer = &device+0xc06
+  0x00faf670      mov  r12, qword [0x05c31848]   ; global fd/state holder
+  0x00faf683      sub  rdi, 0x38
+  0x00faf687      call sym.imp.pthread_rwlock_wrlock
+  0x00faf6a1      mov  rsi, qword [rbx+0x08]
+  0x00faf6a5      mov  rdi, r13
+  0x00faf6a8      call qword [r12+0x30]          ; callback fills buffer
+  0x00faf704      movdqu xmm1, xmmword [r13]
+  0x00faf70f      movaps xmmword [rbp-0x50], xmm1
+
+REA: pd 60 @ 0x00faf810
+Evidence: ev_c9c8f932402137c3797c758f6e367547761467803f159f59a5e37753b421017d
+  lock/unlock and repeated inlined access to the same global 0x5c31848.
+
+REA: pd 20 @ 0x0046a680
+Evidence: ev_30d9dcc2474ee631029efc297c22ba29f8e71180b2498f59fb638b14efe5d879
+  0x0046a687      mov  r15, qword [r14+r12*8]
+  0x0046a696      lea  r13, qword [r15+0xc06]
+  0x0046a6d2      mov  rdi, r13
+  0x0046a6d5      call  0xfaf660
+
+REA: pd 24 @ 0x00303170
+Evidence: ev_cd20e5c1cb877a741c39fe6445c826bee5e677172ca276c1c7a47b93488499d9
+  0x0030318e      lea   rdi, qword [rdi+0xc06]
+  0x003031ae      call  0xfaf660
+
+REA: px 128 @ 0x5bd5378
+Evidence: ev_2c1d3e7a932bdc923161350939884aed155a411cf7b267660863c977179af0cb
+  0x05bd5378      ffff ffff ffff ffff 0000 ...  ; +0x30 = 0 in file
+
+REA: pd 20 @ 0x00303290
+Evidence: ev_d6496e9c9b3205300dff856e976d60e474739e1403ba10912dd28d33f041ee39
+  0x003032a0      lea   rax, qword [0x05bd5378]
+  0x003032a7      mov   qword [0x05c31848], rax
+
+Conclusion:
+  faf660 is the buffer filler for device+0xc06 and is called with that exact
+  address from two verified sites (0x3031ae and 0x46a6d5). The callback slot
+  [holder+0x30] is zero in the shipped file image (ev_2c1d3e7a...), while one
+  initialization path can store the zeroed template address into the global
+  holder (ev_d6496e9c...); the runtime target actually installed there was not
+  observed. `axt @ 0x005c31848` (Evidence
+  ev_0a6d1fc4902694c9a814a547471e49ab0fc9f72ee14595da2490c4b339b60eca) was
+  empty with coverage warnings -> coverage limitation, not absence proof.
+  Therefore the ultimate producer (RM/NVML/other) and any BDF derivation stay
+  UNPROVEN.
+
+-------------------------------------------------------------------------------
+6. Status and boundaries
+-------------------------------------------------------------------------------
+statically proven:
+  - libcuda contains /dev/nvidia-uvm and imports ioctl/open (shell cross-check
+    for the string; REA string search had a coverage limitation).
+  - The unique ioctl request 0x25 call site is 0x449faf; its helper copies the
+    first 16-byte argument into the ioctl payload.
+  - Both traced direct callers (0x320b56 and 0x320c8d) pass &device+0xc06 as
+    that first argument.
+  - cuDeviceGetUuid reads the same device+0xc06 field.
+  - faf660 fills the device+0xc06 buffer via an unresolved callback.
+
+UNPROVEN:
+  - Target of callback [state+0x30] and ultimate RM/NVML producer.
+  - PCI BDF <-> RM gpu_id; whether device+0xc06 is derived from BDF.
+
+coverage limitation:
+  - REA izz/axt on this large .so skipped string/xref intervals; objdump and
+    strings were used as targeted cross-checks only.
+  - The third direct call site to 0x449f40 (0x46f03e) was not traced to its
+    UUID source; the runtime callback installed at [holder+0x30] was not
+    observed. Neither is an absence proof.
+
+NOT RUN:
+  - No ioctl was executed by us; no MMIO, RM request, GPU compute, boot/reboot
+    or PR #21. No vendor source, no Ghidra pseudocode, no broad search used as
+    proof.
+
+Evidence bundle SHA-256 (184 records):
+  582da82a7de7ba0e75574a0f7cd61e4f6f8e0f7169dd28eab9b4d542dabd58ac

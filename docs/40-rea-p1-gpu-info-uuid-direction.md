@@ -121,6 +121,10 @@ window `pd 22 @ 0x08da4b70` (Evidence `ev_b6fbe1d6…`) потрапив у
 тарґет недоступний — залишити `UNPROVEN` з `coverage limitation`, не
 екстраполювати.
 
+**Виконано частково:** [`docs/41`](41-rea-p1-libcuda-userspace-uuid-source.md)
+знайшов шлях `device+0xc06 → ioctl(fd,0x25,…)` у shipped `libcuda`; кінцевий
+виробник поля й `BDF ↔ RM gpu_id` лишаються `UNPROVEN`.
+
 ## Ukrainian one-liner
 
 У shipped `nvidia-uvm.ko` і `nvidia.ko` доведено, що UUID **йде в**
