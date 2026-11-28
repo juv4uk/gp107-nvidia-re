@@ -1,0 +1,5 @@
+# Маніфести, які сьогодні не верифікуються, з причиною. Це борг, а не дозвіл.
+# Формат: <шлях від кореня репозиторію> TAB <причина>
+# Двостороння перевірка: якщо маніфест почав верифікуватися, рядок треба прибрати.
+experiments/nvk-compute-smoke/artifacts-static/99-manifest.txt	два з п'яти записаних SHA-256 не збігаються з файлами (vk_min.h, gen_spirv.py); рішення в #67
+experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt	03-run.log знято на хості /home/agents/open-driver-identity і ніколи не закомічено; решта 7 артефактів збігаються

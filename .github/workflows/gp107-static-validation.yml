@@ -40,6 +40,11 @@ jobs:
       - name: Check shell syntax
         run: bash -n scripts/test-pascal-probe.sh
 
+      - name: Evidence manifest integrity
+        # ~2 minutes: 140 manifests verify, 2 are recorded debt in
+        # scripts/manifest-exceptions.txt, 1 is a deliberate negative control.
+        run: bash scripts/test-evidence-manifest.sh
+
       - name: Driver-overreach firewall
         # Static and host-runnable: no GPU, no root. It was in the tree but
         # no workflow ran it, so a regression would have been invisible.
