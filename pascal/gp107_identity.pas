@@ -113,6 +113,21 @@ function libc_openat(dirfd: cint; pathname: PChar; flags: cint;
 function libc_readlinkat(dirfd: cint; pathname: PChar; buffer: PChar;
                          bufsiz: SizeUInt): ssize_t; cdecl; external 'c' name 'readlinkat';
 
+type
+  PLibcErrno = ^cint;
+
+function libc_errno_location: PLibcErrno; cdecl; external 'c' name '__errno_location';
+
+function LibCErrno: cint;
+var
+  location: PLibcErrno;
+begin
+  location := libc_errno_location;
+  if location = nil then
+    Exit(ESysEio);
+  Result := location^;
+end;
+
 procedure FailNamed(const step: string; code: Integer);
 begin
   WriteLn(StdErr, step, ' code=', code);
@@ -179,7 +194,7 @@ begin
                     LINUX_O_NONBLOCK_FLAG, 0);
   if fd < 0 then
   begin
-    savedErr := fpgeterrno;
+    savedErr := LibCErrno;
     Exit;
   end;
   try
@@ -347,7 +362,7 @@ begin
   n := libc_readlinkat(dirfd, PChar('driver'), PChar(@buf[0]), SizeOf(buf) - 1);
   if n < 0 then
   begin
-    saved := fpgeterrno;
+    saved := LibCErrno;
     if saved = ESysEnoent then
       Exit(STATUS_OK);
     err := 'MMIO-FAIL step=driver-binding-read code=' +
