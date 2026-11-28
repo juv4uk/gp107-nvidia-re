@@ -2,7 +2,27 @@
 
 Цей документ продовжує [issue #18](https://github.com/juv4uk/gp107-nvidia-re/issues/18).
 Він **не** стверджує помилку на нашій платі й не є hardware witness.
-Поточний стан: `SOURCE_CONFIRMED_CONDITIONAL / GP107_RUNLIST_ID_NOT_OBSERVED / BOARD_RUNTIME_UNPROVEN`.
+Поточний стан: `SOURCE_CONFIRMED_CONDITIONAL / TOP_GR_RUNLIST_0_OBSERVED / USER_CHANNEL_RUNLIST_UNCORRELATED / NONSTALL_SUBSCRIPTION_UNPROVEN`.
+
+## Evidence update — 2026-11-28
+
+Пізніший окремий physical Nouveau boot witness зафіксовано в
+[docs/13](13-nouveau-nvk-boot-witness-result.md): GP107 був прив'язаний до
+Nouveau, а decoded TOP inventory показав **GR runlist 0**. Отже загальний GR
+TOP ID більше не є невідомим. Це inventory з окремого Kali/NVK witness host,
+не доказ user-channel correlation на H170 або на цій початковій hosted-машині.
+
+[docs/14](14-nvk-vector-add-compute-result.md) містить історичний NVK vector-add
+witness. [docs/18](18-procedural-deviation-and-benchmark-reliability.md)
+пізніше зафіксував процедурне відхилення: цей dispatch передував завершенню
+повного погодженого preflight. Зберігати результат як історичний device-level
+evidence, але не трактувати як дозвіл повторювати enumeration/submit.
+
+Поточний залишковий gap — не загальний GR TOP ID, а точна
+**user channel → runlist** кореляція та фактичні
+**NONSTALL object registration / ALLOW / refcount** transitions. Окремо
+залишається exact running Kali kernel binary/source/patchset pairing.
+
 
 Pinned source: Linux stable `gregkh/linux` tag `v7.3.6`, commit `1a0388846138eda9f6eb4258ff227a223afc2f52` (release 2026-11-23).
 Посилання нижче — на commit-pinned public kernel source, не на vendor source й не на Ghidra-псевдокод.
@@ -232,7 +252,7 @@ NVK physical-device enumeration є лише **candidate trigger** для тим�
 
 `vkCreateDevice`/queue creation не є no-submit probe: на переглянутому Mesa 26.1.8 NVK queue path створює exec context, ініціалізує initial engine state і передає push через Nouveau exec. Точний target version source 26.3.1 усе ще треба зафіксувати, але до такого звіряння не запускати `vkCreateDevice`, `vulkaninfo --summary`, queue creation, vector-add чи fence wait як probe.
 
-## 4. Поточний стан на цій hosted-машині
+## 4. Первинна proprietary-driver hosted session (окрема від Nouveau witness)
 
 | Перевірка | Результат | Стан |
 |---|---|---|
