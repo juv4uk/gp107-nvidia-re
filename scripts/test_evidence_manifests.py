@@ -97,15 +97,15 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
             manifest = evidence / "99-manifest.txt"
             manifest.write_text(
-                f"{digest}  inventory.txt\\n",
+                f"{digest}  inventory.txt\n",
                 encoding="utf-8",
             )
             (scripts / "manifest-exceptions.txt").write_text(
-                "# historical exception not selected by this invocation\\n"
-                + "experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt\\t"
-                + "/original/host/03-run.log\\t"
+                "# historical exception not selected by this invocation\n"
+                + "experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt\t"
+                + "/original/host/03-run.log\t"
                 + ("a" * 64)
-                + "\\thistorical evidence gap\\n",
+                + "\thistorical evidence gap\n",
                 encoding="utf-8",
             )
 
@@ -124,14 +124,14 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             artifact.write_bytes(b"new matrix evidence")
             digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
             (evidence / "99-manifest.txt").write_text(
-                f"{digest}  inventory.txt\\n",
+                f"{digest}  inventory.txt\n",
                 encoding="utf-8",
             )
             (scripts / "manifest-exceptions.txt").write_text(
-                "experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt\\t"
-                + "/original/host/03-run.log\\t"
+                "experiments/nvk-compute-smoke/artifacts-v4/99-manifest.txt\t"
+                + "/original/host/03-run.log\t"
                 + ("a" * 64)
-                + "\\thistorical evidence gap\\n",
+                + "\thistorical evidence gap\n",
                 encoding="utf-8",
             )
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
@@ -166,7 +166,7 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             link.symlink_to(outside)
             digest = hashlib.sha256(outside.read_bytes()).hexdigest()
             manifest = bundle / "99-manifest.txt"
-            manifest.write_text(f"{digest}  artifact.txt\\n", encoding="utf-8")
+            manifest.write_text(f"{digest}  artifact.txt\n", encoding="utf-8")
 
             with self.assertRaisesRegex(ManifestError, "missing artifact"):
                 check_repository(ROOT, [manifest])
