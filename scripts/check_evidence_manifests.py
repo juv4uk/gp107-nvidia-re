@@ -123,30 +123,62 @@ def resolve_artifact(
     *,
     external_bundle: bool = False,
 ) -> Path | None:
-    """Resolve an artifact without allowing it to escape its verification root."""
+    """Resolve artifacts with local-first precedence and fail-closed containment."""
     manifest_dir = manifest_path.parent
     recorded = Path(recorded_path)
     basename = recorded.name
+
     if external_bundle and not recorded.is_absolute() and ".." in PurePosixPath(recorded_path).parts:
         raise ManifestError(
             f"external bundle artifact path traverses its directory: {recorded_path!r}"
         )
-    if recorded.is_absolute():
-        candidates = [manifest_dir / basename]
-    else:
-        candidates = [manifest_dir / recorded, manifest_dir.parent / recorded, manifest_dir / basename]
 
-    # Preserve manifest-local snapshot precedence. For an external bundle, root
-    # is the bundle directory, so parent fallbacks are naturally rejected.
-    for candidate in candidates:
+    def resolve_candidate(candidate: Path) -> Path | None:
+        # Missing ordinary candidates may be followed by documented fallbacks.
+        # Symlinks are different: never silently skip an escape or dangling link.
+        if not candidate.exists() and not candidate.is_symlink():
+            return None
         try:
             resolved = candidate.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise ManifestError(f"cannot resolve artifact path {candidate}: {exc}") from exc
+        try:
             resolved.relative_to(root.resolve())
-        except (OSError, ValueError):
+        except ValueError as exc:
+            raise ManifestError(
+                f"artifact path escapes verification root: {candidate}"
+            ) from exc
+        if not resolved.is_file():
+            raise ManifestError(f"artifact path is not a regular file: {candidate}")
+        return resolved
+
+    if recorded.is_absolute():
+        # Absolute capture paths are archival names only; never follow the
+        # original host path outside the evidence bundle/repository.
+        return resolve_candidate(manifest_dir / basename)
+
+    # The exact manifest-local snapshot is canonical and wins immediately.
+    preferred = resolve_candidate(manifest_dir / recorded)
+    if preferred is not None:
+        return preferred
+
+    # Only when the local snapshot is absent do we inspect fallbacks. Distinct
+    # fallback files are ambiguous; never pick one by incidental loop order.
+    fallback_candidates = [manifest_dir.parent / recorded, manifest_dir / basename]
+    matches: list[Path] = []
+    for candidate in fallback_candidates:
+        if candidate == manifest_dir / recorded:
             continue
-        if resolved.is_file():
-            return resolved
-    return None
+        resolved = resolve_candidate(candidate)
+        if resolved is not None and resolved not in matches:
+            matches.append(resolved)
+
+    if len(matches) > 1:
+        raise ManifestError(
+            f"ambiguous fallback artifact path {recorded_path!r} in {manifest_path}: "
+            + ", ".join(str(item) for item in matches)
+        )
+    return matches[0] if matches else None
 
 
 def sha256_file(path: Path) -> str:

@@ -110,9 +110,9 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
             link.symlink_to(outside)
             digest = hashlib.sha256(outside.read_bytes()).hexdigest()
             manifest = bundle / "99-manifest.txt"
-            manifest.write_text(f"{digest}  artifact.txt\\n", encoding="utf-8")
+            manifest.write_text(f"{digest}  artifact.txt\n", encoding="utf-8")
 
-            with self.assertRaisesRegex(ManifestError, "missing artifact"):
+            with self.assertRaisesRegex(ManifestError, "escapes verification root"):
                 check_repository(ROOT, [manifest])
 
     def test_external_bundle_rejects_parent_traversal(self) -> None:
@@ -128,6 +128,30 @@ class EvidenceManifestExceptionTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ManifestError, "traverses its directory"):
                 check_repository(ROOT, [manifest])
+
+    def test_multiple_fallback_candidates_are_ambiguous(self) -> None:
+        recorded = "nested/recorded.bin"
+        parent_fallback = self.directory.parent / recorded
+        basename_fallback = self.directory / "recorded.bin"
+        parent_fallback.parent.mkdir(parents=True, exist_ok=True)
+        parent_fallback.write_bytes(b"parent fallback")
+        basename_fallback.write_bytes(b"basename fallback")
+        digest = hashlib.sha256(parent_fallback.read_bytes()).hexdigest()
+        self.manifest.write_text(f"{digest}  {recorded}\n", encoding="utf-8")
+        with self.assertRaisesRegex(ManifestError, "ambiguous fallback"):
+            verify_manifest(self.root, self.manifest, {})
+
+    def test_single_fallback_candidate_is_verified(self) -> None:
+        recorded = "nested/recorded.bin"
+        parent_fallback = self.directory.parent / recorded
+        parent_fallback.parent.mkdir(parents=True, exist_ok=True)
+        parent_fallback.write_bytes(b"only fallback")
+        digest = hashlib.sha256(parent_fallback.read_bytes()).hexdigest()
+        self.manifest.write_text(f"{digest}  {recorded}\n", encoding="utf-8")
+        result, used = verify_manifest(self.root, self.manifest, {})
+        self.assertEqual(result.verified, 1)
+        self.assertEqual(result.known_missing, ())
+        self.assertEqual(used, set())
 
     def test_missing_artifact_without_exception_fails(self) -> None:
         with self.assertRaisesRegex(ManifestError, "missing artifact"):
