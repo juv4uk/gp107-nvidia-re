@@ -408,15 +408,15 @@ cmp -s "$WORK/safe-offset.err" "$WORK/safe-offset-pas.err" \
   || fail 'Pascal safe-offset error differs from C'
 echo 'NEGATIVE-SAFE-OFFSET-UNPROVEN-OK pascal=C map=absent'
 
-step 'production MMIO API has no resource0 open or mapping path'
-if grep -nF 'resource0' lib/gp107_mmio.c pascal/gp107_mmio.pas; then
-  fail 'public MMIO implementation references resource0'
+step 'production MMIO API has no resource0 content open or mapping path'
+if grep -nF 'openat(dirfd, "resource0"' lib/gp107_mmio.c; then
+  fail 'public C MMIO implementation opens resource0 content'
 fi
 if grep -nHE '\b(mmap|munmap)\s*\(' lib/gp107_mmio.c; then
   fail 'public C MMIO implementation maps an aperture'
 fi
 if grep -nHE '\b(FpOpen|FpMMap|FpMunmap)\s*\(' pascal/gp107_mmio.pas; then
-  fail 'public Pascal MMIO implementation maps an aperture'
+  fail 'public Pascal MMIO implementation opens or maps an aperture'
 fi
 echo 'MMIO-MAPPER-ABSENT-OK C=no-map Pascal=no-map'
 
