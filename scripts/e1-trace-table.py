@@ -127,7 +127,7 @@ def main() -> int:
     print()
 
     if len(parsed) == 2:
-        first = {row[:-1] for row in decoded} | set(unknown)
+        first = {row[:-1] for row in parsed[0][0]} | set(parsed[0][1])
         second = {row[:-1] for row in parsed[1][0]} | set(parsed[1][1])
         only_first = first - second
         only_second = second - first
