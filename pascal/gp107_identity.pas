@@ -350,13 +350,13 @@ begin
     saved := fpgeterrno;
     if saved = ESysEnoent then
       Exit(STATUS_OK);
-    err := 'IDENTITY-FAIL step=driver-binding-read code=' +
+    err := 'MMIO-FAIL step=driver-binding-read code=' +
            IntToStr(STATUS_BINDING) + ' errno=' + IntToStr(saved);
     Exit(STATUS_BINDING);
   end;
   if (n = 0) or (n >= SizeOf(buf) - 1) then
   begin
-    err := 'IDENTITY-FAIL step=driver-binding-read code=' +
+    err := 'MMIO-FAIL step=driver-binding-read code=' +
            IntToStr(STATUS_BINDING);
     Exit(STATUS_BINDING);
   end;
@@ -369,7 +369,7 @@ begin
     base := target;
   if (Length(base) = 0) or (Length(base) >= Length(outDriver.name)) then
   begin
-    err := 'IDENTITY-FAIL step=driver-name-invalid code=' +
+    err := 'MMIO-FAIL step=driver-name-invalid code='
            IntToStr(STATUS_BINDING);
     Exit(STATUS_BINDING);
   end;
@@ -382,7 +382,7 @@ end;
 function PinnedIdentityError(const step: string; code: Integer;
                              const detail: string; out err: string): Integer;
 begin
-  err := 'IDENTITY-FAIL step=' + step + ' code=' + IntToStr(code);
+  err := 'MMIO-FAIL step=' + step + ' code=' + IntToStr(code);
   if detail <> '' then
     err := err + ' ' + detail;
   Result := code;
@@ -562,9 +562,9 @@ begin
   err := '';
   FillChar(outDriver, SizeOf(outDriver), 0);
 
-  { Anchor the lookup like the C readlinkat() path: open and stat the PCI
-    device directory first, so a disappearing parent cannot be mistaken for
-    an unbound GPU. }
+  { Preliminary inventory observation only. Read32() repeats driver binding
+    from the pinned directory fd in VerifyPinnedIdentity() before returning
+    its safe-offset refusal; this pathname lookup is not that authorization gate. }
   dirfd := FpOpen(PChar(devdir), O_RDONLY or O_CLOEXEC, 0);
   if dirfd < 0 then
   begin
